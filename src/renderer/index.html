@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NTX</title>
+    <style>
+      /* Mismo color que el `backgroundColor` de la BrowserWindow y que --ntx-base.
+         Los tres tienen que coincidir: es lo que hace que el arranque no tenga un
+         solo frame claro. */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #08080a;
+        overflow: hidden;
+      }
+      /* Pinta en el primer frame del documento, antes de que cargue el bundle.
+         Se va con fade apenas React monta. */
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #08080a;
+        transition: opacity 0.3s ease;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="boot"></div>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>

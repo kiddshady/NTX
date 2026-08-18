@@ -1,0 +1,38 @@
+appId: com.umbrovex.ntx
+productName: NTX
+# De acá salen los campos Copyright y Company de las propiedades del .exe, así
+# que tiene que decir lo mismo que el `author` del package.json.
+copyright: Copyright © 2026 Kidd Shady · Umbrovex Systems
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+  - '!node_modules/**/{CHANGELOG.md,README.md,readme.md,*.d.ts,*.map,*.ts}'
+  - '!node_modules/**/{test,tests,__tests__,docs,doc,examples,example}/**'
+extraResources:
+  # Sólo esto. `resources/icons` estaba acá también, pero la app no tiene tray ni
+  # lee ese directorio desde ningún lado (ni el main ni el preload lo mencionan),
+  # así que eran tres archivos muertos dentro del instalador — uno de ellos, copia
+  # exacta de build/icon.ico. Si alguna vez hay tray, vuelve esta entrada.
+  - from: src/main/shell-init
+    to: shell-init
+asarUnpack:
+  - '**/node_modules/node-pty/**'
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+nsis:
+  artifactName: ${productName}-Setup-${version}.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: NTX
+portable:
+  artifactName: NTX-${version}-portable.exe

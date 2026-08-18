@@ -1,0 +1,70 @@
+/* Fuentes vendoreadas, nunca de una CDN: la app tiene que arrancar igual sin red,
+   y un `@import` remoto además obligaría a abrirle la CSP a un tercero.
+   Las tres son SIL Open Font License 1.1 — las licencias viajan al lado de los
+   archivos, en assets/fonts/OFL-*.txt. */
+
+/* --- UI ------------------------------------------------------------------ */
+@font-face {
+  font-family: 'Inter';
+  src: url('../assets/fonts/inter-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('../assets/fonts/inter-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('../assets/fonts/inter-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+}
+
+/* --- Terminal y datos ----------------------------------------------------- */
+/* JetBrains Mono va en TTF completo y no en un woff2 subseteado a propósito: el
+   subset se come box drawing (─ │ ┌ └ ├) y block elements (▀ ▄ █ ▏), y sin esos
+   glifos cualquier TUI —btop, lazygit, fzf— se dibuja con los marcos rotos. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/jetbrains-mono-400.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/jetbrains-mono-400-italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/jetbrains-mono-700.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/jetbrains-mono-700-italic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: block;
+}
+
+/* El fallback del mono: los spinners braille (⠋⠙⠹) que usa medio ecosistema de
+   CLIs no están en JetBrains Mono, y sin esto salen como cuadraditos. */
+@font-face {
+  font-family: 'Noto Sans Symbols 2';
+  src: url('../assets/fonts/noto-sans-symbols-2-regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}

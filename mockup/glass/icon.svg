@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<!--
+  NTX · master vectorial del ícono.
+
+  Reconstruido a partir de build/icon.png, que hasta ahora era el único master
+  y estaba rasterizado a 1024. Toda la geometría de acá salió de MEDIR ese PNG,
+  no de copiarlo a ojo:
+
+    baldosa    x/y 31–992 (margen 3%), radio ~205 (21% del lado)
+    chevron    M278,307 L498,483 L278,659   trazo 66
+    guión      M566,665 L761,665            trazo 92
+    degradé    #00e5ff → #ff2e88 en diagonal, compartido por las dos formas
+    fondo      vertical #13131e → #08080e (uniforme en horizontal: no es radial)
+    scanlines  bandas de 10px cada 20, ~2% de delta
+
+  Los tres bordes del bounding box del chevron dan el mismo grosor de trazo
+  (66), así que la forma calca y no aproxima.
+-->
+<defs>
+  <!-- El fondo de la baldosa. Medido a siete x distintas a la misma altura:
+       da el mismo valor en todas, o sea que el degradé es vertical puro. -->
+  <linearGradient id="ntx-tile" gradientUnits="userSpaceOnUse" x1="512" y1="31" x2="512" y2="992">
+    <stop offset="0" stop-color="#14141f"/>
+    <stop offset="1" stop-color="#08080e"/>
+  </linearGradient>
+
+  <!-- UN solo degradé para las dos formas: el chevron se queda con el tramo
+       cian y el guión con el magenta. Por eso el logo se lee como una sola
+       pieza y no como dos elementos pegados. -->
+  <linearGradient id="ntx-ink" gradientUnits="userSpaceOnUse" x1="245" y1="274" x2="807" y2="711">
+    <stop offset="0" stop-color="#00e5ff"/>
+    <stop offset="1" stop-color="#ff2e88"/>
+  </linearGradient>
+
+  <!-- Scanlines. Medidas rasterizando el PNG a 1024 y leyendo una columna de
+       fondo puro: el período es 26 (17 de fondo + 9 de línea) y la línea RESTA
+       luz, no la suma — el nivel dominante del PNG es el del degradé y las
+       bandas caen por debajo. Empiezan en y≡4 (mod 26).
+       `patternUnits="userSpaceOnUse"` ancla el patrón al origen del lienzo y
+       no al rect que lo usa, así que la fase se controla desde acá. -->
+  <pattern id="ntx-scan" width="26" height="26" patternUnits="userSpaceOnUse">
+    <rect y="4" width="26" height="9" fill="#000000" opacity=".24"/>
+  </pattern>
+
+  <filter id="ntx-glow" x="-35%" y="-35%" width="170%" height="170%">
+    <feGaussianBlur stdDeviation="30"/>
+  </filter>
+  <filter id="ntx-glow-wide" x="-60%" y="-60%" width="220%" height="220%">
+    <feGaussianBlur stdDeviation="58"/>
+  </filter>
+
+  <clipPath id="ntx-clip">
+    <rect x="31" y="31" width="962" height="962" rx="205" ry="205"/>
+  </clipPath>
+</defs>
+
+<rect x="31" y="31" width="962" height="962" rx="205" ry="205" fill="url(#ntx-tile)"/>
+<rect x="31" y="31" width="962" height="962" fill="url(#ntx-scan)" clip-path="url(#ntx-clip)"/>
+
+<g fill="none" stroke="url(#ntx-ink)" stroke-linecap="round" stroke-linejoin="round">
+  <!-- El halo primero, y la forma nítida encima: así el glow no lava el trazo.
+       Dos pasadas —una ancha y difusa, otra ceñida— porque con una sola el
+       borde quedaba corto contra el original. -->
+  <g filter="url(#ntx-glow-wide)" opacity=".42">
+    <path d="M278 307 498 483 278 659" stroke-width="66"/>
+    <path d="M566 665 761 665" stroke-width="92"/>
+  </g>
+  <g filter="url(#ntx-glow)" opacity=".72">
+    <path d="M278 307 498 483 278 659" stroke-width="66"/>
+    <path d="M566 665 761 665" stroke-width="92"/>
+  </g>
+  <path d="M278 307 498 483 278 659" stroke-width="66"/>
+  <path d="M566 665 761 665" stroke-width="92"/>
+</g>
+</svg>

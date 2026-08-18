@@ -1,0 +1,973 @@
+@import './fonts.css';
+@import '@xterm/xterm/css/xterm.css';
+
+/* ===========================================================================
+   Tokens estructurales.
+   Los COLORES no están acá: los inyecta applyPalette() desde term/themes.ts,
+   que es la única fuente de verdad (el chrome y xterm tienen que pintar con los
+   mismos valores).
+   =========================================================================== */
+:root {
+  --ntx-titlebar-h: 38px;
+  --ntx-tabs-h: 34px;
+  --ntx-status-h: 26px;
+
+  --ntx-radius: 7px;
+  --ntx-radius-sm: 4px;
+  --ntx-radius-lg: 10px;
+
+  --ntx-gap: 8px;
+
+  --ntx-font-ui: 'Inter', system-ui, sans-serif;
+  --ntx-font-mono: 'JetBrains Mono', 'Noto Sans Symbols 2', monospace;
+
+  /* Curvas. Nada aparece ni desaparece de golpe, así que estas se usan en todos
+     lados y conviene tenerlas nombradas. */
+  --ntx-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --ntx-fast: 0.14s;
+  --ntx-normal: 0.22s;
+  --ntx-slow: 0.34s;
+
+  /* El vidrio.
+
+     `saturate` va alto a propósito: en clave acromática lo poco que atraviesa
+     es luz casi sin color, y sin saturar el resultado se lava a gris parejo.
+
+     Y las sombras son largas y suaves: la profundidad la da la elevación, nunca
+     un contorno duro. */
+  --ntx-blur: blur(17px) saturate(135%);
+  --ntx-blur-heavy: blur(28px) saturate(135%);
+
+  --ntx-shadow: 0 2px 8px rgb(0 0 0 / 0.34), 0 12px 34px rgb(0 0 0 / 0.42);
+  --ntx-shadow-lg: 0 8px 24px rgb(0 0 0 / 0.44), 0 32px 80px rgb(0 0 0 / 0.58);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--ntx-base);
+  color: var(--ntx-fg);
+  font-family: var(--ntx-font-ui);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ===========================================================================
+   Lo que Chromium pondría por su cuenta, dibujado a mano.
+   Cualquiera de estos con el default del navegador delata que esto es una web
+   adentro de una ventana.
+   =========================================================================== */
+
+/* Selección: el tinte del acento, no el azul del sistema. */
+::selection {
+  background: color-mix(in srgb, var(--ntx-accent) 32%, transparent);
+  color: var(--ntx-fg);
+}
+
+/* Scrollbar propia: fina, sin flechas, y el thumb aparece con el hover del
+   contenedor en vez de estar siempre gritando. */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ntx-fg) 9%, transparent);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background var(--ntx-normal) var(--ntx-ease);
+}
+:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ntx-fg) 16%, transparent);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ntx-accent) 45%, transparent);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Focus ring propio, y sólo con teclado: en cada click de mouse sería ruido. */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px var(--ntx-base),
+    0 0 0 3px color-mix(in srgb, var(--ntx-accent) 65%, transparent);
+  border-radius: var(--ntx-radius-sm);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* ===========================================================================
+   Selección de texto: el chrome no, el contenido siempre.
+   El user-select:none global es el clásico atajo para que una app Electron
+   "se sienta nativa", y de paso le niega al usuario copiar lo que ve. Acá se
+   aplica SÓLO al chrome, y todo lo que alguien querría llevarse (salida de la
+   terminal, rutas, PIDs) lo devuelve explícitamente.
+   =========================================================================== */
+.ntx-chrome {
+  user-select: none;
+}
+.ntx-copyable {
+  user-select: text;
+  cursor: text;
+}
+
+/* ===========================================================================
+   Layout
+   =========================================================================== */
+.ntx-app {
+  display: grid;
+  grid-template-rows: var(--ntx-titlebar-h) var(--ntx-tabs-h) 1fr var(--ntx-status-h);
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--ntx-base);
+  /* Crea el contexto de apilado que necesita `.ntx-bg`. Con `position: relative`
+     solo NO alcanza: z-index auto no abre contexto, y el `z-index: -1` del
+     sustrato se escaparía hacia atrás del body. */
+  z-index: 0;
+}
+
+/* --- El sustrato ----------------------------------------------------------
+ *
+ * Lo que el vidrio difumina. En una app acromática esto es el problema central:
+ * sin color de fondo, un `backdrop-filter` no tiene nada que hacer y la
+ * superficie se lee como una capa gris cualquiera. Lo resuelven dos cosas:
+ *
+ *  - NIEBLA: manchas de pura luz, sin un grado de tinte. Dan variación de
+ *    luminancia para que el blur tenga algo que repartir.
+ *  - GRANO: sin él el desenfoque queda plástico; con él parece vidrio.
+ *
+ * La cuadrícula NO está acá sino en `.ntx-pane__term`, porque ahí puede ir con
+ * `background-attachment: fixed` y quedar continua entre paneles.
+ *
+ * `z-index: -1` lo pone detrás de sus hermanos y delante del fondo de la app.
+ */
+.ntx-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    /* El grano, arriba de todo el sustrato. */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.038'/%3E%3C/svg%3E"),
+    /* La cuadrícula, en blanco y no en el acento: en una app acromática el
+       papel es gris. Continua por construcción, al ser una sola capa. */
+    repeating-linear-gradient(to right, rgb(255 255 255 / 0.017) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.017) 0 1px, transparent 1px 34px),
+    /* El velo: hunde el conjunto para que el texto siempre gane, pase lo que
+       pase con la niebla. El contraste no puede depender de dónde cayó una
+       mancha. */
+    linear-gradient(to bottom, rgb(8 8 10 / 0.16), rgb(8 8 10 / 0.48)),
+    /* La niebla. */
+    radial-gradient(46vw 46vw at 8% 0%, rgb(255 255 255 / 0.062), transparent 70%),
+    radial-gradient(40vw 40vw at 96% 22%, rgb(255 255 255 / 0.05), transparent 70%),
+    radial-gradient(38vw 38vw at 44% 108%, rgb(255 255 255 / 0.04), transparent 70%);
+}
+
+/* --- Titlebar -------------------------------------------------------------- */
+.ntx-titlebar {
+  display: flex;
+  align-items: center;
+  /* La paleta contra un extremo y los botones de ventana contra el otro. Todo el
+     hueco del medio queda como zona de arrastre. */
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 12px;
+  /* Plana, sin degradé propio: el volumen ya lo pone el sustrato al pasar por
+     debajo del vidrio. Un degradé encima se leería como banding.
+     El filo de arriba es el canto de la ventana. */
+  background: var(--ntx-chrome);
+  backdrop-filter: var(--ntx-blur-heavy);
+  box-shadow:
+    inset 0 1px 0 var(--ntx-edge-lit),
+    inset 0 -1px 0 var(--ntx-hairline);
+  /* Toda la barra arrastra la ventana, menos lo que se marque como no-drag. */
+  -webkit-app-region: drag;
+}
+
+.ntx-titlebar__controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+/* Los tres botones de ventana, con los símbolos de siempre.
+   En reposo son sólo el trazo: el fondo aparece con el hover, que es lo que
+   señala "esto se puede apretar" sin que tres recuadros compitan todo el tiempo
+   con el resto de la barra. */
+.ntx-winbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 24px;
+  border-radius: var(--ntx-radius-sm);
+  color: var(--ntx-dim);
+  transition:
+    color var(--ntx-fast) var(--ntx-ease),
+    background var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-winbtn:hover {
+  color: var(--ntx-fg);
+  background: color-mix(in srgb, var(--ntx-fg) 9%, transparent);
+}
+.ntx-winbtn:active {
+  background: color-mix(in srgb, var(--ntx-fg) 14%, transparent);
+}
+
+/* Cerrar es el único destructivo de los tres, así que es el único que se tiñe.
+   El color de alerta acá es estado, no decoración: avisa antes de que aprietes. */
+.ntx-winbtn[data-danger='true']:hover {
+  color: var(--ntx-alt);
+  background: color-mix(in srgb, var(--ntx-alt) 16%, transparent);
+}
+.ntx-winbtn[data-danger='true']:active {
+  background: color-mix(in srgb, var(--ntx-alt) 26%, transparent);
+}
+
+/* --- Botón de chrome genérico ---------------------------------------------- */
+.ntx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--ntx-radius-sm);
+  font-size: 11px;
+  color: var(--ntx-dim);
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline);
+  -webkit-app-region: no-drag;
+  transition:
+    color var(--ntx-fast) var(--ntx-ease),
+    box-shadow var(--ntx-fast) var(--ntx-ease),
+    background var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-chip:hover {
+  color: var(--ntx-accent);
+  background: color-mix(in srgb, var(--ntx-accent) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ntx-accent) 55%, transparent);
+}
+.ntx-chip__key {
+  font-family: var(--ntx-font-mono);
+  font-size: 10px;
+  color: var(--ntx-faint);
+}
+
+/* --- Tab strip ------------------------------------------------------------- */
+.ntx-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 5px 10px 0;
+  background: var(--ntx-chrome);
+  backdrop-filter: var(--ntx-blur-heavy);
+  box-shadow: inset 0 -1px 0 var(--ntx-hairline);
+  min-width: 0;
+}
+
+.ntx-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  max-width: 220px;
+  border-radius: var(--ntx-radius-sm) var(--ntx-radius-sm) 0 0;
+  font-size: 11.5px;
+  color: var(--ntx-faint);
+  background: transparent;
+  transition:
+    color var(--ntx-normal) var(--ntx-ease),
+    background var(--ntx-normal) var(--ntx-ease),
+    box-shadow var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-tab:hover {
+  color: var(--ntx-muted);
+  background: color-mix(in srgb, var(--ntx-fg) 4%, transparent);
+}
+.ntx-tab[data-active='true'] {
+  color: var(--ntx-fg);
+  background: var(--ntx-elevated);
+  box-shadow:
+    inset 0 1px 0 var(--ntx-edge-lit),
+    inset 0 0 0 1px var(--ntx-hairline);
+}
+.ntx-tab__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ntx-tab__mark {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--mark);
+  box-shadow: 0 0 6px var(--mark);
+  transition: opacity var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-tab[data-active='false'] .ntx-tab__mark {
+  opacity: 0.45;
+}
+.ntx-tab__close {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--ntx-ghost);
+  opacity: 0;
+  transition:
+    opacity var(--ntx-fast) var(--ntx-ease),
+    color var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-tab:hover .ntx-tab__close,
+.ntx-tab[data-active='true'] .ntx-tab__close {
+  opacity: 1;
+}
+.ntx-tab__close:hover {
+  color: var(--ntx-alt);
+}
+
+.ntx-tabs__new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  color: var(--ntx-faint);
+  border-radius: var(--ntx-radius-sm) var(--ntx-radius-sm) 0 0;
+  transition:
+    color var(--ntx-fast) var(--ntx-ease),
+    background var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-tabs__new:hover:not(:disabled) {
+  color: var(--ntx-warn);
+  background: color-mix(in srgb, var(--ntx-warn) 8%, transparent);
+}
+.ntx-tabs__new:disabled {
+  cursor: default;
+  color: var(--ntx-ghost);
+}
+.ntx-tabs__count {
+  font-family: var(--ntx-font-mono);
+  font-size: 10px;
+  color: var(--ntx-ghost);
+}
+.ntx-tabs__hint {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  padding-bottom: 4px;
+  font-size: 10.5px;
+  color: var(--ntx-ghost);
+}
+
+/* --- Grid de paneles ------------------------------------------------------- */
+.ntx-grid {
+  display: grid;
+  gap: var(--ntx-gap);
+  padding: var(--ntx-gap) 10px;
+  min-height: 0;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+/* El grid se acomoda a cuántas shells hay: una sola ocupa todo, dos van lado a
+   lado, y con tres la última toma el ancho completo abajo — un hueco vacío en el
+   2×2 se lee como que algo se rompió. */
+.ntx-grid[data-count='2'] {
+  grid-template-columns: 1fr 1fr;
+}
+.ntx-grid[data-count='3'],
+.ntx-grid[data-count='4'] {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+.ntx-grid[data-count='3'] > .ntx-pane:nth-child(3) {
+  grid-column: span 2;
+}
+
+/* --- Panel ----------------------------------------------------------------- */
+@keyframes ntx-pane-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+.ntx-pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-radius: var(--ntx-radius);
+  /* Sin foco el panel se apoya un peldaño más abajo en la escalera del vidrio.
+     Es la mitad de la señal de foco; la otra mitad es el contorno de ::after. */
+  background: var(--ntx-sunk);
+  backdrop-filter: var(--ntx-blur);
+  overflow: hidden;
+  /* Acá queda sólo la sombra de afuera: el contorno se dibuja en ::after. */
+  box-shadow: var(--ntx-shadow);
+  animation: ntx-pane-in var(--ntx-normal) var(--ntx-ease);
+  transition:
+    background var(--ntx-slow) var(--ntx-ease),
+    box-shadow var(--ntx-slow) var(--ntx-ease),
+    opacity var(--ntx-normal) var(--ntx-ease),
+    transform var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-pane[data-focused='true'] {
+  background: var(--ntx-surface);
+  box-shadow:
+    0 0 26px -4px color-mix(in srgb, var(--accent) 24%, transparent),
+    var(--ntx-shadow-lg);
+}
+
+/* El contorno del panel, como capa de ARRIBA de todo.
+ *
+ * Antes iba de `inset` en el propio panel, y un inset se pinta en la capa de
+ * fondo: por debajo de cualquier hijo. Entonces el hairline de la cabecera, que
+ * cruza de lado a lado, le pisaba el pixel de los extremos y el contorno quedaba
+ * cortado en dos puntos — se veía como si la línea atravesara el marco.
+ *
+ * Poniéndolo acá arriba se invierte el orden: la línea de la cabecera pasa por
+ * debajo y el contorno queda entero. Y de paso vale para todo lo que venga
+ * después: ningún hijo que llegue al borde puede volver a romperlo.
+ *
+ * Va en un pseudo-elemento y no en un div para no sumarle un nodo a cada panel;
+ * `border-radius: inherit` lo mantiene calzado aunque cambie el redondeo. */
+.ntx-pane::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 3;
+  /* Dos capas: el filo iluminado de arriba —el reflejo del canto de vidrio— y
+     el contorno. Sin el filo, la superficie se lee como un rectángulo gris con
+     opacidad en vez de como vidrio. */
+  box-shadow:
+    inset 0 1px 0 var(--ntx-edge-lit),
+    inset 0 0 0 1px var(--ntx-hairline);
+  transition: box-shadow var(--ntx-slow) var(--ntx-ease);
+}
+.ntx-pane[data-focused='true']::after {
+  box-shadow:
+    inset 0 1px 0 var(--ntx-edge-lit),
+    inset 0 0 0 1px var(--accent);
+}
+/* La salida existe porque un panel que desaparece de un frame al otro se siente
+   como un crash, no como un cierre. */
+.ntx-pane[data-closing='true'] {
+  opacity: 0;
+  transform: scale(0.97);
+  pointer-events: none;
+}
+
+.ntx-pane__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  padding: 0 11px;
+  flex-shrink: 0;
+  font-size: 10.5px;
+  letter-spacing: 0.4px;
+  color: var(--ntx-faint);
+  box-shadow: inset 0 -1px 0 var(--ntx-hairline-soft);
+}
+.ntx-pane__num {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--ntx-font-mono);
+  color: var(--accent);
+  transition: color var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-pane__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ntx-pane__pid {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--ntx-font-mono);
+  color: var(--ntx-ghost);
+}
+
+.ntx-pane__term {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 8px 10px 6px;
+  /* La terminal es el contenido copiable por excelencia. */
+  user-select: text;
+
+  /* La cuadrícula ya NO vive acá: se mudó al sustrato (`.ntx-bg`).
+   *
+   * Estaba en este elemento con `background-attachment: fixed`, que es lo que la
+   * hacía continua entre paneles anclando el origen del fondo a la ventana. Pero
+   * ahora el panel lleva `backdrop-filter`, y un ancestro filtrado pasa a ser el
+   * bloque contenedor de sus descendientes fijos: el `fixed` se habría anclado a
+   * cada panel y la grilla se cortaría en cada gap — el bug exacto que ese
+   * `fixed` estaba puesto para evitar.
+   *
+   * Poniéndola en el sustrato el problema desaparece por otra vía: es UNA sola
+   * capa detrás de todo, así que es continua por construcción. Y de yapa el
+   * vidrio del panel ahora la esmerila al pasarle por encima, que es lo que
+   * termina de delatar que hay vidrio y no una capa gris. */
+}
+
+/* El div que hospeda a xterm va aparte del que lleva el padding, y no es un
+   wrapper de más.
+ *
+ * FitAddon calcula cuántas filas entran leyendo `getComputedStyle(padre).height`
+ * — y con `box-sizing: border-box` ese valor INCLUYE el padding. Si el padding
+ * estuviera acá, xterm creería tener 682px cuando en realidad tiene 668, pediría
+ * 40 filas donde entran 39, y se desbordaría por abajo: la última línea cortada
+ * al medio y el marco del panel tapado. Este div no tiene padding, así que el
+ * número que lee es el real. */
+.ntx-pane__screen {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+/* El fondo lo pinta .ntx-pane, no cada capa de xterm: si xterm pinta el suyo, el
+   redondeo del panel queda tapado por un rectángulo.
+
+   `.xterm-scrollable-element` es el que más engaña: lo agregó xterm 6, no existía
+   antes, y es el que termina pintando el color de fondo del tema. Como se dibuja
+   ENCIMA del box-shadow inset del panel (un inset se pinta en la capa de fondo,
+   debajo de todo descendiente), se comía el borde de abajo y el marco quedaba
+   abierto de un solo lado. */
+.ntx-pane__term .xterm,
+.ntx-pane__term .xterm-viewport,
+.ntx-pane__term .xterm-scrollable-element {
+  background: transparent !important;
+}
+.ntx-pane__term .xterm-viewport {
+  /* La terminal recorta contra el borde del panel abajo y contra el hairline de
+     la cabecera arriba: los dos lados YA tienen una línea que explica el límite,
+     así que acá no va ningún esfumado. Un fade encima de esas líneas las ensucia
+     y además miente, porque el texto no se pierde al aire. */
+  overflow-y: auto;
+}
+
+/* --- El cursor ------------------------------------------------------------- */
+/* Bloque de acento con aureola, igual que la maqueta.
+ *
+ * xterm inyecta sus propias reglas en un <style> que vive DENTRO de la terminal,
+ * o sea después de esta hoja en el documento: con la misma especificidad gana él.
+ * Por eso los selectores de abajo suman `.ntx-pane` y `.ntx-pane__term` — no es
+ * palabrerío, es lo que los pone un escalón arriba de los suyos (que son todos de
+ * clase, nunca de id, así que alcanza con contar).
+ *
+ * `--accent` es el color del panel, el mismo que recibe xterm como `cursor`.
+ */
+.ntx-pane__term .xterm-cursor.xterm-cursor-block {
+  box-shadow: 0 0 7px var(--accent);
+}
+
+/* El parpadeo se reescribe entero por un motivo: la animación de xterm apaga el
+ * fondo pero no sabe nada de nuestra sombra, así que en la mitad oscura del ciclo
+ * quedaba la aureola flotando sin bloque adentro — un fantasma. Ésta apaga las
+ * dos cosas juntas.
+ *
+ * Y apaga el FONDO, no la opacidad del elemento. La maqueta parpadea con opacity
+ * porque ahí el cursor está siempre sobre el vacío; en una terminal de verdad el
+ * cursor se para encima de un carácter, y bajarle la opacidad al bloque se
+ * llevaría puesto también a la letra. Apagando sólo el fondo, la letra reaparece
+ * en la fase oscura, que es justo lo que uno espera de un cursor. */
+@keyframes ntx-cursor-blink {
+  0% {
+    background-color: var(--accent);
+    /* `--ntx-base` y NO `--ntx-surface`: éste es el color de la LETRA que el
+       bloque del cursor tapa, y desde que las superficies son vidrio,
+       `--ntx-surface` es un blanco al 3% — la letra quedaría invisible sobre el
+       acento en vez de recortada contra él. */
+    color: var(--ntx-base);
+    box-shadow: 0 0 7px var(--accent);
+  }
+  50% {
+    background-color: inherit;
+    color: var(--accent);
+    box-shadow: none;
+  }
+}
+.ntx-pane .ntx-pane__term .xterm-rows.xterm-focus .xterm-cursor.xterm-cursor-blink.xterm-cursor-block {
+  animation: ntx-cursor-blink 1.1s step-end infinite;
+}
+
+/* Panel sin foco. xterm lo dibuja como un contorno hueco; la maqueta lo quiere
+ * como el mismo bloque pero apagado, y eso además dice mejor "esta shell está
+ * viva, no es acá donde estás escribiendo".
+ *
+ * El apagado va en el color y no en `opacity` del elemento: la opacidad se
+ * comería también el carácter que haya debajo, y en un panel de fondo uno todavía
+ * quiere poder leer lo que dice. */
+.ntx-pane .ntx-pane__term .xterm-rows .xterm-cursor.xterm-cursor-outline {
+  outline: none;
+  background-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.ntx-pane__dead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--ntx-dim);
+}
+.ntx-pane__dead b {
+  font-weight: 500;
+  color: var(--ntx-alt);
+}
+
+/* --- Status bar ------------------------------------------------------------ */
+.ntx-status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 12px;
+  background: var(--ntx-chrome);
+  backdrop-filter: var(--ntx-blur-heavy);
+  box-shadow: inset 0 1px 0 var(--ntx-hairline);
+  font-size: 10.5px;
+  color: var(--ntx-faint);
+  min-width: 0;
+}
+.ntx-status__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.ntx-status__item b {
+  font-weight: 500;
+  color: var(--tone, var(--ntx-accent));
+}
+.ntx-status__value {
+  font-family: var(--ntx-font-mono);
+}
+.ntx-status__path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ntx-status__right {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ntx-status__live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ntx-accent);
+  box-shadow: 0 0 6px var(--ntx-accent);
+  animation: ntx-pulse 2.4s var(--ntx-ease) infinite;
+}
+@keyframes ntx-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* --- Paleta de comandos ---------------------------------------------------- */
+@keyframes ntx-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ntx-palette-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+}
+
+.ntx-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  justify-content: center;
+  padding-top: 84px;
+  background: rgb(4 4 9 / 0.55);
+  backdrop-filter: blur(3px);
+  animation: ntx-fade-in var(--ntx-normal) var(--ntx-ease);
+  transition: opacity var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-scrim[data-closing='true'] {
+  opacity: 0;
+}
+
+.ntx-palette {
+  width: min(520px, calc(100% - 48px));
+  height: fit-content;
+  max-height: calc(100% - 140px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--ntx-radius-lg);
+  background: var(--ntx-elevated);
+  /* Más denso que el de los paneles: es la superficie más alta de la app y el
+     texto de abajo tiene que quedar ilegible, no apenas borroso. */
+  backdrop-filter: blur(34px) saturate(150%);
+  overflow: hidden;
+  /* Elevación por sombra, no por línea gruesa: el hairline de adentro sólo
+     separa el campo de la lista.
+
+     El contorno es NEUTRO, no magenta. Lo tuvo teñido un tiempo, pero el
+     magenta tiene rol fijo —marca y destructivo— y la paleta no es ninguna de
+     las dos: es la acción primaria, o sea territorio del cian. Y como acá
+     adentro el cian ya marca el ítem seleccionado, teñir además el marco
+     dejaba dos cosas peleando por ser "el color". El marco se calla. */
+  box-shadow:
+    inset 0 1px 0 var(--ntx-edge-lit),
+    inset 0 0 0 1px var(--ntx-hairline),
+    var(--ntx-shadow-lg);
+  animation: ntx-palette-in var(--ntx-normal) var(--ntx-ease);
+  transition: transform var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-scrim[data-closing='true'] .ntx-palette {
+  transform: translateY(-10px) scale(0.98);
+}
+
+.ntx-palette__field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 15px;
+  flex-shrink: 0;
+  color: var(--ntx-faint);
+  box-shadow: inset 0 -1px 0 var(--ntx-hairline);
+}
+.ntx-palette__input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--ntx-font-ui);
+  font-size: 13.5px;
+  color: var(--ntx-fg);
+  background: none;
+  border: none;
+  outline: none;
+}
+.ntx-palette__input::placeholder {
+  color: var(--ntx-ghost);
+}
+/* Sin anillo de foco acá: la paleta entera ES la superficie enfocada, y un
+   recuadro alrededor del campo se lee como el outline crudo del navegador
+   —justo lo que evitamos en todo el resto. */
+.ntx-palette__input:focus-visible {
+  box-shadow: none;
+}
+.ntx-palette__list {
+  /* Corta contra el hairline del campo arriba y contra el del pie abajo, así
+     que no lleva máscara: los dos extremos YA tienen una línea que explica el
+     límite. Un fade encima las ensuciaría, y además mentiría — el contenido no
+     se pierde al aire. El respiro va como padding, que es lo que evita que la
+     lista toque esas líneas en reposo. */
+  overflow-y: auto;
+  padding: 7px;
+  min-height: 0;
+}
+.ntx-palette__empty {
+  padding: 22px 15px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ntx-ghost);
+}
+
+/* El pie con los atajos. */
+.ntx-palette__foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 32px;
+  padding: 0 15px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--ntx-ghost);
+  box-shadow: inset 0 1px 0 var(--ntx-hairline);
+}
+.ntx-palette__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ntx-palette__key b {
+  font-family: var(--ntx-font-mono);
+  font-weight: 400;
+  color: var(--ntx-faint);
+}
+
+.ntx-command {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--ntx-radius-sm);
+  text-align: left;
+  transition:
+    background var(--ntx-fast) var(--ntx-ease),
+    color var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-command[data-selected='true'] {
+  background: color-mix(in srgb, var(--ntx-accent) 13%, transparent);
+}
+
+/* La marca del seleccionado CRECE desde el centro en vez de encenderse de
+   golpe. Es la misma idea que la línea bajo la tab activa. */
+.ntx-command::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 2px;
+  height: 0;
+  border-radius: 2px;
+  background: var(--ntx-accent);
+  transform: translateY(-50%);
+  transition: height var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-command[data-selected='true']::before {
+  height: 60%;
+}
+
+/* El ícono va apagado y se enciende con la selección. Antes tomaba un color por
+   comando, y eso dejaba cian, magenta y amarillo prendidos a la vez en la misma
+   lista — justo lo que la regla de un-solo-acento evita en el resto de la app. */
+.ntx-command__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--ntx-faint);
+  transition: color var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-command[data-selected='true'] .ntx-command__icon {
+  color: var(--ntx-accent);
+}
+
+.ntx-command__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ntx-command__label {
+  font-size: 12.5px;
+  color: var(--ntx-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-command[data-selected='true'] .ntx-command__label {
+  color: var(--ntx-fg);
+}
+.ntx-command__desc {
+  margin-top: 1px;
+  font-size: 10.5px;
+  color: var(--ntx-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-command[data-selected='true'] .ntx-command__desc {
+  color: var(--ntx-dim);
+}
+
+/* El atajo va en una cajita, no como texto suelto: así se lee como una tecla. */
+.ntx-command__hint {
+  flex-shrink: 0;
+  font-family: var(--ntx-font-mono);
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: var(--ntx-ghost);
+  background: color-mix(in srgb, var(--ntx-fg) 4%, transparent);
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline-soft);
+  transition:
+    color var(--ntx-fast) var(--ntx-ease),
+    background var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-command[data-selected='true'] .ntx-command__hint {
+  color: var(--ntx-accent);
+  background: color-mix(in srgb, var(--ntx-accent) 12%, transparent);
+}
+
+/* --- Tooltip propio -------------------------------------------------------- */
+/* El title= nativo es amarillo, tarda un segundo largo y no se puede estilar.
+   Este se posiciona desde JS y entra/sale con transición como todo lo demás. */
+.ntx-tooltip {
+  position: fixed;
+  z-index: 200;
+  padding: 4px 8px;
+  border-radius: var(--ntx-radius-sm);
+  /* El único que NO usa el vidrio de la escalera. Un tooltip aparece sobre lo
+     que haya —texto de terminal, otro panel, la paleta—, así que su contraste no
+     puede depender del fondo: lleva base casi opaco. El blur queda igual, para
+     que no se sienta de otro material que el resto. */
+  background: color-mix(in srgb, var(--ntx-base) 88%, transparent);
+  backdrop-filter: var(--ntx-blur);
+  color: var(--ntx-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow:
+    inset 0 1px 0 var(--ntx-edge-lit),
+    inset 0 0 0 1px var(--ntx-hairline),
+    0 8px 20px -8px rgb(0 0 0 / 0.8);
+  opacity: 0;
+  /* Entra bajando desde arriba… */
+  transform: translateY(-3px);
+  transition:
+    opacity var(--ntx-fast) var(--ntx-ease),
+    transform var(--ntx-fast) var(--ntx-ease);
+}
+/* …salvo cuando se dio vuelta y quedó arriba del elemento: ahí entra subiendo,
+   para que el movimiento siempre venga desde el lado del elemento. */
+.ntx-tooltip[data-above='true'] {
+  transform: translateY(3px);
+}
+.ntx-tooltip[data-open='true'] {
+  opacity: 1;
+  transform: translateY(0);
+}

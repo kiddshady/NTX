@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>NTX · ícono, original vs vector</title>
+<style>
+  :root {
+    --base:#08080a; --ink:#ececef; --muted:#9a9aa3; --dim:#66666e; --faint:#4a4a52;
+    --cyan:#00e5ff; --magenta:#ff2e88; --yellow:#ffe14d;
+    --edge:rgba(255,255,255,.075); --lit:rgba(255,255,255,.20);
+    --ease:cubic-bezier(.32,.72,0,1);
+  }
+  * { box-sizing:border-box }
+  body {
+    margin:0; min-height:100vh; background:var(--base); color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif; font-size:13px; padding:40px 44px;
+    background-image:
+      repeating-linear-gradient(to right,  rgba(255,255,255,.024) 0 1px, transparent 1px 34px),
+      repeating-linear-gradient(to bottom, rgba(255,255,255,.024) 0 1px, transparent 1px 34px);
+  }
+  h1 { font-size:19px; font-weight:600; margin:0 0 4px }
+  .sub { color:var(--dim); margin-bottom:34px; font-size:12px }
+  .sub b { color:var(--magenta); font-weight:400 }
+
+  .row { display:flex; gap:26px; flex-wrap:wrap; margin-bottom:34px; align-items:flex-start }
+  .card {
+    border-radius:12px; padding:20px 22px;
+    background:rgba(255,255,255,.032);
+    backdrop-filter:blur(20px) saturate(185%);
+    box-shadow: inset 0 1px 0 0 var(--lit), inset 0 0 0 1px var(--edge),
+                0 2px 8px rgba(0,0,0,.34), 0 12px 34px rgba(0,0,0,.42);
+  }
+  .lbl {
+    font-size:10px; letter-spacing:.18em; color:var(--faint);
+    margin-bottom:14px; text-transform:uppercase;
+  }
+  .lbl.c { color:var(--cyan) }
+  .lbl.m { color:var(--magenta) }
+  .lbl.y { color:var(--yellow) }
+
+  .stack { position:relative; width:256px; height:256px }
+  .stack img, .stack object, .stack svg { position:absolute; inset:0; width:256px; height:256px }
+  /* Difference: donde las dos capas coinciden, da negro. Lo que quede
+     encendido es exactamente en lo que el vector se aparta del original. */
+  .diff .over { mix-blend-mode:difference }
+  .boost { filter: brightness(5) }
+
+  .sizes { display:flex; align-items:flex-end; gap:20px }
+  .sizes figure { margin:0; display:flex; flex-direction:column; align-items:center; gap:7px }
+  .sizes figcaption { font-size:9.5px; color:var(--faint); font-family:ui-monospace,monospace }
+
+  .note {
+    max-width:640px; color:var(--muted); font-size:12px; line-height:1.75;
+    border-radius:10px; padding:16px 18px;
+    background:rgba(255,255,255,.02);
+    box-shadow: inset 0 0 0 1px var(--edge);
+  }
+  .note code { font-family:ui-monospace,monospace; color:var(--cyan); font-size:11.5px }
+
+  .mark-row { display:flex; align-items:center; gap:26px }
+  .mark-row .m { filter: drop-shadow(0 0 6px rgba(0,229,255,.34)) drop-shadow(0 0 9px rgba(255,46,136,.30)) }
+</style>
+</head>
+<body>
+
+<h1>Ícono de NTX <span style="color:var(--magenta)">//</span> original vs vector</h1>
+<div class="sub">El PNG era el único master. El <b>SVG</b> se reconstruyó midiendo ese PNG — acá se comprueba si calza.</div>
+
+<div class="row">
+  <div class="card">
+    <div class="lbl">PNG original · 1024</div>
+    <div class="stack"><img src="icon-original.png" alt="original"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl c">SVG reconstruido</div>
+    <div class="stack"><img src="icon.svg" alt="vector"></div>
+  </div>
+
+  <div class="card">
+    <div class="lbl m">Diferencia (×5)</div>
+    <div class="stack diff boost">
+      <img src="icon-original.png" alt="">
+      <img class="over" src="icon.svg" alt="">
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="card">
+    <div class="lbl y">El vector, a los tamaños que importan</div>
+    <div class="sizes">
+      <figure><img src="icon.svg" width="128" height="128"><figcaption>128</figcaption></figure>
+      <figure><img src="icon.svg" width="64" height="64"><figcaption>64</figcaption></figure>
+      <figure><img src="icon.svg" width="48" height="48"><figcaption>48</figcaption></figure>
+      <figure><img src="icon.svg" width="32" height="32"><figcaption>32</figcaption></figure>
+      <figure><img src="icon.svg" width="24" height="24"><figcaption>24</figcaption></figure>
+      <figure><img src="icon.svg" width="16" height="16"><figcaption>16</figcaption></figure>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="card">
+    <div class="lbl c">La marca sola — lo que va en la titlebar</div>
+    <div class="mark-row">
+      <svg class="m" width="100" height="80" viewBox="240 269 572 447">
+        <linearGradient id="g1" gradientUnits="userSpaceOnUse" x1="245" y1="274" x2="807" y2="711">
+          <stop offset="0" stop-color="#00e5ff"/><stop offset="1" stop-color="#ff2e88"/>
+        </linearGradient>
+        <g fill="none" stroke="url(#g1)" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M278 307 498 483 278 659" stroke-width="66"/>
+          <path d="M566 665 761 665" stroke-width="92"/>
+        </g>
+      </svg>
+      <svg class="m" width="40" height="32" viewBox="240 269 572 447">
+        <g fill="none" stroke="url(#g1)" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M278 307 498 483 278 659" stroke-width="66"/>
+          <path d="M566 665 761 665" stroke-width="92"/>
+        </g>
+      </svg>
+      <svg class="m" width="20" height="16" viewBox="240 269 572 447">
+        <g fill="none" stroke="url(#g1)" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M278 307 498 483 278 659" stroke-width="66"/>
+          <path d="M566 665 761 665" stroke-width="92"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  El panel de <b style="color:var(--magenta);font-weight:400">diferencia</b> está multiplicado por 5 en brillo para que
+  cualquier desvío se note. Lo que queda encendido ahí es dónde el vector se aparta del PNG —
+  sobre todo el halo, que en el original tiene más pasadas de blur.
+  La <em>forma</em> (chevron y guión) tiene que quedar prácticamente negra: eso es lo que importa,
+  porque es la geometría que se reusa a cualquier tamaño.
+  <br><br>
+  Master en <code>build/icon.svg</code>. El <code>icon.ico</code> y los PNG existentes siguen sirviendo tal cual:
+  su paleta ya es la de la app.
+</div>
+
+</body>
+</html>
