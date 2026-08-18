@@ -49,6 +49,8 @@ export function detectProfiles(): ShellProfile[] {
 
   // PowerShell 7. Dot-sourceamos el init por variable de entorno y no inline en
   // el -Command: así una ruta con espacios o comillas no rompe el parseo.
+  // El Bypass acá es preventivo —el default de pwsh (RemoteSigned) ya deja
+  // correr un .ps1 local— pero desacopla el init de la política de la máquina.
   const pwsh = firstExisting([
     join(programFiles, 'PowerShell', '7', 'pwsh.exe'),
     join(programFilesX86, 'PowerShell', '7', 'pwsh.exe')
@@ -59,12 +61,15 @@ export function detectProfiles(): ShellProfile[] {
       label: 'PowerShell 7',
       kind: 'pwsh',
       exec: pwsh,
-      args: ['-NoLogo', '-NoExit', '-Command', '. $env:NTX_INIT'],
+      args: ['-NoLogo', '-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', '. $env:NTX_INIT'],
       initFile: initPs1
     })
   }
 
-  // Windows PowerShell 5.1 — el fallback que siempre está.
+  // Windows PowerShell 5.1 — el fallback que siempre está. Acá el Bypass es
+  // VITAL: el default de 5.1 es Restricted, que se niega a dot-sourcear el
+  // ntx-init.ps1 y arranca el panel escupiendo un SecurityError. Alcanza sólo
+  // a este proceso — no toca la política de la máquina (una GPO igual manda).
   const winps = firstExisting([
     join(system, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
   ])
@@ -74,7 +79,7 @@ export function detectProfiles(): ShellProfile[] {
       label: 'Windows PowerShell',
       kind: 'powershell',
       exec: winps,
-      args: ['-NoLogo', '-NoExit', '-Command', '. $env:NTX_INIT'],
+      args: ['-NoLogo', '-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', '. $env:NTX_INIT'],
       initFile: initPs1
     })
   }
@@ -102,7 +107,11 @@ export function detectProfiles(): ShellProfile[] {
       label: 'Git Bash',
       kind: 'gitbash',
       exec: gitBash,
-      args: ['-i', '--rcfile', initSh],
+      // La larga ANTES que la corta: bash sólo acepta GNU long options al
+      // frente del argv (`bash [GNU long option] [option] ...`, dice su propio
+      // usage). Con `-i --rcfile` el --rcfile cae al parser de opciones cortas
+      // y bash muere con `--: invalid option` (exit 2) sin abrir la shell.
+      args: ['--rcfile', initSh, '-i'],
       initFile: initSh
     })
   }
@@ -114,7 +123,8 @@ export function detectProfiles(): ShellProfile[] {
       label: 'WSL',
       kind: 'wsl',
       exec: wsl,
-      args: ['--', 'bash', '-i', '--rcfile', toWslPath(initSh)],
+      // Mismo orden que en Git Bash: la larga primero, la -i después.
+      args: ['--', 'bash', '--rcfile', toWslPath(initSh), '-i'],
       initFile: initSh
     })
   }
