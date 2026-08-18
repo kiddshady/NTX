@@ -15,10 +15,13 @@
 __ntx_osc7() {
   # Los espacios van como %20: el parser corta la secuencia en el primer espacio.
   local path="${PWD// /%20}"
-  # En Git Bash el cwd es estilo /c/Users/...; lo pasamos a C:/Users/... para que
-  # NTX pueda resolver el git branch con una ruta que Windows entienda.
+  # En Git Bash el cwd es estilo /c/Users/... y en WSL /mnt/c/Users/...; ambos
+  # se pasan a C:/Users/... para que NTX pueda resolver el git branch con una
+  # ruta que Windows entienda. Fuera de /mnt (un /home de WSL, por ejemplo) no
+  # hay equivalente Windows y la ruta viaja tal cual.
   case "$path" in
-    /[a-z]/*) path="$(printf '%s' "${path:1:1}" | tr 'a-z' 'A-Z'):${path:2}" ;;
+    /[a-z]/*)     path="$(printf '%s' "${path:1:1}" | tr 'a-z' 'A-Z'):${path:2}" ;;
+    /mnt/[a-z]/*) path="$(printf '%s' "${path:5:1}" | tr 'a-z' 'A-Z'):${path:6}" ;;
   esac
   printf '\033]7;file:///%s\007' "$path"
 }
