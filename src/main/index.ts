@@ -1,14 +1,31 @@
-import { app, BrowserWindow, ipcMain, session } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, session, Tray } from 'electron'
 import { createMainWindow } from './window.js'
 import { detectProfiles } from './profiles.js'
 import { PtyManager } from './pty.js'
 import { branchFor } from './git.js'
 import { readStats } from './stats.js'
+import { bringToFront, createTray, toggleWindow, HOTKEY } from './tray.js'
 import type { PaneSnapshot, ShellProfile, SpawnOptions } from '../shared/types.js'
 
 let mainWindow: BrowserWindow | null = null
+let tray: Tray | null = null
 let profiles: ShellProfile[] = []
 let statsTimer: NodeJS.Timeout | null = null
+
+/**
+ * Cerrar la ventana manda NTX al tray; salir de verdad es explícito.
+ *
+ * Esta bandera es la que distingue las dos cosas. Sin ella no hay forma de
+ * cerrar la app: el handler de `close` cancelaría también el cierre que dispara
+ * `app.quit()`, y quedaría un proceso que no se puede terminar salvo por el
+ * administrador de tareas.
+ */
+let quitting = false
+
+function quitForReal(): void {
+  quitting = true
+  app.quit()
+}
 
 /** Manda un evento al renderer, si todavía hay renderer. */
 function toRenderer(channel: string, ...args: unknown[]): void {
@@ -25,10 +42,11 @@ const ptys = new PtyManager({
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
+  // Volver a abrir NTX no levanta una segunda instancia: recupera ésta. Y tiene
+  // que ser `bringToFront` y no `focus()`, porque desde que existe el tray la
+  // ventana puede estar OCULTA, y a algo oculto no se le da foco.
   app.on('second-instance', () => {
-    if (!mainWindow) return
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.focus()
+    if (mainWindow) bringToFront(mainWindow)
   })
 
   app.whenReady().then(() => {
@@ -39,17 +57,41 @@ if (!app.requestSingleInstanceLock()) {
 
     statsTimer = setInterval(() => toRenderer('stats', readStats()), 1_000)
 
+    tray = createTray({ getWindow: () => mainWindow, quit: quitForReal })
+
+    // El atajo global. Si otra app ya se quedó con la tecla, register() devuelve
+    // false en vez de tirar: la app tiene que arrancar igual, sólo que sin atajo.
+    // Peor que quedarse sin atajo sería no arrancar por una tecla ocupada.
+    if (!globalShortcut.register(HOTKEY, () => {
+      if (mainWindow) toggleWindow(mainWindow)
+    })) {
+      console.warn(`[ntx] no se pudo registrar ${HOTKEY}: otra app ya lo tiene`)
+    }
+
+    // La X de la ventana esconde en vez de cerrar. Los shells siguen vivos —
+    // que es justamente el punto de dejar la terminal abierta todo el día— y el
+    // atajo la trae de vuelta al instante, sin volver a levantar el proceso.
+    mainWindow.on('close', (event) => {
+      if (quitting) return
+      event.preventDefault()
+      mainWindow?.hide()
+    })
+
     mainWindow.on('closed', () => {
       mainWindow = null
     })
   })
 
-  app.on('window-all-closed', () => {
-    app.quit()
-  })
+  // NO cerramos con la última ventana: NTX vive en el tray. Si esto llamara a
+  // quit(), esconder la ventana mataría la app y el atajo global no tendría a
+  // quién despertar.
+  app.on('window-all-closed', () => {})
 
   app.on('before-quit', () => {
+    quitting = true
     if (statsTimer) clearInterval(statsTimer)
+    globalShortcut.unregister(HOTKEY)
+    tray?.destroy()
     // Sin esto los shells quedan vivos como procesos huérfanos.
     ptys.killAll()
   })

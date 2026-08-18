@@ -12,10 +12,12 @@ files:
   - '!node_modules/**/{CHANGELOG.md,README.md,readme.md,*.d.ts,*.map,*.ts}'
   - '!node_modules/**/{test,tests,__tests__,docs,doc,examples,example}/**'
 extraResources:
-  # Sólo esto. `resources/icons` estaba acá también, pero la app no tiene tray ni
-  # lee ese directorio desde ningún lado (ni el main ni el preload lo mencionan),
-  # así que eran tres archivos muertos dentro del instalador — uno de ellos, copia
-  # exacta de build/icon.ico. Si alguna vez hay tray, vuelve esta entrada.
+  # El ícono del tray. Lo lee src/main/tray.ts desde process.resourcesPath, así
+  # que tiene que salir del asar: adentro no hay ruta de archivo que Windows
+  # pueda abrir. Son 2,6 KB — el icon.ico que antes vivía acá era copia exacta
+  # del de build/ y no lo leía nadie, por eso ya no está.
+  - from: resources/icons
+    to: icons
   - from: src/main/shell-init
     to: shell-init
 asarUnpack:
