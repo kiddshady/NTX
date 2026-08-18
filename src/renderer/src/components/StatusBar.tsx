@@ -8,9 +8,6 @@ interface StatusBarProps {
   stats: SystemStats
   active: PaneState | undefined
   palette: Palette
-  appVersion: string
-  chromeVersion: string
-  electronVersion: string
 }
 
 function useClock(): string {
@@ -25,14 +22,7 @@ function useClock(): string {
   return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
 }
 
-export function StatusBar({
-  stats,
-  active,
-  palette,
-  appVersion,
-  chromeVersion,
-  electronVersion
-}: StatusBarProps): JSX.Element {
+export function StatusBar({ stats, active, palette }: StatusBarProps): JSX.Element {
   const clock = useClock()
 
   return (
@@ -63,11 +53,11 @@ export function StatusBar({
         </span>
       )}
 
+      {/* A la derecha, sólo el pulso y la hora.
+          Antes había además una tira de versiones (utf-8 · ntx · electron ·
+          chromium) que no se mira nunca: son datos de diagnóstico, no de uso, y
+          competían por atención con lo que sí cambia mientras trabajás. */}
       <span className="ntx-status__right">
-        <span className="ntx-status__value" style={{ color: palette.ghost }}>
-          utf-8 · ntx {appVersion} · electron {electronVersion} · chromium{' '}
-          {chromeVersion.split('.')[0]}
-        </span>
         <span className="ntx-status__live" />
         <span className="ntx-status__value" style={{ color: palette.warn }}>
           {clock}

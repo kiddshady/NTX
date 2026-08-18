@@ -273,14 +273,7 @@ export function App(): JSX.Element {
         ))}
       </main>
 
-      <StatusBar
-        stats={stats}
-        active={panes[focused]}
-        palette={palette}
-        appVersion={__APP_VERSION__}
-        chromeVersion={window.ntx.platform.version}
-        electronVersion={window.ntx.platform.electron}
-      />
+      <StatusBar stats={stats} active={panes[focused]} palette={palette} />
 
       <CommandPalette
         open={paletteOpen}
