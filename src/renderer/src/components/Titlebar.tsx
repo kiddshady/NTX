@@ -18,7 +18,6 @@ export function Titlebar({ onOpenPalette }: TitlebarProps): JSX.Element {
       {/* La paleta va del lado opuesto a los botones de ventana: pegada a ellos
           quedaría un click de distancia del de cerrar. */}
       <button className="ntx-chip" onClick={onOpenPalette} data-tip="Command palette">
-        <Icon name="grid" size={11} />
         <span>Palette</span>
         <span className="ntx-chip__key">Ctrl K</span>
       </button>
