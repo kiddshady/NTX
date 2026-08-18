@@ -54,6 +54,20 @@
   </clipPath>
 </defs>
 
+<!--
+  La baldosa va A SANGRE, y de ahí este transform.
+
+  El diseño original dejaba 31px de margen transparente por lado, o sea que la
+  baldosa ocupaba el 94% del lienzo. El resto de las apps (ntermx, por ejemplo)
+  llenan el lienzo entero, así que en la barra de tareas y en el escritorio NTX
+  se dibujaba ~6% más chico que sus hermanas sin que nada lo justificara.
+
+  Se escala TODO en bloque desde el centro —factor 1024/962— en vez de reescribir
+  cada coordenada: así las proporciones internas quedan intactas y los números de
+  arriba se siguen leyendo contra el diseño original.
+-->
+<g transform="translate(512 512) scale(1.064449) translate(-511.5 -511.5)">
+
 <rect x="31" y="31" width="962" height="962" rx="205" ry="205" fill="url(#ntx-tile)"/>
 <rect x="31" y="31" width="962" height="962" fill="url(#ntx-scan)" clip-path="url(#ntx-clip)"/>
 
@@ -71,5 +85,7 @@
   </g>
   <path d="M278 307 498 483 278 659" stroke-width="66"/>
   <path d="M566 665 761 665" stroke-width="92"/>
+</g>
+
 </g>
 </svg>
