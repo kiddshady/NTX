@@ -3,21 +3,26 @@
  *
  *   node scripts/make-tray.mjs
  *
- * ── Por qué un rasterizador propio y no el .ico de la app ───────────────────
+ * ── Qué dibuja ──────────────────────────────────────────────────────────────
  *
- * El ícono de la app es un glifo dentro de una baldosa oscura, y eso a 16px no
- * sirve: medido sobre el tray viejo, la baldosa se comía el 92% del lienzo y el
- * `>_` quedaba en 9×7 píxeles. Encima, sobre la barra de tareas de Windows (que
- * es oscura) la baldosa directamente no se ve, así que ese 92% es lienzo tirado.
- * Acá se dibuja el glifo SOLO, a sangre, y pasa a medir ~16px de ancho.
+ * La pieza completa del ícono de la app: la baldosa oscura detrás y el glifo
+ * encima, a sangre, igual que en la barra de tareas. Hubo una versión con el
+ * glifo solo (con baldosa el `>_` queda en ~9px de ancho a 16, y sobre la barra
+ * oscura de Windows la baldosa casi no se ve), pero dejaba al tray como la
+ * única cara de NTX sin baldosa: se prefiere la pieza completa y se asume el
+ * glifo chico.
+ *
+ * Del master no se rasterizan las scanlines ni el glow: a 16 y 32px son
+ * sub-píxel (período 26/962·16 ≈ 0.4px; blur 30/962·16 ≈ 0.5px) y sólo
+ * ensuciarían el trazo.
  *
  * La geometría es la misma de build/icon.svg, en el mismo espacio de 1024, así
  * que el tray y el ícono de la app no se pueden desincronizar por accidente.
  *
- * Se rasteriza a mano —distancia a los segmentos, con supersampling— en vez de
- * meter una dependencia de render de SVG: son dos trazos con puntas redondeadas,
- * y así el resultado es idéntico en cualquier máquina y no depende de qué motor
- * de SVG haya instalado.
+ * Se rasteriza a mano —campos de distancia, con supersampling— en vez de meter
+ * una dependencia de render de SVG: son dos trazos con puntas redondeadas y un
+ * rect redondeado, y así el resultado es idéntico en cualquier máquina y no
+ * depende de qué motor de SVG haya instalado.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,11 +32,14 @@ import zlib from 'node:zlib';
 const CHEVRON = { pts: [[278, 307], [498, 483], [278, 659]], w: 66 };
 const DASH = { pts: [[566, 665], [761, 665]], w: 92 };
 
-// El degradé, también el del master: cian arriba-izquierda, magenta abajo-derecha.
+// El degradé del glifo, también el del master: cian arriba-izquierda, magenta
+// abajo-derecha.
 const GRAD = { x1: 245, y1: 274, x2: 807, y2: 711, from: [0x00, 0xe5, 0xff], to: [0xff, 0x2e, 0x88] };
 
-// Caja que abarca las dos formas con su trazo, o sea lo que hay que encuadrar.
-const BOX = { x0: 245, y0: 274, x1: 807, y1: 711 };
+// La baldosa: rect 31–993 de esquinas 205 con degradé vertical, los números del
+// master. Allá un transform la lleva a sangre; acá sale igual porque el lienzo
+// destino se encuadra contra la baldosa y no contra el viewBox.
+const TILE = { x0: 31, y0: 31, x1: 993, y1: 993, r: 205, from: [0x14, 0x14, 0x1f], to: [0x08, 0x08, 0x0e] };
 
 const SS = 4; // supersampling por eje: 16 muestras por píxel
 
@@ -73,20 +81,28 @@ function gradientAt(x, y) {
   ];
 }
 
+/** Color del fondo de la baldosa a una altura dada: degradé vertical puro. */
+function tileAt(y) {
+  let t = (y - TILE.y0) / (TILE.y1 - TILE.y0);
+  t = Math.max(0, Math.min(1, t));
+  return [
+    Math.round(TILE.from[0] + (TILE.to[0] - TILE.from[0]) * t),
+    Math.round(TILE.from[1] + (TILE.to[1] - TILE.from[1]) * t),
+    Math.round(TILE.from[2] + (TILE.to[2] - TILE.from[2]) * t)
+  ];
+}
+
 /**
  * Rasteriza a un buffer RGBA de size×size.
  *
- * El glifo es apaisado (562×437), así que se encuadra por el ancho y queda
- * centrado en vertical: sobra aire arriba y abajo, no a los costados, que es
- * donde el tray tiene menos lugar.
+ * El lienzo destino se mapea contra la baldosa (31–993), que por eso queda a
+ * sangre: su borde ES el borde del ícono, como en el ícono de la app. El glifo
+ * cae donde el master lo pone —apenas arriba del centro— y no se re-encuadra.
  */
-function render(size, padding) {
-  const gw = BOX.x1 - BOX.x0;
-  const gh = BOX.y1 - BOX.y0;
-  const usable = size - padding * 2;
-  const scale = usable / gw;
-  const offX = padding;
-  const offY = (size - gh * scale) / 2;
+function render(size) {
+  const scale = (TILE.x1 - TILE.x0) / size;
+  const center = (TILE.x0 + TILE.x1) / 2;        // 512, en ambos ejes
+  const straight = (TILE.x1 - TILE.x0) / 2 - TILE.r; // tramo recto hasta la esquina
 
   const px = Buffer.alloc(size * size * 4, 0);
 
@@ -97,19 +113,20 @@ function render(size, padding) {
 
       for (let sy = 0; sy < SS; sy++) {
         for (let sx = 0; sx < SS; sx++) {
-          // Centro de la submuestra, llevado al espacio del glifo.
-          const cx = x + (sx + 0.5) / SS;
-          const cy = y + (sy + 0.5) / SS;
-          const gx = BOX.x0 + (cx - offX) / scale;
-          const gy = BOX.y0 + (cy - offY) / scale;
+          // Centro de la submuestra, llevado al espacio del master.
+          const gx = TILE.x0 + (x + (sx + 0.5) / SS) * scale;
+          const gy = TILE.y0 + (y + (sy + 0.5) / SS) * scale;
+
+          // Fuera del rect redondeado no hay nada: distancia con signo clásica.
+          const qx = Math.abs(gx - center) - straight;
+          const qy = Math.abs(gy - center) - straight;
+          if (Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) > TILE.r) continue;
 
           const inChevron = distToPolyline(gx, gy, CHEVRON.pts) <= CHEVRON.w / 2;
           const inDash = distToPolyline(gx, gy, DASH.pts) <= DASH.w / 2;
-          if (inChevron || inDash) {
-            const [r, g, b] = gradientAt(gx, gy);
-            rr += r; gg += g; bb += b;
-            hits++;
-          }
+          const [r, g, b] = inChevron || inDash ? gradientAt(gx, gy) : tileAt(gy);
+          rr += r; gg += g; bb += b;
+          hits++;
         }
       }
 
@@ -117,7 +134,7 @@ function render(size, padding) {
       const total = SS * SS;
       const i = (y * size + x) * 4;
       // El color promedia SÓLO las muestras que cayeron dentro; si promediara
-      // todas, los bordes tirarían a negro y el glifo saldría con un halo sucio.
+      // todas, el borde de la baldosa tiraría a negro y saldría un halo sucio.
       px[i] = Math.round(rr / hits);
       px[i + 1] = Math.round(gg / hits);
       px[i + 2] = Math.round(bb / hits);
@@ -216,11 +233,10 @@ function encodeICO(images) {
 const OUT = path.resolve(import.meta.dirname, '..', 'resources', 'icons');
 fs.mkdirSync(OUT, { recursive: true });
 
-// El padding va en proporción, no en píxeles fijos: 1px a 16 y 2px a 32 es el
-// mismo aire relativo, y sin él las puntas redondeadas se comen contra el borde.
+// Sin padding: la baldosa va a sangre y el aire alrededor del glifo lo da ella.
 const built = [];
-for (const [name, size, pad] of [['tray.png', 16, 1], ['tray@2x.png', 32, 2]]) {
-  const png = encodePNG(size, render(size, pad));
+for (const [name, size] of [['tray.png', 16], ['tray@2x.png', 32]]) {
+  const png = encodePNG(size, render(size));
   fs.writeFileSync(path.join(OUT, name), png);
   built.push({ size, data: png });
   console.log(`  ${name.padEnd(14)} ${size}×${size}  ${png.length} bytes`);

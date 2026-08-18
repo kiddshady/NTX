@@ -115,9 +115,9 @@ const server = http.createServer((req, res) => {
     const ico = encodeICO(forIco);
     fs.writeFileSync(path.join(BUILD, 'icon.ico'), ico);
 
-    // El tray NO sale de acá: en NTX quedó con el glifo solo, sin baldosa, y lo
-    // genera scripts/make-tray.mjs. Es una excepción de esta app — el resto las
-    // tiene con baldosa.
+    // El tray tampoco sale de acá: scripts/make-tray.mjs rasteriza la misma
+    // pieza —baldosa y glifo— por su cuenta, sin depender de abrir esta página
+    // en un browser.
     const msg = `icon.ico (${forIco.map((i) => i.size).join(', ')}) y icon.png 512 escritos en build/`;
     console.log(msg);
     res.writeHead(200).end(msg);
