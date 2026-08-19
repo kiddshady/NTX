@@ -90,7 +90,10 @@ export interface Palette {
 }
 
 export const PALETTE: Palette = {
-  base: '#08080a',
+  /* Bajó de #08080a el 19 ago 2026, a pedido: el conjunto un paso más hundido.
+     La niebla del sustrato bajó con él (ver .ntx-bg) — son las dos mitades del
+     mismo movimiento. */
+  base: '#050507',
 
   surface: 'rgba(255,255,255,0.019)',
   sunk: 'rgba(255,255,255,0.009)',

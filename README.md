@@ -125,7 +125,7 @@ los spinners braille.
 Windows pinta un frame fantasma. Electron 33 y anteriores lo pintan blanco y no
 hay CSS que lo tape; Electron 40 lo tiñe con el `backgroundColor` de la ventana.
 De ahí también que ese color, el del `<style>` inline de `index.html` y
-`--ntx-base` tengan que ser el mismo `#08080a`.
+`--ntx-base` tengan que ser el mismo `#050507`.
 
 ## Licencia
 

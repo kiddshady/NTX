@@ -179,16 +179,18 @@ button {
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.038'/%3E%3C/svg%3E"),
     /* La cuadrícula, en blanco y no en el acento: en una app acromática el
        papel es gris. Continua por construcción, al ser una sola capa. */
-    repeating-linear-gradient(to right, rgb(255 255 255 / 0.017) 0 1px, transparent 1px 34px),
-    repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.017) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(to right, rgb(255 255 255 / 0.014) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.014) 0 1px, transparent 1px 34px),
     /* El velo: hunde el conjunto para que el texto siempre gane, pase lo que
        pase con la niebla. El contraste no puede depender de dónde cayó una
        mancha. */
-    linear-gradient(to bottom, rgb(8 8 10 / 0.16), rgb(8 8 10 / 0.48)),
-    /* La niebla. */
-    radial-gradient(46vw 46vw at 8% 0%, rgb(255 255 255 / 0.062), transparent 70%),
-    radial-gradient(40vw 40vw at 96% 22%, rgb(255 255 255 / 0.05), transparent 70%),
-    radial-gradient(38vw 38vw at 44% 108%, rgb(255 255 255 / 0.04), transparent 70%);
+    linear-gradient(to bottom, rgb(5 5 7 / 0.22), rgb(5 5 7 / 0.58)),
+    /* La niebla. Bajó un tercio el 19 ago 2026 junto con la base (#050507): el
+       pedido fue el conjunto más oscuro, sabiendo que el vidrio se atenúa — la
+       niebla es justamente lo que el blur reparte, así que es la perilla. */
+    radial-gradient(46vw 46vw at 8% 0%, rgb(255 255 255 / 0.04), transparent 70%),
+    radial-gradient(40vw 40vw at 96% 22%, rgb(255 255 255 / 0.032), transparent 70%),
+    radial-gradient(38vw 38vw at 44% 108%, rgb(255 255 255 / 0.025), transparent 70%);
 }
 
 /* --- Titlebar -------------------------------------------------------------- */

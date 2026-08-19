@@ -9,7 +9,7 @@ import { BrowserWindow, screen, shell } from 'electron'
  * pintaba blanco hardcodeado y NO había CSS que lo tapara: por eso la versión está
  * pineada en 40.10.2.
  */
-export const BASE_COLOR = '#08080a'
+export const BASE_COLOR = '#050507'
 
 const WIN_W = 1280
 const WIN_H = 820
