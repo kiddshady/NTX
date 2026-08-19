@@ -16,11 +16,16 @@ export function Titlebar({ onOpenPalette }: TitlebarProps): JSX.Element {
   return (
     <header className="ntx-titlebar ntx-chrome">
       {/* La paleta va del lado opuesto a los botones de ventana: pegada a ellos
-          quedaría un click de distancia del de cerrar. */}
-      <button className="ntx-chip" onClick={onOpenPalette} data-tip="Command palette">
-        <Icon name="list" size={12} strokeWidth={1.8} />
-        <span>Palette</span>
-        <span className="ntx-chip__key">Ctrl Shift K</span>
+          quedaría un click de distancia del de cerrar. Es un menú y se ve como
+          tal: sólo el ícono, callado como el about de la status bar — sin texto,
+          sin atajo. Los atajos de teclado y la paleta ya se pelearon bastante. */}
+      <button
+        className="ntx-winbtn"
+        data-tip="Command palette"
+        aria-label="Command palette"
+        onClick={onOpenPalette}
+      >
+        <Icon name="list" size={13} strokeWidth={1.6} />
       </button>
 
       {/* Los de ventana, a la derecha y en el orden de Windows: minimizar,

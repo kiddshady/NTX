@@ -218,10 +218,10 @@ export function App(): JSX.Element {
       // botones, y abrir la paleta ENCIMA de una pregunta pendiente la taparía.
       if (modalOpenRef.current) return
 
-      // Con la paleta abierta sólo sobrevive el toggle: el resto de los atajos
-      // los maneja ella (flechas, enter, escape) y pisárselos desde acá sería
-      // mover paneles por detrás de un overlay abierto.
-      if (paletteOpenRef.current && key !== 'k') return
+      // Con la paleta abierta no sobrevive ninguno: su teclado (flechas, enter,
+      // escape) lo maneja ella, y mover paneles por detrás de un overlay
+      // abierto sería peor que no hacer nada.
+      if (paletteOpenRef.current) return
 
       // El zoom va antes del bloque de Shift: según el layout, el «+» sale con
       // Shift (US: Shift+=) o sin él, y acá los dos caminos valen lo mismo.
@@ -241,10 +241,15 @@ export function App(): JSX.Element {
         return
       }
 
-      // TODOS los combos de la app van con Shift, la paleta incluida: los pelados
-      // son del shell. Ctrl+K fue de la paleta un tiempo y fue un error — es
-      // kill-line en nano, bash y PSReadLine, o sea que se lo estábamos robando
-      // hasta al prompt. Ctrl+T y Ctrl+W, ídem (PSReadLine).
+      // Los combos de la app van con Shift: los pelados son del shell (Ctrl+T
+      // y Ctrl+W son de PSReadLine, Ctrl+K es kill-line en media terminal).
+      //
+      // La paleta no tiene atajo A PROPÓSITO, y la historia lo justifica: tuvo
+      // Ctrl+K (kill-line, pisaba nano y al propio prompt), después
+      // Ctrl+Shift+K con cesión heurística a TUIs (falló para los dos lados), y
+      // al final resultó que Windows se comía el combo con los modificadores
+      // izquierdos si el sistema los tiene de hotkey de idioma. Es un menú: se
+      // abre con su botón, siempre, desde cualquier estado del teclado.
       if (event.shiftKey) {
         if (key === 't') {
           event.preventDefault()
@@ -253,15 +258,6 @@ export function App(): JSX.Element {
           event.preventDefault()
           const pane = panesRef.current[focusedRef.current]
           if (pane) closePane(pane.id)
-        } else if (key === 'k') {
-          // Sin condiciones: el atajo de la paleta abre SIEMPRE. Tuvo un tiempo
-          // una cesión "por si una TUI quería el combo", detectada por señales
-          // del shell — y la detección falló para los dos lados: no veía al
-          // nano de Windows y en cambio se comía el atajo con Claude Code en
-          // pantalla. Un estado inferido no puede tener el poder de matar EL
-          // atajo de la app; determinismo mata heurística.
-          event.preventDefault()
-          setPaletteOpen((open) => !open)
         }
         return
       }

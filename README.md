@@ -14,9 +14,10 @@ vidrio oscuro. Electron + xterm.js + node-pty.
 - **Tres acentos con rol fijo** —cian, magenta, amarillo— sobre grises de
   verdad. Cada panel tiene el suyo y lo enciende únicamente cuando tiene el
   foco: nunca hay dos colores prendidos a la vez.
-- **Paleta de comandos** (`Ctrl Shift K`) con filtro por subsecuencia: `nsp`
-  encuentra «New shell · PowerShell». Abre shells, salta entre paneles y muestra
-  el About.
+- **Paleta de comandos** (el botón de la lista, arriba a la izquierda) con
+  filtro por subsecuencia: `nsp` encuentra «New shell · PowerShell». Abre
+  shells, salta entre paneles y muestra el About. Sin atajo, a propósito: es un
+  menú, y las teclas son del shell.
 - **Status bar con datos reales**: CPU y memoria del sistema, el directorio de la
   shell activa y su branch de git.
 - **Vive en el tray.** Cerrar esconde en vez de matar, y `Ctrl Alt X` la trae de
@@ -36,7 +37,6 @@ instalador — ese no se auto-actualiza.
 
 | Atajo | Qué hace |
 |---|---|
-| `Ctrl Shift K` | Abre y cierra la paleta de comandos |
 | `Ctrl 1`–`Ctrl 4` | Enfoca esa shell |
 | `Ctrl Shift T` | Nueva shell |
 | `Ctrl Shift W` | Cierra la shell activa |
@@ -47,7 +47,8 @@ instalador — ese no se auto-actualiza.
 
 Los atajos de la app van con `Shift` justamente para no pisarle nada al shell:
 `Ctrl+T` y `Ctrl+W` son de PSReadLine, y `Ctrl+K` es kill-line en nano, bash y
-el propio prompt — por eso la paleta NO lo usa.
+el propio prompt — por eso la paleta ni siquiera tiene atajo: se abre con su
+botón y las teclas quedan para la terminal, que para eso es una.
 
 ## Arrancar
 
