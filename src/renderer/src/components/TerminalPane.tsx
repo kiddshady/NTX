@@ -13,6 +13,8 @@ interface TerminalPaneProps {
   index: number
   accent: string
   palette: Palette
+  /** El tamaño de letra del momento: lo gobierna App, es uno solo para todas. */
+  fontSize: number
   /** Manda el anillo de acento: el panel activo se sigue viendo activo. */
   focused: boolean
   /** Si además tiene que quedarse el teclado. Es false mientras hay un overlay
@@ -21,6 +23,8 @@ interface TerminalPaneProps {
   onFocus: () => void
   onExit: (code: number) => void
   onCwd: (cwd: string) => void
+  /** Avisa cuando el shell entra o sale del alternate screen (nano, vim, btop). */
+  onAltScreen: (active: boolean) => void
 }
 
 export function TerminalPane({
@@ -28,11 +32,13 @@ export function TerminalPane({
   index,
   accent,
   palette,
+  fontSize,
   focused,
   keyboardFocus,
   onFocus,
   onExit,
-  onCwd
+  onCwd,
+  onAltScreen
 }: TerminalPaneProps): JSX.Element {
   const host = useRef<HTMLDivElement>(null)
   const term = useRef<Terminal | null>(null)
@@ -42,8 +48,13 @@ export function TerminalPane({
   // Los callbacks van por ref para que el efecto de montaje no dependa de ellos:
   // si dependiera, cada render de App destruiría y recrearía la terminal entera,
   // scrollback incluido.
-  const callbacks = useRef({ onExit, onCwd })
-  callbacks.current = { onExit, onCwd }
+  const callbacks = useRef({ onExit, onCwd, onAltScreen })
+  callbacks.current = { onExit, onCwd, onAltScreen }
+
+  // También por ref: es el valor INICIAL de la terminal. Los cambios en vivo los
+  // aplica su propio efecto más abajo, sin recrear nada.
+  const fontSizeRef = useRef(fontSize)
+  fontSizeRef.current = fontSize
 
   const paneId = pane.id
 
@@ -54,7 +65,7 @@ export function TerminalPane({
     const terminal = new Terminal({
       allowProposedApi: true,
       fontFamily: "'JetBrains Mono', 'Noto Sans Symbols 2', monospace",
-      fontSize: 12.5,
+      fontSize: fontSizeRef.current,
       // Interlineado 1, y no se toca.
       //
       // Los caracteres de bloque y de box drawing (█ ▀ ▄ ─ │ ┌ ├) están dibujados
@@ -141,6 +152,12 @@ export function TerminalPane({
     terminal.onData((data) => window.ntx.write(paneId, data))
     terminal.onResize(({ cols, rows }) => window.ntx.resize(paneId, cols, rows))
 
+    // nano, vim, btop y compañía corren en el alternate buffer. App lo necesita
+    // saber para dejarles los atajos que son de ellos (hoy: Ctrl+K).
+    terminal.buffer.onBufferChange((buffer) =>
+      callbacks.current.onAltScreen(buffer.type === 'alternate')
+    )
+
     const detach = attachPane(
       paneId,
       (data) => terminal.write(data),
@@ -188,6 +205,19 @@ export function TerminalPane({
   useEffect(() => {
     if (term.current) term.current.options.theme = xtermTheme(palette, accent)
   }, [palette, accent])
+
+  // Zoom en caliente. El fit va a mano: la celda cambió de tamaño pero el
+  // contenedor no, así que el ResizeObserver no se entera de nada.
+  useEffect(() => {
+    const terminal = term.current
+    if (!terminal || terminal.options.fontSize === fontSize) return
+    terminal.options.fontSize = fontSize
+    try {
+      fit.current?.fit()
+    } catch {
+      // Panel a mitad de cierre: no hay nada que ajustar.
+    }
+  }, [fontSize])
 
   // Enfocar el panel enfoca su terminal, para que tipear vaya al shell correcto.
   // Y al cerrarse un overlay, keyboardFocus vuelve a true y el teclado regresa

@@ -15,6 +15,20 @@ import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
 /** Lo mismo que --ntx-normal: el panel tiene que terminar de irse antes de desmontarse. */
 const PANE_EXIT_MS = 220
 
+/** El tamaño de siempre; Ctrl 0 vuelve acá. */
+const FONT_SIZE_DEFAULT = 12.5
+/* Los topes del zoom: debajo de 8 no se lee y arriba de 24 entran 30 columnas. */
+const FONT_SIZE_MIN = 8
+const FONT_SIZE_MAX = 24
+const FONT_SIZE_KEY = 'ntx:font-size'
+
+function loadFontSize(): number {
+  const stored = Number(window.localStorage.getItem(FONT_SIZE_KEY))
+  return Number.isFinite(stored) && stored >= FONT_SIZE_MIN && stored <= FONT_SIZE_MAX
+    ? stored
+    : FONT_SIZE_DEFAULT
+}
+
 export function App(): JSX.Element {
   const [profiles, setProfiles] = useState<ShellProfile[]>([])
   const [panes, setPanes] = useState<PaneState[]>([])
@@ -26,6 +40,7 @@ export function App(): JSX.Element {
   // La versión cuyo aviso ya se descartó: el modal insiste por versión nueva,
   // nunca dos veces por la misma.
   const [dismissedUpdate, setDismissedUpdate] = useState<string | null>(null)
+  const [fontSize, setFontSize] = useState(loadFontSize)
 
   const palette = PALETTE
   const accentOf = useCallback((index: number) => paneAccent(palette, index), [palette])
@@ -50,6 +65,32 @@ export function App(): JSX.Element {
   modalOpenRef.current = aboutOpen || updatePromptOpen
   const updateRef = useRef(update)
   updateRef.current = update
+  // Los paneles cuyo shell está adentro del alternate screen (nano, vim, btop).
+  // Es un ref y no estado: lo consulta el handler de teclado, no el render.
+  const altScreens = useRef(new Set<string>())
+
+  // --- Zoom -----------------------------------------------------------------
+
+  const zoom = useCallback((delta: number): void => {
+    setFontSize((current) => Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, current + delta)))
+  }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem(FONT_SIZE_KEY, String(fontSize))
+  }, [fontSize])
+
+  // Ctrl+rueda, como en el navegador. En captura y frenando el evento: si
+  // llegara hasta xterm, el gesto además scrollearía el scrollback.
+  useEffect(() => {
+    const onWheel = (event: WheelEvent): void => {
+      if (!event.ctrlKey || event.deltaY === 0) return
+      event.preventDefault()
+      event.stopPropagation()
+      zoom(event.deltaY < 0 ? 1 : -1)
+    }
+    window.addEventListener('wheel', onWheel, { capture: true, passive: false })
+    return () => window.removeEventListener('wheel', onWheel, { capture: true })
+  }, [zoom])
 
   // Abrir el About descarta el aviso pendiente: ahí adentro ya se ve el estado
   // y el botón de reiniciar, mostrarlo dos veces sería perseguir.
@@ -107,6 +148,7 @@ export function App(): JSX.Element {
 
     window.setTimeout(() => {
       forgetPane(paneId)
+      altScreens.current.delete(paneId)
       setPanes((previous) => {
         const next = previous.filter((pane) => pane.id !== paneId)
         setFocused((current) => Math.max(0, Math.min(current, next.length - 1)))
@@ -161,6 +203,9 @@ export function App(): JSX.Element {
 
   const onPaneExit = useCallback(
     (paneId: string, code: number): void => {
+      // Un shell muerto ya no está adentro de nada: si nano quedó a medio salir,
+      // que no siga secuestrando el Ctrl+K del panel.
+      altScreens.current.delete(paneId)
       // Salida limpia (un `exit` del usuario) = cerramos el panel. Salida con
       // error = lo dejamos abierto, porque el motivo está escrito ahí adentro y
       // cerrarlo se lo lleva puesto.
@@ -185,6 +230,24 @@ export function App(): JSX.Element {
       // mover paneles por detrás de un overlay abierto.
       if (paletteOpenRef.current && key !== 'k') return
 
+      // El zoom va antes del bloque de Shift: según el layout, el «+» sale con
+      // Shift (US: Shift+=) o sin él, y acá los dos caminos valen lo mismo.
+      if (key === '+' || key === '=') {
+        event.preventDefault()
+        zoom(1)
+        return
+      }
+      if (key === '-' || key === '_') {
+        event.preventDefault()
+        zoom(-1)
+        return
+      }
+      if (key === '0') {
+        event.preventDefault()
+        setFontSize(FONT_SIZE_DEFAULT)
+        return
+      }
+
       // Los combos con Shift son los que pisarían algo del shell (Ctrl+T y Ctrl+W
       // están tomados por PSReadLine), así que van con Shift y el shell se queda
       // con los suyos.
@@ -201,6 +264,12 @@ export function App(): JSX.Element {
       }
 
       if (key === 'k') {
+        // Adentro del alternate screen, Ctrl+K es del programa que lo abrió: en
+        // nano corta la línea, y robárselo era abrir la paleta a mitad de un
+        // editor. La paleta sigue a un click del chip mientras tanto.
+        const pane = panesRef.current[focusedRef.current]
+        if (pane && altScreens.current.has(pane.id)) return
+
         event.preventDefault()
         setPaletteOpen((open) => !open)
         return
@@ -219,7 +288,7 @@ export function App(): JSX.Element {
     // se comería los atajos antes de que lleguen.
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [spawn, closePane])
+  }, [spawn, closePane, zoom])
 
   // --- Comandos --------------------------------------------------------------
 
@@ -267,6 +336,18 @@ export function App(): JSX.Element {
       })
     })
 
+    // Sólo aparece cuando hay algo que resetear: en reposo sería ruido.
+    if (fontSize !== FONT_SIZE_DEFAULT) {
+      list.push({
+        id: 'zoom-reset',
+        label: `Reset zoom · now at ${fontSize}px`,
+        icon: 'search',
+        desc: 'Back to 12.5px — Ctrl +/− and Ctrl+wheel zoom',
+        hint: 'ctrl 0',
+        run: () => setFontSize(FONT_SIZE_DEFAULT)
+      })
+    }
+
     list.push({
       id: 'about',
       label: 'About NTX',
@@ -276,7 +357,7 @@ export function App(): JSX.Element {
     })
 
     return list
-  }, [profiles, panes, focused, palette, spawn, closePane, openAbout])
+  }, [profiles, panes, focused, palette, spawn, closePane, openAbout, fontSize])
 
   // --- Render ----------------------------------------------------------------
 
@@ -305,11 +386,16 @@ export function App(): JSX.Element {
             index={index}
             accent={accentOf(index)}
             palette={palette}
+            fontSize={fontSize}
             focused={index === focused}
             keyboardFocus={index === focused && !paletteOpen && !aboutOpen && !updatePromptOpen}
             onFocus={() => setFocused(index)}
             onExit={(code) => onPaneExit(pane.id, code)}
             onCwd={(cwd) => onPaneCwd(pane.id, cwd)}
+            onAltScreen={(active) => {
+              if (active) altScreens.current.add(pane.id)
+              else altScreens.current.delete(pane.id)
+            }}
           />
         ))}
       </main>

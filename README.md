@@ -41,10 +41,14 @@ instalador — ese no se auto-actualiza.
 | `Ctrl Shift W` | Cierra la shell activa |
 | `Ctrl Shift C` / `Ctrl Shift V` | Copiar y pegar |
 | `Ctrl C` | Copia si hay selección; si no, sigue siendo la interrupción |
+| `Ctrl +` / `Ctrl -` / `Ctrl 0` | Zoom del texto (también `Ctrl` + rueda); se recuerda |
 | `Ctrl Alt X` | Global: muestra y esconde la ventana desde cualquier lado |
 
 Los atajos de la app van con `Shift` justamente para no pisarle a PSReadLine los
-suyos: `Ctrl+T` y `Ctrl+W` ya están tomados del lado del shell.
+suyos: `Ctrl+T` y `Ctrl+W` ya están tomados del lado del shell. Y cuando el
+panel está corriendo un programa de pantalla completa —nano, vim, btop—,
+`Ctrl K` es de ese programa (en nano corta la línea): la paleta queda en el chip
+de la titlebar hasta que salgas.
 
 ## Arrancar
 
