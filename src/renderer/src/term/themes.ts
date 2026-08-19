@@ -149,15 +149,21 @@ export const PALETTE: Palette = {
    * vecinos, en un `git status` no se distinguiría un archivo borrado de uno
    * modificado. El azul (4) tira a violeta por lo mismo, para no pisarse con el
    * cian.
+   *
+   * El par azul (4 y 12) es el único bright que NO es pastel, desde el 19 ago
+   * 2026: el 12 es el color de los directorios en `ls` (bold+azul, y xterm manda
+   * bold a bright), y en lavanda claro se veía lavado. Se fueron los dos a
+   * índigo profundo — el piso lo pone AA contra `base` (4,6:1 y 5,7:1), así que
+   * más oscuros que esto no pueden ir.
    */
   ansi: [
     // El 0 y el 8 también subieron por legibilidad. El 8 (brightBlack) es el que
     // más se nota: es con el que casi toda CLI pinta comentarios, hashes cortos
     // y archivos ocultos, así que a 2,3:1 media salida quedaba ilegible.
     '#3d3d46', '#ff4d6a', '#2ff2a6', '#ffe14d',
-    '#5b7cff', '#ff2e88', '#00e5ff', '#c8c8cf',
+    '#5569ff', '#ff2e88', '#00e5ff', '#c8c8cf',
     '#70707c', '#ff7d90', '#6ff7c2', '#ffec8f',
-    '#8fa4ff', '#ff6cad', '#7ff2ff', '#ececef'
+    '#6d7dff', '#ff6cad', '#7ff2ff', '#ececef'
   ]
 }
 
