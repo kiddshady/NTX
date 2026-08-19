@@ -34,6 +34,9 @@ export function App(): JSX.Element {
   const [panes, setPanes] = useState<PaneState[]>([])
   const [focused, setFocused] = useState(0)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  // La búsqueda del scrollback: a qué panel pertenece la única barra abierta.
+  // El nonce sube cuando se re-pide la que ya está abierta, para re-enfocarla.
+  const [search, setSearch] = useState<{ paneId: string; nonce: number } | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [stats, setStats] = useState<SystemStats>({ cpu: 0, mem: 0 })
   const [update, setUpdate] = useState<UpdateState>({ phase: 'idle' })
@@ -97,6 +100,18 @@ export function App(): JSX.Element {
     if (current.phase === 'ready' && current.version) setDismissedUpdate(current.version)
   }, [])
 
+  // --- Búsqueda en el scrollback ---------------------------------------------
+
+  const openSearch = useCallback((): void => {
+    const pane = panesRef.current[focusedRef.current]
+    if (!pane || pane.closing) return
+    // Pedirla sobre el mismo panel no la duplica: sube el nonce y la barra
+    // re-enfoca su input. Pedirla desde otro panel se la lleva ahí.
+    setSearch((previous) => ({ paneId: pane.id, nonce: (previous?.nonce ?? 0) + 1 }))
+  }, [])
+
+  const closeSearch = useCallback((): void => setSearch(null), [])
+
   // --- Paneles --------------------------------------------------------------
 
   const spawn = useCallback(async (profileId?: string, cwd?: string): Promise<void> => {
@@ -139,6 +154,8 @@ export function App(): JSX.Element {
     // Matamos el shell ya, pero el panel se va con su animación: sacarlo del DOM
     // en el mismo frame se siente como un crash, no como un cierre.
     window.ntx.kill(paneId)
+    // Si la búsqueda vivía en este panel, se va con él.
+    setSearch((previous) => (previous?.paneId === paneId ? null : previous))
     setPanes((previous) =>
       previous.map((pane) => (pane.id === paneId ? { ...pane, closing: true } : pane))
     )
@@ -258,6 +275,9 @@ export function App(): JSX.Element {
           event.preventDefault()
           const pane = panesRef.current[focusedRef.current]
           if (pane) closePane(pane.id)
+        } else if (key === 'f') {
+          event.preventDefault()
+          openSearch()
         }
         return
       }
@@ -275,7 +295,7 @@ export function App(): JSX.Element {
     // se comería los atajos antes de que lleguen.
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [spawn, closePane, zoom])
+  }, [spawn, closePane, zoom, openSearch])
 
   // --- Comandos --------------------------------------------------------------
 
@@ -301,6 +321,14 @@ export function App(): JSX.Element {
     }
 
     if (activePane) {
+      list.push({
+        id: 'find',
+        label: 'Find in scrollback',
+        icon: 'search',
+        desc: `Searches what the ${activePane.profileLabel} pane has printed`,
+        hint: 'Ctrl Shift F',
+        run: openSearch
+      })
       list.push({
         id: 'close',
         label: 'Close the active shell',
@@ -344,7 +372,7 @@ export function App(): JSX.Element {
     })
 
     return list
-  }, [profiles, panes, focused, palette, spawn, closePane, openAbout, fontSize])
+  }, [profiles, panes, focused, palette, spawn, closePane, openAbout, openSearch, fontSize])
 
   // --- Render ----------------------------------------------------------------
 
@@ -375,7 +403,18 @@ export function App(): JSX.Element {
             palette={palette}
             fontSize={fontSize}
             focused={index === focused}
-            keyboardFocus={index === focused && !paletteOpen && !aboutOpen && !updatePromptOpen}
+            // La búsqueda abierta también apaga el teclado de la terminal: el
+            // que tipea ahí es el input de la barra. Cerrarla lo devuelve.
+            keyboardFocus={
+              index === focused &&
+              !paletteOpen &&
+              !aboutOpen &&
+              !updatePromptOpen &&
+              search?.paneId !== pane.id
+            }
+            searchOpen={search?.paneId === pane.id}
+            searchNonce={search?.nonce ?? 0}
+            onSearchClose={closeSearch}
             onFocus={() => setFocused(index)}
             onExit={(code) => onPaneExit(pane.id, code)}
             onCwd={(cwd) => onPaneCwd(pane.id, cwd)}

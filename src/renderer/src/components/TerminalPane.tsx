@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { SearchAddon } from '@xterm/addon-search'
 import { Icon } from './Icon'
+import { SearchBar, type SearchQuery, type SearchResults } from './SearchBar'
 import { attachPane } from '../lib/ptyBus'
-import { xtermTheme, type Palette } from '../term/themes'
+import { mixHex, xtermTheme, type Palette } from '../term/themes'
 import { paneTitle, type PaneState } from '../lib/panes'
 
 interface TerminalPaneProps {
@@ -20,6 +22,12 @@ interface TerminalPaneProps {
   /** Si además tiene que quedarse el teclado. Es false mientras hay un overlay
    *  abierto, para no pelearle el foco al input de la paleta. */
   keyboardFocus: boolean
+  /** La barra de búsqueda de ESTE panel. La gobierna App porque sólo puede
+   *  haber una abierta: la búsqueda vive donde está el foco. */
+  searchOpen: boolean
+  /** Sube cuando se re-pide la búsqueda ya abierta: re-enfoca la barra. */
+  searchNonce: number
+  onSearchClose: () => void
   onFocus: () => void
   onExit: (code: number) => void
   onCwd: (cwd: string) => void
@@ -33,6 +41,9 @@ export function TerminalPane({
   fontSize,
   focused,
   keyboardFocus,
+  searchOpen,
+  searchNonce,
+  onSearchClose,
   onFocus,
   onExit,
   onCwd
@@ -40,7 +51,9 @@ export function TerminalPane({
   const host = useRef<HTMLDivElement>(null)
   const term = useRef<Terminal | null>(null)
   const fit = useRef<FitAddon | null>(null)
+  const search = useRef<SearchAddon | null>(null)
   const [dead, setDead] = useState<number | null>(null)
+  const [searchResults, setSearchResults] = useState<SearchResults | null>(null)
 
   // Los callbacks van por ref para que el efecto de montaje no dependa de ellos:
   // si dependiera, cada render de App destruiría y recrearía la terminal entera,
@@ -92,6 +105,14 @@ export function TerminalPane({
     const fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
     terminal.loadAddon(new WebLinksAddon())
+
+    // La búsqueda del scrollback. El addon emite el contador (n/total) sólo
+    // cuando las búsquedas piden decoraciones — y las nuestras siempre lo hacen.
+    const searchAddon = new SearchAddon()
+    terminal.loadAddon(searchAddon)
+    searchAddon.onDidChangeResults(({ resultIndex, resultCount }) =>
+      setSearchResults({ index: resultIndex, count: resultCount })
+    )
 
     // Unicode 11: sin esto, los emojis y los glifos anchos que escupe una CLI
     // moderna se miden con el ancho equivocado y desalinean toda la columna.
@@ -160,6 +181,7 @@ export function TerminalPane({
 
     term.current = terminal
     fit.current = fitAddon
+    search.current = searchAddon
 
     // El primer fit va en el siguiente frame: recién ahí el contenedor tiene su
     // tamaño real y xterm puede medir la celda.
@@ -184,9 +206,11 @@ export function TerminalPane({
       cancelAnimationFrame(first)
       observer.disconnect()
       detach()
+      // Dispose de la terminal se lleva también a sus addons cargados.
       terminal.dispose()
       term.current = null
       fit.current = null
+      search.current = null
     }
     // Sólo el id: cambiar de tema o de acento NO debe recrear la terminal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -213,9 +237,47 @@ export function TerminalPane({
   // Enfocar el panel enfoca su terminal, para que tipear vaya al shell correcto.
   // Y al cerrarse un overlay, keyboardFocus vuelve a true y el teclado regresa
   // solo a la terminal: sin esto habría que hacer click para seguir escribiendo.
+  // (La búsqueda abierta también apaga keyboardFocus, así que cerrarla devuelve
+  // el teclado por este mismo camino.)
   useEffect(() => {
     if (keyboardFocus && !dead) term.current?.focus()
   }, [keyboardFocus, dead])
+
+  // Cerrada la búsqueda —da igual por qué puerta— se apagan los resaltados.
+  useEffect(() => {
+    if (searchOpen) return
+    search.current?.clearDecorations()
+    setSearchResults(null)
+  }, [searchOpen])
+
+  const onFind = useCallback(
+    ({ term: needle, caseSensitive, incremental, previous }: SearchQuery): void => {
+      const addon = search.current
+      if (!addon) return
+      const options = {
+        caseSensitive,
+        incremental,
+        decorations: {
+          // Aplanados contra la base porque el addon sólo acepta #RRGGBB. El
+          // resaltado se pinta DEBAJO del texto, así que puede ser opaco sin
+          // taparlo; el activo además se marca con el borde a acento pleno.
+          matchBackground: mixHex(accent, palette.base, 0.28),
+          matchOverviewRuler: accent,
+          activeMatchBackground: mixHex(accent, palette.base, 0.55),
+          activeMatchBorder: accent,
+          activeMatchColorOverviewRuler: accent
+        }
+      }
+      if (previous) addon.findPrevious(needle, options)
+      else addon.findNext(needle, options)
+    },
+    [accent, palette]
+  )
+
+  const onSearchClear = useCallback((): void => {
+    search.current?.clearDecorations()
+    setSearchResults(null)
+  }, [])
 
   return (
     <section
@@ -248,6 +310,15 @@ export function TerminalPane({
       <div className="ntx-pane__term">
         <div ref={host} className="ntx-pane__screen" />
       </div>
+
+      <SearchBar
+        open={searchOpen}
+        nonce={searchNonce}
+        results={searchResults}
+        onFind={onFind}
+        onClear={onSearchClear}
+        onClose={onSearchClose}
+      />
     </section>
   )
 }

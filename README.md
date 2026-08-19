@@ -18,6 +18,10 @@ vidrio oscuro. Electron + xterm.js + node-pty.
   filtro por subsecuencia: `nsp` encuentra «New shell · PowerShell». Abre
   shells, salta entre paneles y muestra el About. Sin atajo, a propósito: es un
   menú, y las teclas son del shell.
+- **Búsqueda en el scrollback** (`Ctrl Shift F`, o desde la paleta). La barra
+  flota en el panel activo y resalta todos los matches con su acento: filtra
+  mientras tipeás, Enter y Shift Enter saltan entre resultados, `Aa` exige
+  mayúsculas exactas, y Esc la cierra devolviéndole el teclado al shell.
 - **Status bar con datos reales**: CPU y memoria del sistema, el directorio de la
   shell activa y su branch de git.
 - **Vive en el tray.** Cerrar esconde en vez de matar, y `Ctrl Alt X` la trae de
@@ -40,6 +44,7 @@ instalador — ese no se auto-actualiza.
 | `Ctrl 1`–`Ctrl 4` | Enfoca esa shell |
 | `Ctrl Shift T` | Nueva shell |
 | `Ctrl Shift W` | Cierra la shell activa |
+| `Ctrl Shift F` | Busca en el scrollback de la shell activa |
 | `Ctrl Shift C` / `Ctrl Shift V` | Copiar y pegar |
 | `Ctrl C` | Copia si hay selección; si no, sigue siendo la interrupción |
 | `Ctrl +` / `Ctrl -` / `Ctrl 0` | Zoom del texto (también `Ctrl` + rueda); se recuerda |

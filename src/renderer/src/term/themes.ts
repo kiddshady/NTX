@@ -211,6 +211,23 @@ export function xtermTheme(palette: Palette, paneAccent: string): ITheme {
 }
 
 /**
+ * Mezcla dos hex #rrggbb: `t` es cuánto pesa `over` (0 = puro `under`).
+ *
+ * Existe porque las decoraciones de búsqueda de xterm exigen #RRGGBB opaco — no
+ * aceptan rgba ni color-mix — así que el "acento con alfa sobre la base" hay que
+ * dárselo ya aplanado. Vive acá por la misma regla que todo: los colores se
+ * derivan de la paleta en un solo lugar.
+ */
+export function mixHex(over: string, under: string, t: number): string {
+  const channel = (hex: string, i: number): number => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16)
+  const mix = (i: number): string =>
+    Math.round(channel(over, i) * t + channel(under, i) * (1 - t))
+      .toString(16)
+      .padStart(2, '0')
+  return `#${mix(0)}${mix(1)}${mix(2)}`
+}
+
+/**
  * Vuelca la paleta a variables CSS.
  *
  * Se llama de forma síncrona ANTES del primer render, así el chrome nunca se
