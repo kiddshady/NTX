@@ -692,6 +692,25 @@ button {
   gap: 8px;
   flex-shrink: 0;
 }
+/* El about, a la izquierda de la hora. En reposo va aún más callado que el
+   resto de la barra —es un botón que se usa cada muerte de obispo— y el hover
+   lo enciende como a cualquier control. */
+.ntx-status__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 18px;
+  border-radius: var(--ntx-radius-sm);
+  color: var(--ntx-ghost);
+  transition:
+    color var(--ntx-fast) var(--ntx-ease),
+    background var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-status__btn:hover {
+  color: var(--ntx-fg);
+  background: color-mix(in srgb, var(--ntx-fg) 8%, transparent);
+}
 .ntx-status__live {
   width: 6px;
   height: 6px;

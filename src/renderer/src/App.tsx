@@ -367,7 +367,7 @@ export function App(): JSX.Element {
           es una capa de efecto por encima como era el CRT, es el fondo mismo. */}
       <div className="ntx-bg" aria-hidden="true" />
 
-      <Titlebar onOpenPalette={() => setPaletteOpen(true)} onOpenAbout={openAbout} />
+      <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
 
       <TabStrip
         panes={panes}
@@ -400,7 +400,7 @@ export function App(): JSX.Element {
         ))}
       </main>
 
-      <StatusBar stats={stats} active={panes[focused]} palette={palette} />
+      <StatusBar stats={stats} active={panes[focused]} palette={palette} onOpenAbout={openAbout} />
 
       <CommandPalette
         open={paletteOpen}

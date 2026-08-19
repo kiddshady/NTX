@@ -8,6 +8,7 @@ interface StatusBarProps {
   stats: SystemStats
   active: PaneState | undefined
   palette: Palette
+  onOpenAbout: () => void
 }
 
 function useClock(): string {
@@ -22,7 +23,7 @@ function useClock(): string {
   return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
 }
 
-export function StatusBar({ stats, active, palette }: StatusBarProps): JSX.Element {
+export function StatusBar({ stats, active, palette, onOpenAbout }: StatusBarProps): JSX.Element {
   const clock = useClock()
 
   return (
@@ -53,11 +54,16 @@ export function StatusBar({ stats, active, palette }: StatusBarProps): JSX.Eleme
         </span>
       )}
 
-      {/* A la derecha, sólo el pulso y la hora.
+      {/* A la derecha, el about, el pulso y la hora.
           Antes había además una tira de versiones (utf-8 · ntx · electron ·
           chromium) que no se mira nunca: son datos de diagnóstico, no de uso, y
-          competían por atención con lo que sí cambia mientras trabajás. */}
+          competían por atención con lo que sí cambia mientras trabajás. El
+          about vive acá abajo por lo mismo: es información de la app, y su
+          lugar es el rincón de los datos quietos, no la titlebar. */}
       <span className="ntx-status__right">
+        <button className="ntx-status__btn" data-tip="About NTX" aria-label="About NTX" onClick={onOpenAbout}>
+          <Icon name="info" size={12} strokeWidth={1.5} />
+        </button>
         <span className="ntx-status__live" />
         <span className="ntx-status__value" style={{ color: palette.warn }}>
           {clock}
