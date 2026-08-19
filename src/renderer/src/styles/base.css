@@ -367,9 +367,12 @@ button {
     color var(--ntx-fast) var(--ntx-ease),
     background var(--ntx-fast) var(--ntx-ease);
 }
+/* Neutro como el hover de las tabs. Estuvo en warn un tiempo, pero el amarillo
+   acá era decoración: abrir una shell no es una alerta, y el botón se prendía
+   más fuerte que la tab activa que tenía al lado. */
 .ntx-tabs__new:hover:not(:disabled) {
-  color: var(--ntx-warn);
-  background: color-mix(in srgb, var(--ntx-warn) 8%, transparent);
+  color: var(--ntx-muted);
+  background: color-mix(in srgb, var(--ntx-fg) 4%, transparent);
 }
 .ntx-tabs__new:disabled {
   cursor: default;
