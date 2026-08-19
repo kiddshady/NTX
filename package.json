@@ -1,7 +1,7 @@
 {
   "name": "ntx",
   "productName": "NTX",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Multi-shell terminal for Windows — adaptive grid, achromatic glass, CMY accents",
   "main": "./out/main/index.js",
   "author": "Kidd Shady · Umbrovex Systems",

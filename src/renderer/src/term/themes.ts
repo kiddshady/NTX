@@ -103,12 +103,13 @@ export const PALETTE: Palette = {
   hairline: 'rgba(255,255,255,0.058)',
   hairlineSoft: 'rgba(255,255,255,0.034)',
   /* El filo es lo que más delata al vidrio, así que es lo primero que baja
-     cuando el efecto se quiere discreto: venía de 0.22, pasó por 0.14 y quedó
-     acá. Éste es el PISO — por debajo de ~0.10 la superficie deja de leerse
-     como canto y vuelve a ser un rectángulo gris con opacidad, que es
-     exactamente el anti-patrón del que veníamos. Si hace falta atenuar más,
-     bajar la niebla del sustrato, no esto. */
-  edgeLit: 'rgba(255,255,255,0.105)',
+     cuando el efecto se quiere discreto: 0.22 → 0.14 → 0.105. Ese 0.105 era el
+     piso para que la superficie se leyera COMO VIDRIO — pero el 19 ago 2026 el
+     look pidió justamente menos vidrio (Fran: "bajale el efecto de luz"), así
+     que bajó a propósito por debajo de aquel piso, junto con la niebla y el
+     grano. La profundidad la siguen dando las sombras, que son la opción
+     primaria de la casa; el canto quedó como un aliento, no como reflejo. */
+  edgeLit: 'rgba(255,255,255,0.07)',
 
   /**
    * La escalera de énfasis.
