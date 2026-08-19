@@ -22,6 +22,15 @@ extraResources:
     to: shell-init
 asarUnpack:
   - '**/node_modules/node-pty/**'
+# De acá electron-builder deriva el app-update.yml que viaja adentro del
+# instalador: es el papelito donde la app instalada lee A DÓNDE mirar por
+# versiones nuevas. El repo es público, así que el updater consulta y descarga
+# sin token; publicar el release sí pide credenciales, pero eso pasa acá en la
+# máquina, no en la app.
+publish:
+  provider: github
+  owner: kiddshady
+  repo: NTX
 win:
   icon: build/icon.ico
   target:

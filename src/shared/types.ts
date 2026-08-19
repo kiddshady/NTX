@@ -39,6 +39,32 @@ export interface SystemStats {
   mem: number
 }
 
+/**
+ * El ciclo de vida de una actualización, aplanado a lo que la UI necesita.
+ *
+ * electron-updater emite bastantes más eventos; acá se condensan en fases
+ * excluyentes para que el About y el aviso no tengan que rearmar la historia.
+ * `unsupported` cubre dev y el portable: ahí no hay nada que actualizar y la UI
+ * lo dice en vez de ofrecer un botón que no puede cumplir.
+ */
+export type UpdatePhase =
+  | 'idle'
+  | 'unsupported'
+  | 'checking'
+  | 'uptodate'
+  | 'downloading'
+  | 'ready'
+  | 'error'
+
+export interface UpdateState {
+  phase: UpdatePhase
+  /** La versión que viene, apenas se conoce. */
+  version?: string
+  /** 0–100 mientras baja. */
+  percent?: number
+  error?: string
+}
+
 /** Todo lo que el preload expone al renderer. */
 export interface NtxApi {
   profiles(): Promise<ShellProfile[]>
@@ -57,6 +83,18 @@ export interface NtxApi {
     toggleMaximize(): void
     close(): void
     onMaximizeChange(handler: (maximized: boolean) => void): () => void
+  }
+  updates: {
+    /** Pide un escaneo ya. El resultado vuelve por `onState`, como todos. */
+    check(): void
+    /** Cierra la app e instala lo que `ready` dejó descargado. */
+    install(): void
+    onState(handler: (state: UpdateState) => void): () => void
+  }
+  meta: {
+    version(): Promise<string>
+    /** Abre el repo en el navegador. La URL vive en el main, no viaja de acá. */
+    openRepo(): void
   }
   platform: {
     version: string

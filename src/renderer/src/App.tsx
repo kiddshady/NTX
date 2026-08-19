@@ -4,11 +4,13 @@ import { TabStrip } from './components/TabStrip'
 import { TerminalPane } from './components/TerminalPane'
 import { StatusBar } from './components/StatusBar'
 import { CommandPalette, type Command } from './components/CommandPalette'
+import { AboutModal } from './components/AboutModal'
+import { UpdateModal } from './components/UpdateModal'
 import { TooltipLayer } from './components/TooltipLayer'
 import { MAX_PANES, setHomeDir, type PaneState } from './lib/panes'
 import { forgetPane } from './lib/ptyBus'
 import { PALETTE, paneAccent } from './term/themes'
-import type { ShellProfile, SystemStats } from '../../shared/types'
+import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
 
 /** Lo mismo que --ntx-normal: el panel tiene que terminar de irse antes de desmontarse. */
 const PANE_EXIT_MS = 220
@@ -18,10 +20,23 @@ export function App(): JSX.Element {
   const [panes, setPanes] = useState<PaneState[]>([])
   const [focused, setFocused] = useState(0)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const [stats, setStats] = useState<SystemStats>({ cpu: 0, mem: 0 })
+  const [update, setUpdate] = useState<UpdateState>({ phase: 'idle' })
+  // La versión cuyo aviso ya se descartó: el modal insiste por versión nueva,
+  // nunca dos veces por la misma.
+  const [dismissedUpdate, setDismissedUpdate] = useState<string | null>(null)
 
   const palette = PALETTE
   const accentOf = useCallback((index: number) => paneAccent(palette, index), [palette])
+
+  // El aviso salta solo cuando la descarga terminó, y se calla si el About ya
+  // está mostrando lo mismo.
+  const updatePromptOpen =
+    update.phase === 'ready' &&
+    update.version != null &&
+    update.version !== dismissedUpdate &&
+    !aboutOpen
 
   // Espejos para los handlers de teclado, que se registran una sola vez y no
   // pueden depender del estado sin volver a suscribirse en cada tecla.
@@ -31,6 +46,18 @@ export function App(): JSX.Element {
   focusedRef.current = focused
   const paletteOpenRef = useRef(paletteOpen)
   paletteOpenRef.current = paletteOpen
+  const modalOpenRef = useRef(false)
+  modalOpenRef.current = aboutOpen || updatePromptOpen
+  const updateRef = useRef(update)
+  updateRef.current = update
+
+  // Abrir el About descarta el aviso pendiente: ahí adentro ya se ve el estado
+  // y el botón de reiniciar, mostrarlo dos veces sería perseguir.
+  const openAbout = useCallback((): void => {
+    setAboutOpen(true)
+    const current = updateRef.current
+    if (current.phase === 'ready' && current.version) setDismissedUpdate(current.version)
+  }, [])
 
   // --- Paneles --------------------------------------------------------------
 
@@ -111,6 +138,8 @@ export function App(): JSX.Element {
 
   useEffect(() => window.ntx.onStats(setStats), [])
 
+  useEffect(() => window.ntx.updates.onState(setUpdate), [])
+
   useEffect(
     () =>
       window.ntx.onCwd((paneId, cwd, branch) =>
@@ -146,6 +175,10 @@ export function App(): JSX.Element {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (!event.ctrlKey || event.altKey) return
       const key = event.key.toLowerCase()
+
+      // Con un modal abierto no sobrevive ninguno: su teclado es Escape y sus
+      // botones, y abrir la paleta ENCIMA de una pregunta pendiente la taparía.
+      if (modalOpenRef.current) return
 
       // Con la paleta abierta sólo sobrevive el toggle: el resto de los atajos
       // los maneja ella (flechas, enter, escape) y pisárselos desde acá sería
@@ -234,8 +267,16 @@ export function App(): JSX.Element {
       })
     })
 
+    list.push({
+      id: 'about',
+      label: 'About NTX',
+      icon: 'info',
+      desc: 'Version, updates and the repo',
+      run: openAbout
+    })
+
     return list
-  }, [profiles, panes, focused, palette, spawn, closePane])
+  }, [profiles, panes, focused, palette, spawn, closePane, openAbout])
 
   // --- Render ----------------------------------------------------------------
 
@@ -245,7 +286,7 @@ export function App(): JSX.Element {
           es una capa de efecto por encima como era el CRT, es el fondo mismo. */}
       <div className="ntx-bg" aria-hidden="true" />
 
-      <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
+      <Titlebar onOpenPalette={() => setPaletteOpen(true)} onOpenAbout={openAbout} />
 
       <TabStrip
         panes={panes}
@@ -265,7 +306,7 @@ export function App(): JSX.Element {
             accent={accentOf(index)}
             palette={palette}
             focused={index === focused}
-            keyboardFocus={index === focused && !paletteOpen}
+            keyboardFocus={index === focused && !paletteOpen && !aboutOpen && !updatePromptOpen}
             onFocus={() => setFocused(index)}
             onExit={(code) => onPaneExit(pane.id, code)}
             onCwd={(cwd) => onPaneCwd(pane.id, cwd)}
@@ -279,6 +320,15 @@ export function App(): JSX.Element {
         open={paletteOpen}
         commands={commands}
         onClose={() => setPaletteOpen(false)}
+      />
+
+      <AboutModal open={aboutOpen} update={update} onClose={() => setAboutOpen(false)} />
+
+      <UpdateModal
+        open={updatePromptOpen}
+        version={update.version}
+        onInstall={() => window.ntx.updates.install()}
+        onLater={() => setDismissedUpdate(update.version ?? null)}
       />
 
       <TooltipLayer />

@@ -1,16 +1,21 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, session, Tray } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, session, shell, Tray } from 'electron'
 import { createMainWindow } from './window.js'
 import { detectProfiles } from './profiles.js'
 import { PtyManager } from './pty.js'
 import { branchFor } from './git.js'
 import { readStats } from './stats.js'
 import { bringToFront, createTray, toggleWindow, HOTKEY } from './tray.js'
+import { createUpdater, type Updater } from './updater.js'
 import type { PaneSnapshot, ShellProfile, SpawnOptions } from '../shared/types.js'
+
+/** La casa del proyecto. Única URL que la app abre; el renderer no manda URLs. */
+const REPO_URL = 'https://github.com/kiddshady/NTX'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let profiles: ShellProfile[] = []
 let statsTimer: NodeJS.Timeout | null = null
+let updater: Updater | null = null
 
 /**
  * Cerrar la ventana manda NTX al tray; salir de verdad es explícito.
@@ -57,6 +62,8 @@ if (!app.requestSingleInstanceLock()) {
 
     statsTimer = setInterval(() => toRenderer('stats', readStats()), 1_000)
 
+    updater = createUpdater((state) => toRenderer('updates:state', state))
+
     tray = createTray({ getWindow: () => mainWindow, quit: quitForReal })
 
     // El atajo global. Si otra app ya se quedó con la tecla, register() devuelve
@@ -90,6 +97,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', () => {
     quitting = true
     if (statsTimer) clearInterval(statsTimer)
+    updater?.dispose()
     globalShortcut.unregister(HOTKEY)
     tray?.destroy()
     // Sin esto los shells quedan vivos como procesos huérfanos.
@@ -157,6 +165,11 @@ function registerIpc(): void {
     ptys.setCwd(paneId, cwd)
     void branchFor(cwd).then((branch) => toRenderer('pane:cwd', paneId, cwd, branch))
   })
+
+  ipcMain.on('updates:check', () => updater?.check())
+  ipcMain.on('updates:install', () => updater?.install())
+  ipcMain.handle('meta:version', () => app.getVersion())
+  ipcMain.on('meta:open-repo', () => void shell.openExternal(REPO_URL))
 
   ipcMain.on('window:minimize', () => mainWindow?.minimize())
   ipcMain.on('window:toggle-maximize', () => {

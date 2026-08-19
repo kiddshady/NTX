@@ -1,7 +1,7 @@
 {
   "name": "ntx",
   "productName": "NTX",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Multi-shell terminal for Windows — adaptive grid, achromatic glass, CMY accents",
   "main": "./out/main/index.js",
   "author": "Kidd Shady · Umbrovex Systems",
@@ -18,6 +18,7 @@
     "postinstall": "node scripts/postinstall.cjs"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "node-pty": "1.1.0"
   },
   "devDependencies": {

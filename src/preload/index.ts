@@ -1,7 +1,14 @@
 import { homedir } from 'node:os'
 import { contextBridge, ipcRenderer } from 'electron'
 import type { IpcRendererEvent } from 'electron'
-import type { NtxApi, PaneSnapshot, ShellProfile, SpawnOptions, SystemStats } from '../shared/types.js'
+import type {
+  NtxApi,
+  PaneSnapshot,
+  ShellProfile,
+  SpawnOptions,
+  SystemStats,
+  UpdateState
+} from '../shared/types.js'
 
 /**
  * Suscribe un handler a un canal y devuelve la función para desuscribirlo.
@@ -37,6 +44,17 @@ const api: NtxApi = {
     toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
     close: () => ipcRenderer.send('window:close'),
     onMaximizeChange: (handler) => subscribe<[boolean]>('window:maximize-change', handler)
+  },
+
+  updates: {
+    check: () => ipcRenderer.send('updates:check'),
+    install: () => ipcRenderer.send('updates:install'),
+    onState: (handler) => subscribe<[UpdateState]>('updates:state', handler)
+  },
+
+  meta: {
+    version: () => ipcRenderer.invoke('meta:version') as Promise<string>,
+    openRepo: () => ipcRenderer.send('meta:open-repo')
   },
 
   platform: {

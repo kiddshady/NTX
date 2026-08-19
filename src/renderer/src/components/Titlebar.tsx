@@ -3,9 +3,10 @@ import { Icon } from './Icon'
 
 interface TitlebarProps {
   onOpenPalette: () => void
+  onOpenAbout: () => void
 }
 
-export function Titlebar({ onOpenPalette }: TitlebarProps): JSX.Element {
+export function Titlebar({ onOpenPalette, onOpenAbout }: TitlebarProps): JSX.Element {
   const [maximized, setMaximized] = useState(false)
 
   // El main avisa cuando la ventana cambia de estado, y no sólo cuando el cambio
@@ -18,8 +19,15 @@ export function Titlebar({ onOpenPalette }: TitlebarProps): JSX.Element {
       {/* La paleta va del lado opuesto a los botones de ventana: pegada a ellos
           quedaría un click de distancia del de cerrar. */}
       <button className="ntx-chip" onClick={onOpenPalette} data-tip="Command palette">
+        <Icon name="list" size={12} strokeWidth={1.8} />
         <span>Palette</span>
         <span className="ntx-chip__key">Ctrl K</span>
+      </button>
+
+      {/* El about vive acá y no en la status bar: es chrome de la app, no estado
+          de la sesión. Y lejos del trío de ventana, como el chip. */}
+      <button className="ntx-winbtn" data-tip="About NTX" aria-label="About NTX" onClick={onOpenAbout}>
+        <Icon name="info" size={13} strokeWidth={1.6} />
       </button>
 
       {/* Los de ventana, a la derecha y en el orden de Windows: minimizar,

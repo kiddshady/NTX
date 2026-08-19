@@ -31,6 +31,8 @@ export type IconName =
   | 'search'
   | 'arrowUp'
   | 'arrowDown'
+  | 'list'
+  | 'info'
 
 /** Trazos de 24×24, todos con el mismo grosor para que convivan. */
 const PATHS: Record<IconName, JSX.Element> = {
@@ -123,6 +125,24 @@ const PATHS: Record<IconName, JSX.Element> = {
     <>
       <path d="M12 5v13" />
       <path d="M6.5 12.5 12 18.5l5.5-6" />
+    </>
+  ),
+  // La lista de comandos con sus bullets: el chip de la paleta. Le ganó al rayo,
+  // a la tecla y al slash porque es literalmente lo que la paleta ES.
+  list: (
+    <>
+      <circle cx="5" cy="7" r="1" fill="currentColor" stroke="none" />
+      <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="5" cy="17" r="1" fill="currentColor" stroke="none" />
+      <path d="M9.5 7H20M9.5 12H20M9.5 17H20" />
+    </>
+  ),
+  // El punto de la i va relleno: a 13px un circulito de trazo se empasta.
+  info: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 11.2v4.6" />
+      <circle cx="12" cy="7.9" r="1.15" fill="currentColor" stroke="none" />
     </>
   )
 }
