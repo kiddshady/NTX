@@ -65,9 +65,10 @@ export function App(): JSX.Element {
   modalOpenRef.current = aboutOpen || updatePromptOpen
   const updateRef = useRef(update)
   updateRef.current = update
-  // Los paneles cuyo shell está adentro del alternate screen (nano, vim, btop).
-  // Es un ref y no estado: lo consulta el handler de teclado, no el render.
-  const altScreens = useRef(new Set<string>())
+  // Los paneles con una app a pantalla completa en primer plano (nano, vim,
+  // btop). Es un ref y no estado: lo consulta el handler de teclado, no el
+  // render.
+  const fullscreenApps = useRef(new Set<string>())
 
   // --- Zoom -----------------------------------------------------------------
 
@@ -148,7 +149,7 @@ export function App(): JSX.Element {
 
     window.setTimeout(() => {
       forgetPane(paneId)
-      altScreens.current.delete(paneId)
+      fullscreenApps.current.delete(paneId)
       setPanes((previous) => {
         const next = previous.filter((pane) => pane.id !== paneId)
         setFocused((current) => Math.max(0, Math.min(current, next.length - 1)))
@@ -205,7 +206,7 @@ export function App(): JSX.Element {
     (paneId: string, code: number): void => {
       // Un shell muerto ya no está adentro de nada: si nano quedó a medio salir,
       // que no siga secuestrando el Ctrl+K del panel.
-      altScreens.current.delete(paneId)
+      fullscreenApps.current.delete(paneId)
       // Salida limpia (un `exit` del usuario) = cerramos el panel. Salida con
       // error = lo dejamos abierto, porque el motivo está escrito ahí adentro y
       // cerrarlo se lo lleva puesto.
@@ -264,11 +265,11 @@ export function App(): JSX.Element {
       }
 
       if (key === 'k') {
-        // Adentro del alternate screen, Ctrl+K es del programa que lo abrió: en
-        // nano corta la línea, y robárselo era abrir la paleta a mitad de un
+        // Con una app a pantalla completa en el panel, Ctrl+K es del programa:
+        // en nano corta la línea, y robárselo era abrir la paleta a mitad de un
         // editor. La paleta sigue a un click del chip mientras tanto.
         const pane = panesRef.current[focusedRef.current]
-        if (pane && altScreens.current.has(pane.id)) return
+        if (pane && fullscreenApps.current.has(pane.id)) return
 
         event.preventDefault()
         setPaletteOpen((open) => !open)
@@ -392,9 +393,9 @@ export function App(): JSX.Element {
             onFocus={() => setFocused(index)}
             onExit={(code) => onPaneExit(pane.id, code)}
             onCwd={(cwd) => onPaneCwd(pane.id, cwd)}
-            onAltScreen={(active) => {
-              if (active) altScreens.current.add(pane.id)
-              else altScreens.current.delete(pane.id)
+            onFullscreenApp={(active) => {
+              if (active) fullscreenApps.current.add(pane.id)
+              else fullscreenApps.current.delete(pane.id)
             }}
           />
         ))}

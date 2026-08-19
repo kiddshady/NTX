@@ -26,8 +26,36 @@ __ntx_osc7() {
   printf '\033]7;file:///%s\007' "$path"
 }
 
+# ---------------------------------------------------------------------------
+# Integración de comandos (OSC 7771): quién corre en primer plano
+# ---------------------------------------------------------------------------
+# NTX cede atajos (hoy: Ctrl+K) cuando lo que corre es una TUI. En bash-land el
+# alternate screen ya lo delata solo, pero esta señal explícita cubre lo que no
+# usa smcup — y en PowerShell es la única vía, así que el protocolo es el mismo
+# en todos los shells: "run;<línea>" al ejecutar, "prompt" al volver.
+
+__ntx_at_prompt=1
+
+__ntx_preexec() {
+  # El trap DEBUG dispara por CADA comando simple, incluidos los del propio
+  # PROMPT_COMMAND: la bandera hace que sólo el primero tras el prompt cuente.
+  [ -n "$__ntx_at_prompt" ] || return 0
+  __ntx_at_prompt=
+  # Sin saltos de línea en el payload: cortarían la secuencia en el parser.
+  printf '\033]7771;run;%s\007' "${BASH_COMMAND//[$'\n\r']/ }"
+}
+
+__ntx_prompt_mark() {
+  __ntx_at_prompt=1
+  printf '\033]7771;prompt\007'
+}
+
+# Sólo si el DEBUG trap está libre: si el usuario ya tiene uno (bash-preexec),
+# pisárselo rompería SU integración, y la nuestra pierde por respeto.
+[ -z "$(trap -p DEBUG)" ] && trap '__ntx_preexec' DEBUG
+
 case "$PROMPT_COMMAND" in
   *__ntx_osc7*) ;;                                  # ya está: no duplicar
-  '') PROMPT_COMMAND='__ntx_osc7' ;;
-  *)  PROMPT_COMMAND="__ntx_osc7; $PROMPT_COMMAND" ;;
+  '') PROMPT_COMMAND='__ntx_osc7; __ntx_prompt_mark' ;;
+  *)  PROMPT_COMMAND="__ntx_osc7; __ntx_prompt_mark; $PROMPT_COMMAND" ;;
 esac

@@ -8,6 +8,28 @@ import { attachPane } from '../lib/ptyBus'
 import { xtermTheme, type Palette } from '../term/themes'
 import { paneTitle, type PaneState } from '../lib/panes'
 
+/** Las TUIs conocidas: mientras una corre en primer plano, Ctrl+K es de ella. */
+const TUI_COMMANDS = new Set([
+  'nano', 'pico', 'vim', 'vi', 'nvim', 'micro', 'emacs', 'helix', 'hx',
+  'less', 'more', 'man', 'htop', 'btop', 'top', 'tmux', 'screen',
+  'fzf', 'lazygit', 'gitui', 'tig', 'ranger', 'mc', 'yazi', 'ssh', 'mosh', 'claude'
+])
+
+/**
+ * ¿La línea lanza una TUI? Busca la primera palabra que parece el programa —
+ * salteando prefijos de transporte y flags— y la normaliza: `sudo nano x`,
+ * `wsl vim` y `& 'C:\tools\nano.exe'` cuentan igual que `nano`.
+ */
+function isTuiCommand(line: string): boolean {
+  for (const word of line.trim().toLowerCase().split(/\s+/)) {
+    if (word === 'sudo' || word === 'wsl' || word === 'winpty' || word === '&') continue
+    if (word.startsWith('-')) continue
+    const base = word.replace(/^["']+|["']+$/g, '').split(/[\\/]/).pop() ?? ''
+    return TUI_COMMANDS.has(base.replace(/\.exe$/, ''))
+  }
+  return false
+}
+
 interface TerminalPaneProps {
   pane: PaneState
   index: number
@@ -23,8 +45,9 @@ interface TerminalPaneProps {
   onFocus: () => void
   onExit: (code: number) => void
   onCwd: (cwd: string) => void
-  /** Avisa cuando el shell entra o sale del alternate screen (nano, vim, btop). */
-  onAltScreen: (active: boolean) => void
+  /** Avisa cuando una app a pantalla completa (nano, vim, btop) toma o suelta
+   *  el panel, se entere por donde se entere. */
+  onFullscreenApp: (active: boolean) => void
 }
 
 export function TerminalPane({
@@ -38,7 +61,7 @@ export function TerminalPane({
   onFocus,
   onExit,
   onCwd,
-  onAltScreen
+  onFullscreenApp
 }: TerminalPaneProps): JSX.Element {
   const host = useRef<HTMLDivElement>(null)
   const term = useRef<Terminal | null>(null)
@@ -48,8 +71,8 @@ export function TerminalPane({
   // Los callbacks van por ref para que el efecto de montaje no dependa de ellos:
   // si dependiera, cada render de App destruiría y recrearía la terminal entera,
   // scrollback incluido.
-  const callbacks = useRef({ onExit, onCwd, onAltScreen })
-  callbacks.current = { onExit, onCwd, onAltScreen }
+  const callbacks = useRef({ onExit, onCwd, onFullscreenApp })
+  callbacks.current = { onExit, onCwd, onFullscreenApp }
 
   // También por ref: es el valor INICIAL de la terminal. Los cambios en vivo los
   // aplica su propio efecto más abajo, sin recrear nada.
@@ -152,11 +175,34 @@ export function TerminalPane({
     terminal.onData((data) => window.ntx.write(paneId, data))
     terminal.onResize(({ cols, rows }) => window.ntx.resize(paneId, cols, rows))
 
-    // nano, vim, btop y compañía corren en el alternate buffer. App lo necesita
-    // saber para dejarles los atajos que son de ellos (hoy: Ctrl+K).
-    terminal.buffer.onBufferChange((buffer) =>
-      callbacks.current.onAltScreen(buffer.type === 'alternate')
-    )
+    // ¿Hay una app a pantalla completa en el panel? Dos señales, OR-eadas:
+    //
+    //   · El alternate buffer: la vía VT clásica. Alcanza para todo lo que corre
+    //     en WSL y Git Bash — su nano manda smcup y ConPTY lo reenvía.
+    //   · La integración de shell (OSC 7771, de los ntx-init): imprescindible
+    //     para las TUIs win32. El nano de Windows en PowerShell pinta por
+    //     Console API y ConPTY NO traduce eso a ?1049h, así que el buffer jamás
+    //     cambia. Medido con sonda (19 ago 2026): pwsh+nano = cero 1049h en el
+    //     stream; el mismo nano en wsl y gitbash sí lo manda.
+    //
+    // App usa el aviso para cederle Ctrl+K al programa en vez de abrir la paleta.
+    let altBuffer = false
+    let tuiRunning = false
+    const reportFullscreen = (): void => {
+      callbacks.current.onFullscreenApp(altBuffer || tuiRunning)
+    }
+
+    terminal.buffer.onBufferChange((buffer) => {
+      altBuffer = buffer.type === 'alternate'
+      reportFullscreen()
+    })
+
+    terminal.parser.registerOscHandler(7771, (payload) => {
+      if (payload === 'prompt') tuiRunning = false
+      else if (payload.startsWith('run;')) tuiRunning = isTuiCommand(payload.slice(4))
+      reportFullscreen()
+      return true
+    })
 
     const detach = attachPane(
       paneId,

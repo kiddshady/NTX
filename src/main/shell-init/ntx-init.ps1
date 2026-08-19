@@ -64,8 +64,37 @@ function global:prompt {
             # ESC ] 7 ; file:///<path> BEL
             [Console]::Write([char]27 + ']7;file:///' + $uri + [char]7)
         }
+        # "Volvimos al prompt": lo que estuviera corriendo, ya terminó (el par de
+        # este aviso sale del PSConsoleHostReadLine de abajo).
+        [Console]::Write([char]27 + ']7771;prompt' + [char]7)
     } catch { }
 
     if ($global:__NtxInnerPrompt) { & $global:__NtxInnerPrompt }
     else { "PS $($ExecutionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) " }
+}
+
+# ---------------------------------------------------------------------------
+# 3. Integración de comandos (OSC 7771): quién corre en primer plano
+# ---------------------------------------------------------------------------
+# NTX cede atajos (hoy: Ctrl+K) cuando lo que corre es una TUI. En bash-land el
+# alternate screen lo delata solo, pero una TUI win32 —el nano de Windows, por
+# ejemplo— pinta por Console API y ConPTY NO traduce eso a ?1049h: sin este
+# aviso, NTX no tiene forma de enterarse de que nano está en pantalla.
+#
+# PSConsoleHostReadLine es el hook oficial: el host la llama para leer CADA
+# línea interactiva. Leemos con PSReadLine como siempre y, justo antes de
+# devolver la línea (o sea, justo antes de que se ejecute), la anunciamos.
+function global:PSConsoleHostReadLine {
+    $line = try {
+        [Microsoft.PowerShell.PSConsoleReadLine]::ReadLine($Host.Runspace, $ExecutionContext)
+    } catch {
+        # Un host sin PSReadLine: lectura pelada antes que un shell roto.
+        [Console]::In.ReadLine()
+    }
+    try {
+        # Sin caracteres de control en el payload: cortarían la secuencia.
+        $clean = $line -replace '[\x00-\x1f]', ' '
+        [Console]::Write([char]27 + ']7771;run;' + $clean + [char]7)
+    } catch { }
+    return $line
 }
