@@ -4,6 +4,7 @@ import type { IpcRendererEvent } from 'electron'
 import type {
   NtxApi,
   PaneSnapshot,
+  SavedSession,
   ShellProfile,
   SpawnOptions,
   SystemStats,
@@ -38,6 +39,11 @@ const api: NtxApi = {
   onCwd: (handler) => subscribe<[string, string, string | null]>('pane:cwd', handler),
   onStats: (handler) => subscribe<[SystemStats]>('stats', handler),
   reportCwd: (paneId, cwd) => ipcRenderer.send('pane:report-cwd', paneId, cwd),
+
+  session: {
+    load: () => ipcRenderer.invoke('session:load') as Promise<SavedSession | null>,
+    save: (session: SavedSession) => ipcRenderer.send('session:save', session)
+  },
 
   window: {
     minimize: () => ipcRenderer.send('window:minimize'),

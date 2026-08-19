@@ -26,6 +26,10 @@ vidrio oscuro. Electron + xterm.js + node-pty.
   shell activa y su branch de git.
 - **Vive en el tray.** Cerrar esconde en vez de matar, y `Ctrl Alt X` la trae de
   vuelta al instante con los shells intactos.
+- **La escena sobrevive al reinicio.** NTX recuerda qué paneles había, con qué
+  shell y paradas en qué carpeta, y al arrancar vuelve a montar exactamente ese
+  grid — foco incluido. Lo único que no vuelve es el contenido: esos procesos
+  murieron con el reboot.
 - **Se actualiza sola.** Escanea los releases de este repo, descarga en silencio
   y avisa recién cuando sólo falta reiniciar. La versión y el escaneo manual
   viven en el About (el ícono de info de la titlebar).
@@ -86,6 +90,7 @@ src/
     profiles.ts          Detección de shells instaladas
     git.ts               Branch del cwd, cacheado
     stats.ts             CPU y memoria del sistema
+    session.ts           La escena que se recuerda entre arranques
     updater.ts           Auto-update desde los releases de GitHub
     shell-init/          Lo que se le inyecta a cada shell
       ntx-init.ps1       UTF-8 + OSC 7 para PowerShell

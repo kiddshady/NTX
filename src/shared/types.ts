@@ -39,6 +39,25 @@ export interface SystemStats {
   mem: number
 }
 
+/** Un panel tal como se recuerda entre arranques: qué shell y dónde estaba. */
+export interface SavedPane {
+  profileId: string
+  cwd: string
+}
+
+/**
+ * La escena que se guarda para volver a montarla en el próximo arranque.
+ *
+ * Es sólo la forma del grid — perfiles, directorios y foco. El CONTENIDO de las
+ * shells no se puede resucitar (los procesos murieron con el reboot), pero
+ * arrancar con tus paneles parados en sus carpetas es casi todo el valor.
+ */
+export interface SavedSession {
+  panes: SavedPane[]
+  /** Índice del panel que tenía el foco. */
+  focused: number
+}
+
 /**
  * El ciclo de vida de una actualización, aplanado a lo que la UI necesita.
  *
@@ -78,6 +97,12 @@ export interface NtxApi {
   onStats(handler: (stats: SystemStats) => void): () => void
   /** El renderer avisa el cwd que vio por OSC 7; main resuelve el branch. */
   reportCwd(paneId: string, cwd: string): void
+  session: {
+    /** La escena del arranque anterior, o null si no hay nada que restaurar. */
+    load(): Promise<SavedSession | null>
+    /** Persiste la escena actual. Escribe en main, atómico y sin drama. */
+    save(session: SavedSession): void
+  }
   window: {
     minimize(): void
     toggleMaximize(): void

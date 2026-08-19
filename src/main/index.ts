@@ -6,7 +6,8 @@ import { branchFor } from './git.js'
 import { readStats } from './stats.js'
 import { bringToFront, createTray, toggleWindow, HOTKEY } from './tray.js'
 import { createUpdater, type Updater } from './updater.js'
-import type { PaneSnapshot, ShellProfile, SpawnOptions } from '../shared/types.js'
+import { loadSession, saveSession } from './session.js'
+import type { PaneSnapshot, SavedSession, ShellProfile, SpawnOptions } from '../shared/types.js'
 
 /** La casa del proyecto. Única URL que la app abre; el renderer no manda URLs. */
 const REPO_URL = 'https://github.com/kiddshady/NTX'
@@ -165,6 +166,11 @@ function registerIpc(): void {
     ptys.setCwd(paneId, cwd)
     void branchFor(cwd).then((branch) => toRenderer('pane:cwd', paneId, cwd, branch))
   })
+
+  // La escena entre arranques: el renderer la manda cuando cambia y la pide al
+  // arrancar. Los shells nuevos los abre él por el camino de siempre (pty:spawn).
+  ipcMain.handle('session:load', () => loadSession())
+  ipcMain.on('session:save', (_e, session: SavedSession) => saveSession(session))
 
   ipcMain.on('updates:check', () => updater?.check())
   ipcMain.on('updates:install', () => updater?.install())

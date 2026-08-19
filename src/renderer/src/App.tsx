@@ -170,24 +170,70 @@ export function App(): JSX.Element {
     }, PANE_EXIT_MS)
   }, [])
 
-  // Arranque: detectamos shells y abrimos una sola. El grid crece cuando el
-  // usuario quiere, no de prepo.
+  // Arranque: detectamos shells y remontamos la escena del arranque anterior —
+  // mismos paneles, mismos perfiles, mismas carpetas. El contenido no vuelve
+  // (esos procesos ya no existen), pero el grid sí. Sin escena guardada se abre
+  // una sola shell: el grid crece cuando el usuario quiere, no de prepo.
   //
   // El guard NO es paranoia: en desarrollo StrictMode monta, desmonta y vuelve a
   // montar para exponer efectos sin cleanup, y sin esto arrancabas con dos
   // shells. Un pty no es un suscriptor que se pueda deshacer y rehacer gratis —
   // del otro lado hay un proceso de verdad.
   const booted = useRef(false)
+  // Recién cuando la escena terminó de montarse se permite guardar: si no, el
+  // estado vacío del primer render pisaría lo guardado antes de restaurarlo.
+  const restored = useRef(false)
   useEffect(() => {
     if (booted.current) return
     booted.current = true
 
     setHomeDir(window.ntx.platform.home)
-    void window.ntx.profiles().then((available) => {
-      setProfiles(available)
-      if (available[0]) void spawn(available[0].id)
-    })
+    void Promise.all([window.ntx.profiles(), window.ntx.session.load()]).then(
+      async ([available, saved]) => {
+        setProfiles(available)
+        if (!available[0]) return
+
+        // Un perfil guardado que ya no está instalado cae al default: vuelve la
+        // FORMA del grid completa, que es lo que uno recuerda de su sesión.
+        const scene = (saved?.panes ?? []).slice(0, MAX_PANES).map((pane) => ({
+          profileId: available.some((profile) => profile.id === pane.profileId)
+            ? pane.profileId
+            : available[0]!.id,
+          cwd: pane.cwd
+        }))
+
+        if (scene.length === 0) {
+          await spawn(available[0].id)
+        } else {
+          // En serie a propósito: el acento y el número de cada panel salen de
+          // su posición, y spawns en paralelo llegarían en cualquier orden.
+          for (const pane of scene) await spawn(pane.profileId, pane.cwd)
+          // Un tick de respiro antes de aplicar el foco guardado: cada spawn
+          // enfoca su panel DESDE ADENTRO del updater de setPanes, así que ese
+          // setFocused se encola después de cualquiera hecho acá en línea — y
+          // el del último spawn pisaría a éste.
+          await new Promise((resolve) => setTimeout(resolve, 0))
+          setFocused(Math.max(0, Math.min(saved?.focused ?? 0, scene.length - 1)))
+        }
+        restored.current = true
+      }
+    )
   }, [spawn])
+
+  // La escena se guarda sola en cada cambio — paneles, carpetas, foco — con un
+  // debounce corto: un `cd` no merece más de una escritura.
+  useEffect(() => {
+    if (!restored.current) return
+    const timer = window.setTimeout(() => {
+      window.ntx.session.save({
+        panes: panes
+          .filter((pane) => !pane.closing)
+          .map((pane) => ({ profileId: pane.profileId, cwd: pane.cwd })),
+        focused
+      })
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [panes, focused])
 
   // --- Eventos del main ------------------------------------------------------
 
