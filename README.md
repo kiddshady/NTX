@@ -47,8 +47,7 @@ instalador — ese no se auto-actualiza.
 
 Los atajos de la app van con `Shift` justamente para no pisarle nada al shell:
 `Ctrl+T` y `Ctrl+W` son de PSReadLine, y `Ctrl+K` es kill-line en nano, bash y
-el propio prompt — por eso la paleta NO lo usa. Y si una app a pantalla completa
-llegara a querer un combo de la app, gana la app de pantalla completa.
+el propio prompt — por eso la paleta NO lo usa.
 
 ## Arrancar
 

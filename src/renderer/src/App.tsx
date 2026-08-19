@@ -65,10 +65,6 @@ export function App(): JSX.Element {
   modalOpenRef.current = aboutOpen || updatePromptOpen
   const updateRef = useRef(update)
   updateRef.current = update
-  // Los paneles con una app a pantalla completa en primer plano (nano, vim,
-  // btop). Es un ref y no estado: lo consulta el handler de teclado, no el
-  // render.
-  const fullscreenApps = useRef(new Set<string>())
 
   // --- Zoom -----------------------------------------------------------------
 
@@ -149,7 +145,6 @@ export function App(): JSX.Element {
 
     window.setTimeout(() => {
       forgetPane(paneId)
-      fullscreenApps.current.delete(paneId)
       setPanes((previous) => {
         const next = previous.filter((pane) => pane.id !== paneId)
         setFocused((current) => Math.max(0, Math.min(current, next.length - 1)))
@@ -204,9 +199,6 @@ export function App(): JSX.Element {
 
   const onPaneExit = useCallback(
     (paneId: string, code: number): void => {
-      // Un shell muerto ya no está adentro de nada: si nano quedó a medio salir,
-      // que no siga secuestrando los atajos del panel.
-      fullscreenApps.current.delete(paneId)
       // Salida limpia (un `exit` del usuario) = cerramos el panel. Salida con
       // error = lo dejamos abierto, porque el motivo está escrito ahí adentro y
       // cerrarlo se lo lleva puesto.
@@ -262,11 +254,12 @@ export function App(): JSX.Element {
           const pane = panesRef.current[focusedRef.current]
           if (pane) closePane(pane.id)
         } else if (key === 'k') {
-          // Aun con Shift, una app a pantalla completa tiene prioridad: si una
-          // TUI llegara a usar el combo, es de ella.
-          const pane = panesRef.current[focusedRef.current]
-          if (pane && fullscreenApps.current.has(pane.id)) return
-
+          // Sin condiciones: el atajo de la paleta abre SIEMPRE. Tuvo un tiempo
+          // una cesión "por si una TUI quería el combo", detectada por señales
+          // del shell — y la detección falló para los dos lados: no veía al
+          // nano de Windows y en cambio se comía el atajo con Claude Code en
+          // pantalla. Un estado inferido no puede tener el poder de matar EL
+          // atajo de la app; determinismo mata heurística.
           event.preventDefault()
           setPaletteOpen((open) => !open)
         }
@@ -304,7 +297,7 @@ export function App(): JSX.Element {
         // categoría que no existe — abrir WSL es abrir una shell, como el resto.
         icon: 'shell',
         desc: full ? `The grid already holds ${MAX_PANES} shells` : `Opens a pane running ${profile.label}`,
-        hint: full ? 'full' : undefined,
+        hint: full ? 'Full' : undefined,
         run: () => {
           if (!full) void spawn(profile.id)
         }
@@ -317,7 +310,7 @@ export function App(): JSX.Element {
         label: 'Close the active shell',
         icon: 'close',
         desc: `Ends the ${activePane.profileLabel} process`,
-        hint: 'ctrl shift w',
+        hint: 'Ctrl Shift W',
         run: () => closePane(activePane.id)
       })
     }
@@ -329,7 +322,7 @@ export function App(): JSX.Element {
         label: `Go to shell ${index + 1} · ${pane.profileLabel}`,
         icon: 'caret',
         desc: pane.cwd ?? 'Moves focus to that pane',
-        hint: `ctrl ${index + 1}`,
+        hint: `Ctrl ${index + 1}`,
         run: () => setFocused(index)
       })
     })
@@ -341,7 +334,7 @@ export function App(): JSX.Element {
         label: `Reset zoom · now at ${fontSize}px`,
         icon: 'search',
         desc: 'Back to 12.5px — Ctrl +/− and Ctrl+wheel zoom',
-        hint: 'ctrl 0',
+        hint: 'Ctrl 0',
         run: () => setFontSize(FONT_SIZE_DEFAULT)
       })
     }
@@ -390,10 +383,6 @@ export function App(): JSX.Element {
             onFocus={() => setFocused(index)}
             onExit={(code) => onPaneExit(pane.id, code)}
             onCwd={(cwd) => onPaneCwd(pane.id, cwd)}
-            onFullscreenApp={(active) => {
-              if (active) fullscreenApps.current.add(pane.id)
-              else fullscreenApps.current.delete(pane.id)
-            }}
           />
         ))}
       </main>
