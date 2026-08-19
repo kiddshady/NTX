@@ -59,7 +59,13 @@ if (!app.requestSingleInstanceLock()) {
     // Sin esto, los toasts de Windows salen a nombre de "electron.app.NTX" (o
     // no salen): el AppUserModelID tiene que coincidir con el del shortcut que
     // registra el instalador NSIS, que electron-builder deriva del appId.
-    app.setAppUserModelId('com.umbrovex.ntx')
+    //
+    // SÓLO empaquetada. En dev el proceso es electron.exe, y si ESE declara el
+    // AUMID de la app, Windows le aprende el ícono del átomo de Electron a la
+    // identidad de NTX — y la taskbar de la app instalada amanece con el ícono
+    // equivocado (pasó de verdad en la 0.8.0). En dev los toasts salen a nombre
+    // de Electron, que es exactamente lo que son.
+    if (app.isPackaged) app.setAppUserModelId('com.umbrovex.ntx')
 
     hardenContentSecurityPolicy()
     profiles = detectProfiles()
