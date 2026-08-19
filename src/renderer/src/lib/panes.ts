@@ -10,6 +10,9 @@ export interface PaneState {
   pid: number
   /** Está corriendo su animación de salida: sigue en el DOM pero ya se va. */
   closing: boolean
+  /** Un comando largo terminó acá mientras nadie miraba: la tab late con su
+   *  acento hasta que el panel reciba foco. */
+  notify: boolean
 }
 
 /** Cuántas shells entran en el grid. Más de cuatro dejan de leerse. */
@@ -54,4 +57,13 @@ export function paneTabLabel(pane: PaneState): string {
   // de usuario, que no le sirve a nadie.
   const where = shortPath(pane.cwd, 1)
   return where ? `${shell} · ${where.replace(/^…\\/, '')}` : pane.profileLabel
+}
+
+/** "6s", "1m 14s", "1h 03m" — para el cuerpo de una notificación. */
+export function formatDuration(ms: number): string {
+  const total = Math.round(ms / 1000)
+  if (total < 60) return `${total}s`
+  const minutes = Math.floor(total / 60)
+  if (minutes < 60) return `${minutes}m ${String(total % 60).padStart(2, '0')}s`
+  return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`
 }

@@ -311,6 +311,26 @@ button {
 .ntx-tab[data-active='false'] .ntx-tab__mark {
   opacity: 0.45;
 }
+/* Un comando largo terminó ahí mientras mirabas otra cosa: el punto late con su
+   acento, más ancho de glow que el pulso de la status bar porque compite con
+   una fila de tabs y no con el vacío. Se apaga solo al enfocar el panel — la
+   transición de opacity ya existente suaviza la salida de la animación. */
+@keyframes ntx-tab-notify {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow:
+      0 0 6px var(--mark),
+      0 0 14px color-mix(in srgb, var(--mark) 55%, transparent);
+  }
+  50% {
+    opacity: 0.3;
+    box-shadow: 0 0 3px color-mix(in srgb, var(--mark) 25%, transparent);
+  }
+}
+.ntx-tab__mark[data-notify='true'] {
+  animation: ntx-tab-notify 1.5s var(--ntx-ease) infinite;
+}
 .ntx-tab__close {
   display: inline-flex;
   flex-shrink: 0;

@@ -30,6 +30,11 @@ vidrio oscuro. Electron + xterm.js + node-pty.
   shell y paradas en qué carpeta, y al arrancar vuelve a montar exactamente ese
   grid — foco incluido. Lo único que no vuelve es el contenido: esos procesos
   murieron con el reboot.
+- **Avisa cuando un comando largo termina.** Si tardó más de seis segundos y no
+  estabas mirando ese panel, su tab late con su acento hasta que vuelvas; y si
+  la ventana está en el tray o detrás de otra, llega además una notificación de
+  Windows —silenciosa— cuyo click te deja parado en ese panel. Funciona en
+  PowerShell, Git Bash y WSL vía OSC 133; cmd no tiene dónde colgar la marca.
 - **Se actualiza sola.** Escanea los releases de este repo, descarga en silencio
   y avisa recién cuando sólo falta reiniciar. La versión y el escaneo manual
   viven en el About (el ícono de info de la titlebar).
@@ -93,8 +98,8 @@ src/
     session.ts           La escena que se recuerda entre arranques
     updater.ts           Auto-update desde los releases de GitHub
     shell-init/          Lo que se le inyecta a cada shell
-      ntx-init.ps1       UTF-8 + OSC 7 para PowerShell
-      ntx-init.sh        OSC 7 para bash (Git Bash y WSL)
+      ntx-init.ps1       UTF-8 + OSC 7 y 133 para PowerShell
+      ntx-init.sh        OSC 7 y 133 para bash (Git Bash y WSL)
   preload/               El puente al renderer, con contextIsolation
   shared/types.ts        Los tipos que cruzan los tres lados
   renderer/src/

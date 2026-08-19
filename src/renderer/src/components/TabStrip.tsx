@@ -30,7 +30,11 @@ export function TabStrip({
           data-active={index === focusedIndex}
           onClick={() => onFocus(index)}
         >
-          <span className="ntx-tab__mark" style={{ ['--mark' as string]: accentOf(index) }} />
+          <span
+            className="ntx-tab__mark"
+            data-notify={pane.notify}
+            style={{ ['--mark' as string]: accentOf(index) }}
+          />
           <span className="ntx-tab__label">{paneTabLabel(pane)}</span>
           <span
             className="ntx-tab__close"

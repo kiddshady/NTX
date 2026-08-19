@@ -56,6 +56,11 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.whenReady().then(() => {
+    // Sin esto, los toasts de Windows salen a nombre de "electron.app.NTX" (o
+    // no salen): el AppUserModelID tiene que coincidir con el del shortcut que
+    // registra el instalador NSIS, que electron-builder deriva del appId.
+    app.setAppUserModelId('com.umbrovex.ntx')
+
     hardenContentSecurityPolicy()
     profiles = detectProfiles()
     registerIpc()
@@ -176,6 +181,11 @@ function registerIpc(): void {
   ipcMain.on('updates:install', () => updater?.install())
   ipcMain.handle('meta:version', () => app.getVersion())
   ipcMain.on('meta:open-repo', () => void shell.openExternal(REPO_URL))
+
+  // El click de una notificación: mostrar y enfocar aunque viva en el tray.
+  ipcMain.on('window:attention', () => {
+    if (mainWindow) bringToFront(mainWindow)
+  })
 
   ipcMain.on('window:minimize', () => mainWindow?.minimize())
   ipcMain.on('window:toggle-maximize', () => {

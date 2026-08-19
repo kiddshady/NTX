@@ -107,6 +107,9 @@ export interface NtxApi {
     minimize(): void
     toggleMaximize(): void
     close(): void
+    /** Trae la ventana al frente aunque viva escondida en el tray. Lo usa el
+     *  click de una notificación: "llevame a ese panel". */
+    attention(): void
     onMaximizeChange(handler: (maximized: boolean) => void): () => void
   }
   updates: {

@@ -31,6 +31,8 @@ interface TerminalPaneProps {
   onFocus: () => void
   onExit: (code: number) => void
   onCwd: (cwd: string) => void
+  /** OSC 133: un comando arrancó (C) o terminó (D, con su exit code). */
+  onCommand: (running: boolean, exitCode: number) => void
 }
 
 export function TerminalPane({
@@ -46,7 +48,8 @@ export function TerminalPane({
   onSearchClose,
   onFocus,
   onExit,
-  onCwd
+  onCwd,
+  onCommand
 }: TerminalPaneProps): JSX.Element {
   const host = useRef<HTMLDivElement>(null)
   const term = useRef<Terminal | null>(null)
@@ -58,8 +61,8 @@ export function TerminalPane({
   // Los callbacks van por ref para que el efecto de montaje no dependa de ellos:
   // si dependiera, cada render de App destruiría y recrearía la terminal entera,
   // scrollback incluido.
-  const callbacks = useRef({ onExit, onCwd })
-  callbacks.current = { onExit, onCwd }
+  const callbacks = useRef({ onExit, onCwd, onCommand })
+  callbacks.current = { onExit, onCwd, onCommand }
 
   // También por ref: es el valor INICIAL de la terminal. Los cambios en vivo los
   // aplica su propio efecto más abajo, sin recrear nada.
@@ -133,6 +136,21 @@ export function TerminalPane({
           // Un payload mal escapado no puede tumbar el parser de la terminal.
         }
       }
+      return true
+    })
+
+    // OSC 133: los init de shell marcan C al arrancar un comando y D;<code> al
+    // terminar. Un D suelto (arranque, Enter en vacío) lo filtra App, que es
+    // quien lleva la cuenta de qué panel tiene algo corriendo desde cuándo.
+    terminal.parser.registerOscHandler(133, (payload) => {
+      if (payload === 'C') {
+        callbacks.current.onCommand(true, 0)
+      } else if (payload === 'D' || payload.startsWith('D;')) {
+        const code = Number(payload.slice(2))
+        callbacks.current.onCommand(false, Number.isFinite(code) ? code : 0)
+      }
+      // Las demás marcas (A, B) no se usan, pero igual son nuestras: true evita
+      // que xterm las siga ofreciendo a otros handlers.
       return true
     })
 

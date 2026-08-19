@@ -49,6 +49,7 @@ const api: NtxApi = {
     minimize: () => ipcRenderer.send('window:minimize'),
     toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
     close: () => ipcRenderer.send('window:close'),
+    attention: () => ipcRenderer.send('window:attention'),
     onMaximizeChange: (handler) => subscribe<[boolean]>('window:maximize-change', handler)
   },
 

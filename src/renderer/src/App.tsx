@@ -7,13 +7,16 @@ import { CommandPalette, type Command } from './components/CommandPalette'
 import { AboutModal } from './components/AboutModal'
 import { UpdateModal } from './components/UpdateModal'
 import { TooltipLayer } from './components/TooltipLayer'
-import { MAX_PANES, setHomeDir, type PaneState } from './lib/panes'
+import { MAX_PANES, formatDuration, setHomeDir, shortPath, type PaneState } from './lib/panes'
 import { forgetPane } from './lib/ptyBus'
 import { PALETTE, paneAccent } from './term/themes'
 import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
 
 /** Lo mismo que --ntx-normal: el panel tiene que terminar de irse antes de desmontarse. */
 const PANE_EXIT_MS = 220
+
+/** Un comando que tardó menos que esto no merece aviso: lo viste terminar. */
+const NOTIFY_MIN_MS = 6_000
 
 /** El tamaño de siempre; Ctrl 0 vuelve acá. */
 const FONT_SIZE_DEFAULT = 12.5
@@ -68,6 +71,10 @@ export function App(): JSX.Element {
   modalOpenRef.current = aboutOpen || updatePromptOpen
   const updateRef = useRef(update)
   updateRef.current = update
+
+  // Qué panel tiene algo corriendo desde cuándo (OSC 133). Va en ref: cada
+  // marca del shell no puede costar un render.
+  const commandStart = useRef(new Map<string, number>())
 
   // --- Zoom -----------------------------------------------------------------
 
@@ -144,7 +151,8 @@ export function App(): JSX.Element {
           cwd: snapshot.cwd,
           branch: snapshot.branch,
           pid: snapshot.pid,
-          closing: false
+          closing: false,
+          notify: false
         }
       ]
     })
@@ -154,8 +162,10 @@ export function App(): JSX.Element {
     // Matamos el shell ya, pero el panel se va con su animación: sacarlo del DOM
     // en el mismo frame se siente como un crash, no como un cierre.
     window.ntx.kill(paneId)
-    // Si la búsqueda vivía en este panel, se va con él.
+    // Si la búsqueda vivía en este panel, se va con él. Y su comando en vuelo
+    // ya no le debe aviso a nadie.
     setSearch((previous) => (previous?.paneId === paneId ? null : previous))
+    commandStart.current.delete(paneId)
     setPanes((previous) =>
       previous.map((pane) => (pane.id === paneId ? { ...pane, closing: true } : pane))
     )
@@ -269,6 +279,68 @@ export function App(): JSX.Element {
     },
     [closePane]
   )
+
+  // --- Aviso de comando terminado ---------------------------------------------
+
+  const onPaneCommand = useCallback((paneId: string, running: boolean, exitCode: number): void => {
+    const starts = commandStart.current
+    if (running) {
+      starts.set(paneId, Date.now())
+      return
+    }
+
+    const startedAt = starts.get(paneId)
+    // Un D sin C es el prompt respirando (arranque, Enter en vacío): no corre nada.
+    if (startedAt === undefined) return
+    starts.delete(paneId)
+
+    const elapsed = Date.now() - startedAt
+    if (elapsed < NOTIFY_MIN_MS) return
+
+    const panes = panesRef.current
+    const index = panes.findIndex((pane) => pane.id === paneId)
+    if (index === -1) return
+    const pane = panes[index]!
+
+    // Si lo estabas mirando —ese panel, con la ventana al frente— no hay nada
+    // que avisar: lo viste terminar.
+    const attended = document.visibilityState === 'visible' && document.hasFocus()
+    if (attended && index === focusedRef.current) return
+
+    // La tab late con su acento hasta que el panel reciba foco.
+    setPanes((previous) =>
+      previous.map((p) => (p.id === paneId ? { ...p, notify: true } : p))
+    )
+
+    // Y si la ventana entera está oculta o detrás de otra, un toast de Windows.
+    // Silencioso: es una terminal avisando, no un chat reclamando.
+    if (!attended) {
+      const notification = new Notification(`${pane.profileLabel} — command finished`, {
+        body: `${formatDuration(elapsed)} · exit ${exitCode} · ${shortPath(pane.cwd, 2)}`,
+        silent: true
+      })
+      notification.onclick = () => {
+        window.ntx.window.attention()
+        const current = panesRef.current.findIndex((p) => p.id === paneId)
+        if (current !== -1) setFocused(current)
+      }
+    }
+  }, [])
+
+  // El latido se apaga cuando el panel por fin recibe la mirada: foco de panel,
+  // o la ventana volviendo al frente con ese panel ya enfocado.
+  useEffect(() => {
+    const clearNotify = (): void => {
+      const pane = panesRef.current[focusedRef.current]
+      if (!pane?.notify) return
+      setPanes((previous) =>
+        previous.map((p) => (p.id === pane.id ? { ...p, notify: false } : p))
+      )
+    }
+    clearNotify()
+    window.addEventListener('focus', clearNotify)
+    return () => window.removeEventListener('focus', clearNotify)
+  }, [focused])
 
   // --- Atajos ----------------------------------------------------------------
 
@@ -464,6 +536,7 @@ export function App(): JSX.Element {
             onFocus={() => setFocused(index)}
             onExit={(code) => onPaneExit(pane.id, code)}
             onCwd={(cwd) => onPaneCwd(pane.id, cwd)}
+            onCommand={(running, exitCode) => onPaneCommand(pane.id, running, exitCode)}
           />
         ))}
       </main>

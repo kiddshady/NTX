@@ -2,10 +2,12 @@
 # NTX — init de shell para PowerShell (pwsh 7 y Windows PowerShell 5.1)
 # ===============================================================
 # NTX lo dot-sourcea DESPUÉS de que el shell cargó el perfil del usuario, así
-# que acá no se define estética ni prompt: se AGREGAN dos cosas y nada más.
+# que acá no se define estética ni prompt: se AGREGAN tres cosas y nada más.
 #
 #   1. La consola en UTF-8.
 #   2. OSC 7 en cada render del prompt, para que NTX sepa el cwd real.
+#   3. OSC 133 — C cuando arranca un comando y D;<code> cuando termina — para
+#      que NTX pueda avisar cuando un comando largo termina en un panel sin foco.
 #
 # Todo el archivo es StrictMode-safe a propósito: si el perfil del usuario corre
 # `Set-StrictMode -Version Latest`, LEER una variable inexistente es un ERROR y
@@ -45,13 +47,46 @@ try {
 }
 
 # ---------------------------------------------------------------------------
-# 2. OSC 7 — el cwd real, sin pisar el prompt del usuario
+# 2. OSC 7 + OSC 133;D — el cwd real y el fin del comando, sin pisar el prompt
 # ---------------------------------------------------------------------------
 # Capturamos el prompt vigente y lo ENVOLVEMOS. El del usuario queda intacto:
-# nosotros sólo escribimos una secuencia de escape (invisible) antes de llamarlo.
+# nosotros sólo escribimos secuencias de escape (invisibles) antes de llamarlo.
 $global:__NtxInnerPrompt = $function:prompt
 
 function global:prompt {
+    # $? va PRIMERO: refleja el último comando del usuario y cualquier cosa que
+    # este prompt corra —hasta un Test-Path— lo pisa.
+    $__ntxOk = $?
+
+    # OSC 133;D — terminó lo que estuviera corriendo, con su exit code. NTX lo
+    # cruza con la marca C para medir la duración y decidir si vale un aviso.
+    # $LASTEXITCODE sólo existe tras un ejecutable nativo; para un cmdlet que
+    # falló se reporta 1 genérico.
+    try {
+        $code = if ($__ntxOk) { 0 }
+            elseif ((Test-Path variable:global:LASTEXITCODE) -and $global:LASTEXITCODE) { $global:LASTEXITCODE }
+            else { 1 }
+        [Console]::Write([char]27 + ']133;D;' + $code + [char]7)
+    } catch { }
+
+    # OSC 133;C la emite el lector de líneas, justo cuando el usuario suelta un
+    # comando. PSReadLine define PSConsoleHostReadLine recién antes de la
+    # PRIMERA lectura interactiva — después de que este init corrió — así que el
+    # wrap se intenta acá, en cada prompt, hasta que la función aparezca. Sin
+    # PSReadLine no hay marca C, y NTX simplemente no avisa para esta shell.
+    if (-not (Test-Path variable:global:__NtxReadLineWrapped) -and (Test-Path function:global:PSConsoleHostReadLine)) {
+        $global:__NtxReadLineWrapped = $true
+        $global:__NtxInnerReadLine = $function:PSConsoleHostReadLine
+        function global:PSConsoleHostReadLine {
+            $line = & $global:__NtxInnerReadLine
+            # Sólo si hay algo que ejecutar: un Enter en vacío no arranca nada.
+            if ($line -and $line.Trim()) {
+                [Console]::Write([char]27 + ']133;C' + [char]7)
+            }
+            $line
+        }
+    }
+
     try {
         $loc = $ExecutionContext.SessionState.Path.CurrentLocation
         # Sólo si estamos parados en el filesystem: en HKLM:\ o Env:\ no hay ruta
