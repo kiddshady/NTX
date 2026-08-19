@@ -205,7 +205,7 @@ export function App(): JSX.Element {
   const onPaneExit = useCallback(
     (paneId: string, code: number): void => {
       // Un shell muerto ya no está adentro de nada: si nano quedó a medio salir,
-      // que no siga secuestrando el Ctrl+K del panel.
+      // que no siga secuestrando los atajos del panel.
       fullscreenApps.current.delete(paneId)
       // Salida limpia (un `exit` del usuario) = cerramos el panel. Salida con
       // error = lo dejamos abierto, porque el motivo está escrito ahí adentro y
@@ -249,9 +249,10 @@ export function App(): JSX.Element {
         return
       }
 
-      // Los combos con Shift son los que pisarían algo del shell (Ctrl+T y Ctrl+W
-      // están tomados por PSReadLine), así que van con Shift y el shell se queda
-      // con los suyos.
+      // TODOS los combos de la app van con Shift, la paleta incluida: los pelados
+      // son del shell. Ctrl+K fue de la paleta un tiempo y fue un error — es
+      // kill-line en nano, bash y PSReadLine, o sea que se lo estábamos robando
+      // hasta al prompt. Ctrl+T y Ctrl+W, ídem (PSReadLine).
       if (event.shiftKey) {
         if (key === 't') {
           event.preventDefault()
@@ -260,19 +261,15 @@ export function App(): JSX.Element {
           event.preventDefault()
           const pane = panesRef.current[focusedRef.current]
           if (pane) closePane(pane.id)
+        } else if (key === 'k') {
+          // Aun con Shift, una app a pantalla completa tiene prioridad: si una
+          // TUI llegara a usar el combo, es de ella.
+          const pane = panesRef.current[focusedRef.current]
+          if (pane && fullscreenApps.current.has(pane.id)) return
+
+          event.preventDefault()
+          setPaletteOpen((open) => !open)
         }
-        return
-      }
-
-      if (key === 'k') {
-        // Con una app a pantalla completa en el panel, Ctrl+K es del programa:
-        // en nano corta la línea, y robárselo era abrir la paleta a mitad de un
-        // editor. La paleta sigue a un click del chip mientras tanto.
-        const pane = panesRef.current[focusedRef.current]
-        if (pane && fullscreenApps.current.has(pane.id)) return
-
-        event.preventDefault()
-        setPaletteOpen((open) => !open)
         return
       }
 

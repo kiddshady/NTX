@@ -29,7 +29,7 @@ __ntx_osc7() {
 # ---------------------------------------------------------------------------
 # Integración de comandos (OSC 7771): quién corre en primer plano
 # ---------------------------------------------------------------------------
-# NTX cede atajos (hoy: Ctrl+K) cuando lo que corre es una TUI. En bash-land el
+# NTX cede sus atajos cuando lo que corre es una TUI. En bash-land el
 # alternate screen ya lo delata solo, pero esta señal explícita cubre lo que no
 # usa smcup — y en PowerShell es la única vía, así que el protocolo es el mismo
 # en todos los shells: "run;<línea>" al ejecutar, "prompt" al volver.

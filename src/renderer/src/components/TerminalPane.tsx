@@ -8,7 +8,8 @@ import { attachPane } from '../lib/ptyBus'
 import { xtermTheme, type Palette } from '../term/themes'
 import { paneTitle, type PaneState } from '../lib/panes'
 
-/** Las TUIs conocidas: mientras una corre en primer plano, Ctrl+K es de ella. */
+/** Las TUIs conocidas: mientras una corre en primer plano, los atajos de la
+ *  app le ceden el paso. */
 const TUI_COMMANDS = new Set([
   'nano', 'pico', 'vim', 'vi', 'nvim', 'micro', 'emacs', 'helix', 'hx',
   'less', 'more', 'man', 'htop', 'btop', 'top', 'tmux', 'screen',
@@ -185,7 +186,8 @@ export function TerminalPane({
     //     cambia. Medido con sonda (19 ago 2026): pwsh+nano = cero 1049h en el
     //     stream; el mismo nano en wsl y gitbash sí lo manda.
     //
-    // App usa el aviso para cederle Ctrl+K al programa en vez de abrir la paleta.
+    // App usa el aviso para cederle al programa los atajos de la app (hoy: el
+    // de la paleta).
     let altBuffer = false
     let tuiRunning = false
     const reportFullscreen = (): void => {

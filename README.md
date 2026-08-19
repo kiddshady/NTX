@@ -14,8 +14,9 @@ vidrio oscuro. Electron + xterm.js + node-pty.
 - **Tres acentos con rol fijo** —cian, magenta, amarillo— sobre grises de
   verdad. Cada panel tiene el suyo y lo enciende únicamente cuando tiene el
   foco: nunca hay dos colores prendidos a la vez.
-- **Paleta de comandos** (`Ctrl K`) con filtro por subsecuencia: `nsp` encuentra
-  «New shell · PowerShell». Abre shells, salta entre paneles y muestra el About.
+- **Paleta de comandos** (`Ctrl Shift K`) con filtro por subsecuencia: `nsp`
+  encuentra «New shell · PowerShell». Abre shells, salta entre paneles y muestra
+  el About.
 - **Status bar con datos reales**: CPU y memoria del sistema, el directorio de la
   shell activa y su branch de git.
 - **Vive en el tray.** Cerrar esconde en vez de matar, y `Ctrl Alt X` la trae de
@@ -35,7 +36,7 @@ instalador — ese no se auto-actualiza.
 
 | Atajo | Qué hace |
 |---|---|
-| `Ctrl K` | Abre y cierra la paleta de comandos |
+| `Ctrl Shift K` | Abre y cierra la paleta de comandos |
 | `Ctrl 1`–`Ctrl 4` | Enfoca esa shell |
 | `Ctrl Shift T` | Nueva shell |
 | `Ctrl Shift W` | Cierra la shell activa |
@@ -44,11 +45,10 @@ instalador — ese no se auto-actualiza.
 | `Ctrl +` / `Ctrl -` / `Ctrl 0` | Zoom del texto (también `Ctrl` + rueda); se recuerda |
 | `Ctrl Alt X` | Global: muestra y esconde la ventana desde cualquier lado |
 
-Los atajos de la app van con `Shift` justamente para no pisarle a PSReadLine los
-suyos: `Ctrl+T` y `Ctrl+W` ya están tomados del lado del shell. Y cuando el
-panel está corriendo un programa de pantalla completa —nano, vim, btop—,
-`Ctrl K` es de ese programa (en nano corta la línea): la paleta queda en el chip
-de la titlebar hasta que salgas.
+Los atajos de la app van con `Shift` justamente para no pisarle nada al shell:
+`Ctrl+T` y `Ctrl+W` son de PSReadLine, y `Ctrl+K` es kill-line en nano, bash y
+el propio prompt — por eso la paleta NO lo usa. Y si una app a pantalla completa
+llegara a querer un combo de la app, gana la app de pantalla completa.
 
 ## Arrancar
 

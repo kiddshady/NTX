@@ -76,7 +76,7 @@ function global:prompt {
 # ---------------------------------------------------------------------------
 # 3. Integración de comandos (OSC 7771): quién corre en primer plano
 # ---------------------------------------------------------------------------
-# NTX cede atajos (hoy: Ctrl+K) cuando lo que corre es una TUI. En bash-land el
+# NTX cede sus atajos cuando lo que corre es una TUI. En bash-land el
 # alternate screen lo delata solo, pero una TUI win32 —el nano de Windows, por
 # ejemplo— pinta por Console API y ConPTY NO traduce eso a ?1049h: sin este
 # aviso, NTX no tiene forma de enterarse de que nano está en pantalla.

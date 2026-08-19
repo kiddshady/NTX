@@ -20,7 +20,7 @@ export function Titlebar({ onOpenPalette }: TitlebarProps): JSX.Element {
       <button className="ntx-chip" onClick={onOpenPalette} data-tip="Command palette">
         <Icon name="list" size={12} strokeWidth={1.8} />
         <span>Palette</span>
-        <span className="ntx-chip__key">Ctrl K</span>
+        <span className="ntx-chip__key">Ctrl Shift K</span>
       </button>
 
       {/* Los de ventana, a la derecha y en el orden de Windows: minimizar,
