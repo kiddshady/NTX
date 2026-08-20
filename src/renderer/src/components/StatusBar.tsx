@@ -30,12 +30,12 @@ export function StatusBar({ stats, active, palette, onOpenAbout }: StatusBarProp
     <footer className="ntx-status ntx-chrome">
       <span className="ntx-status__item" style={{ ['--tone' as string]: palette.accent }}>
         <b>cpu</b>
-        <span className="ntx-status__value">{stats.cpu}%</span>
+        <span className="ntx-status__value ntx-status__gauge">{stats.cpu}%</span>
       </span>
 
       <span className="ntx-status__item" style={{ ['--tone' as string]: palette.alt }}>
         <b>mem</b>
-        <span className="ntx-status__value">{stats.mem}%</span>
+        <span className="ntx-status__value ntx-status__gauge">{stats.mem}%</span>
       </span>
 
       {active?.branch && (

@@ -793,6 +793,16 @@ button {
 .ntx-status__value {
   font-family: var(--ntx-font-mono);
 }
+/* cpu y mem cambian cada segundo, y con ancho natural cada salto de dígitos
+   (9% → 13% → 100%) corría todo lo que sigue en la barra. Ancho reservado del
+   peor caso —"100%", 4ch exactos porque es mono— con el número alineado a la
+   derecha: los dígitos crecen hacia el label y el % no se mueve nunca. Ojo:
+   sólo sirve para valores acotados a 3 dígitos como estos; no lo herede nada
+   de ancho libre (branch, path). */
+.ntx-status__gauge {
+  width: 4ch;
+  text-align: right;
+}
 .ntx-status__path {
   min-width: 0;
   overflow: hidden;
