@@ -121,6 +121,20 @@ export function App(): JSX.Element {
 
   // --- Paneles --------------------------------------------------------------
 
+  /** El salto circular entre shells: del último vuelve al primero y al revés.
+   *  Salta por encima de los paneles que se están yendo — viven 220 ms más que
+   *  su cierre, y aterrizar en uno sería enfocar un fantasma. */
+  const cycleFocus = useCallback((step: number): void => {
+    const current = panesRef.current
+    if (current.length === 0) return
+    let index = focusedRef.current
+    for (let attempt = 0; attempt < current.length; attempt++) {
+      index = (index + step + current.length) % current.length
+      if (!current[index]?.closing) break
+    }
+    setFocused(index)
+  }, [])
+
   const spawn = useCallback(async (profileId?: string, cwd?: string): Promise<void> => {
     const current = panesRef.current
     if (current.length >= MAX_PANES) return
@@ -376,6 +390,24 @@ export function App(): JSX.Element {
         return
       }
 
+      // Ctrl+Tab avanza y Ctrl+Shift+Tab vuelve, como en cualquier navegador.
+      // Va ANTES del bloque de Shift porque la vuelta atrás lo lleva puesto, y
+      // ahí adentro no habría cómo distinguirla.
+      //
+      // El TAB pelado no se toca a propósito: es el autocompletado del shell
+      // (PSReadLine, bash) y quedárselo sería romperlo en las cuatro.
+      //
+      // Y acá sí hace falta cortar la propagación además de prevenir: xterm
+      // mira el keyCode del Tab sin importarle el Ctrl, así que el evento
+      // llegando a la terminal escribiría un tabulador (o un ESC[Z con Shift)
+      // en el prompt. Capturamos en window, así que cortando acá nunca baja.
+      if (key === 'tab') {
+        event.preventDefault()
+        event.stopPropagation()
+        cycleFocus(event.shiftKey ? -1 : 1)
+        return
+      }
+
       // Los combos de la app van con Shift: los pelados son del shell (Ctrl+T
       // y Ctrl+W son de PSReadLine, Ctrl+K es kill-line en media terminal).
       //
@@ -413,7 +445,7 @@ export function App(): JSX.Element {
     // se comería los atajos antes de que lleguen.
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [spawn, closePane, zoom, openSearch])
+  }, [spawn, closePane, zoom, openSearch, cycleFocus])
 
   // --- Comandos --------------------------------------------------------------
 
