@@ -1,7 +1,7 @@
 # NTX
 
-Terminal multi-shell para Windows, con grid adaptativo y estética acromática de
-vidrio oscuro. Electron + xterm.js + node-pty.
+Terminal multi-shell para Windows, con grid adaptativo y estética acromática
+mate, oscura y plana. Electron + xterm.js + node-pty.
 
 ## Qué hace
 

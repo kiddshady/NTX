@@ -28,7 +28,11 @@
   --ntx-normal: 0.22s;
   --ntx-slow: 0.34s;
 
-  /* El vidrio.
+  /* El vidrio, que desde el 20 ago 2026 es material EXCLUSIVO de lo que flota
+     (paleta, modales, tooltip, búsqueda). La interfaz permanente quedó mate y
+     plana —el pedido fue sacarle el velo— así que ninguna superficie fija
+     lleva backdrop-filter. En un overlay el blur no es decoración: se posa
+     sobre contenido arbitrario y es lo que le garantiza el contraste.
 
      `saturate` va alto a propósito: en clave acromática lo poco que atraviesa
      es luz casi sin color, y sin saturar el resultado se lava a gris parejo.
@@ -36,7 +40,6 @@
      Y las sombras son largas y suaves: la profundidad la da la elevación, nunca
      un contorno duro. */
   --ntx-blur: blur(17px) saturate(135%);
-  --ntx-blur-heavy: blur(28px) saturate(135%);
 
   --ntx-shadow: 0 2px 8px rgb(0 0 0 / 0.34), 0 12px 34px rgb(0 0 0 / 0.42);
   --ntx-shadow-lg: 0 8px 24px rgb(0 0 0 / 0.44), 0 32px 80px rgb(0 0 0 / 0.58);
@@ -156,16 +159,21 @@ button {
 
 /* --- El sustrato ----------------------------------------------------------
  *
- * Lo que el vidrio difumina. En una app acromática esto es el problema central:
- * sin color de fondo, un `backdrop-filter` no tiene nada que hacer y la
- * superficie se lee como una capa gris cualquiera. Lo resuelven dos cosas:
+ * La textura del fondo, y desde el 20 ago 2026 nada más: grano para que el
+ * negro no se vea plástico, cuadrícula como papel milimetrado apenas insinuado.
  *
- *  - NIEBLA: manchas de pura luz, sin un grado de tinte. Dan variación de
- *    luminancia para que el blur tenga algo que repartir.
- *  - GRANO: sin él el desenfoque queda plástico; con él parece vidrio.
+ * Acá vivían también la NIEBLA (manchas de luz que le daban al blur algo que
+ * repartir) y el VELO (un degradé que hundía el conjunto para que el texto
+ * ganara contra la niebla). Se fueron juntas con el vidrio de la interfaz: sin
+ * blur la niebla no alimenta nada, y sin niebla el velo no protege de nada —
+ * eran dos capas muertas. El fondo queda parejo a propósito; la profundidad
+ * ahora la ponen sólo las sombras.
  *
- * La cuadrícula NO está acá sino en `.ntx-pane__term`, porque ahí puede ir con
- * `background-attachment: fixed` y quedar continua entre paneles.
+ * La cuadrícula vive acá y no en `.ntx-pane__term`: es UNA capa detrás de
+ * todo, continua por construcción. Y desde que las superficies son opacas
+ * (mismo día) sólo asoma donde el fondo queda desnudo — los gaps y el padding
+ * del grid. Sobre paneles, titlebar y status no se ve, a pedido: la textura es
+ * del piso, no de las tarjetas que se apoyan encima.
  *
  * `z-index: -1` lo pone detrás de sus hermanos y delante del fondo de la app.
  */
@@ -180,19 +188,7 @@ button {
     /* La cuadrícula, en blanco y no en el acento: en una app acromática el
        papel es gris. Continua por construcción, al ser una sola capa. */
     repeating-linear-gradient(to right, rgb(255 255 255 / 0.014) 0 1px, transparent 1px 34px),
-    repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.014) 0 1px, transparent 1px 34px),
-    /* El velo: hunde el conjunto para que el texto siempre gane, pase lo que
-       pase con la niebla. El contraste no puede depender de dónde cayó una
-       mancha. */
-    linear-gradient(to bottom, rgb(5 5 7 / 0.22), rgb(5 5 7 / 0.58)),
-    /* La niebla. Bajó un tercio el 19 ago 2026 junto con la base (#050507), y
-       otro escalón el mismo día cuando el pedido pasó a "menos luz/vidrio" —
-       la niebla es justamente lo que el blur reparte, así que es la perilla.
-       Queda como un aliento: suficiente para que el fondo no sea plano, no
-       tanto como para leerse como iluminación. */
-    radial-gradient(46vw 46vw at 8% 0%, rgb(255 255 255 / 0.026), transparent 70%),
-    radial-gradient(40vw 40vw at 96% 22%, rgb(255 255 255 / 0.02), transparent 70%),
-    radial-gradient(38vw 38vw at 44% 108%, rgb(255 255 255 / 0.016), transparent 70%);
+    repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.014) 0 1px, transparent 1px 34px);
 }
 
 /* --- Titlebar -------------------------------------------------------------- */
@@ -204,14 +200,11 @@ button {
   justify-content: space-between;
   gap: 16px;
   padding: 0 12px;
-  /* Plana, sin degradé propio: el volumen ya lo pone el sustrato al pasar por
-     debajo del vidrio. Un degradé encima se leería como banding.
-     El filo de arriba es el canto de la ventana. */
+  /* Mate y plana (20 ago 2026): ni vidrio ni canto iluminado. La barra es el
+     mismo plano del fondo apenas entonado, y el hairline de abajo es lo único
+     que la separa del grid. */
   background: var(--ntx-chrome);
-  backdrop-filter: var(--ntx-blur-heavy);
-  box-shadow:
-    inset 0 1px 0 var(--ntx-edge-lit),
-    inset 0 -1px 0 var(--ntx-hairline);
+  box-shadow: inset 0 -1px 0 var(--ntx-hairline);
   /* Toda la barra arrastra la ventana, menos lo que se marque como no-drag. */
   -webkit-app-region: drag;
 }
@@ -267,7 +260,6 @@ button {
   gap: 2px;
   padding: 5px 10px 0;
   background: var(--ntx-chrome);
-  backdrop-filter: var(--ntx-blur-heavy);
   box-shadow: inset 0 -1px 0 var(--ntx-hairline);
   min-width: 0;
 }
@@ -294,9 +286,7 @@ button {
 .ntx-tab[data-active='true'] {
   color: var(--ntx-fg);
   background: var(--ntx-elevated);
-  box-shadow:
-    inset 0 1px 0 var(--ntx-edge-lit),
-    inset 0 0 0 1px var(--ntx-hairline);
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline);
 }
 .ntx-tab__label {
   overflow: hidden;
@@ -429,10 +419,10 @@ button {
   min-width: 0;
   min-height: 0;
   border-radius: var(--ntx-radius);
-  /* Sin foco el panel se apoya un peldaño más abajo en la escalera del vidrio.
-     Es la mitad de la señal de foco; la otra mitad es el contorno de ::after. */
+  /* Sin foco el panel se apoya un peldaño más abajo en la escalera de
+     superficies. Es la mitad de la señal de foco; la otra mitad es el contorno
+     de ::after. */
   background: var(--ntx-sunk);
-  backdrop-filter: var(--ntx-blur);
   overflow: hidden;
   /* Acá queda sólo la sombra de afuera: el contorno se dibuja en ::after. */
   box-shadow: var(--ntx-shadow);
@@ -470,18 +460,14 @@ button {
   border-radius: inherit;
   pointer-events: none;
   z-index: 3;
-  /* Dos capas: el filo iluminado de arriba —el reflejo del canto de vidrio— y
-     el contorno. Sin el filo, la superficie se lee como un rectángulo gris con
-     opacidad en vez de como vidrio. */
-  box-shadow:
-    inset 0 1px 0 var(--ntx-edge-lit),
-    inset 0 0 0 1px var(--ntx-hairline);
+  /* Sólo el contorno. Acá iba también el filo iluminado de arriba —el reflejo
+     del canto de vidrio— y se fue con el vidrio (20 ago 2026): en mate el
+     panel se define por hairline y sombra, sin simular volumen. */
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline);
   transition: box-shadow var(--ntx-slow) var(--ntx-ease);
 }
 .ntx-pane[data-focused='true']::after {
-  box-shadow:
-    inset 0 1px 0 var(--ntx-edge-lit),
-    inset 0 0 0 1px var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 /* La salida existe porque un panel que desaparece de un frame al otro se siente
    como un crash, no como un cierre. */
@@ -533,17 +519,14 @@ button {
 
   /* La cuadrícula ya NO vive acá: se mudó al sustrato (`.ntx-bg`).
    *
-   * Estaba en este elemento con `background-attachment: fixed`, que es lo que la
-   * hacía continua entre paneles anclando el origen del fondo a la ventana. Pero
-   * ahora el panel lleva `backdrop-filter`, y un ancestro filtrado pasa a ser el
-   * bloque contenedor de sus descendientes fijos: el `fixed` se habría anclado a
-   * cada panel y la grilla se cortaría en cada gap — el bug exacto que ese
-   * `fixed` estaba puesto para evitar.
-   *
-   * Poniéndola en el sustrato el problema desaparece por otra vía: es UNA sola
-   * capa detrás de todo, así que es continua por construcción. Y de yapa el
-   * vidrio del panel ahora la esmerila al pasarle por encima, que es lo que
-   * termina de delatar que hay vidrio y no una capa gris. */
+   * Estaba en este elemento con `background-attachment: fixed`, que es lo que
+   * la hacía continua entre paneles anclando el origen del fondo a la ventana.
+   * En el sustrato es UNA sola capa detrás de todo: continua por construcción
+   * (hoy además el panel es opaco y la tapa: la grilla queda para los gaps).
+   * Si algún día el vidrio vuelve a los paneles, NO devolverla acá: un
+   * ancestro con `backdrop-filter` se convierte en bloque contenedor de sus
+   * descendientes `fixed`, la grilla se anclaría a cada panel y se cortaría en
+   * cada gap — el bug exacto que el `fixed` estaba puesto para evitar. */
 }
 
 /* El div que hospeda a xterm va aparte del que lleva el padding, y no es un
@@ -610,9 +593,10 @@ button {
   0% {
     background-color: var(--accent);
     /* `--ntx-base` y NO `--ntx-surface`: éste es el color de la LETRA que el
-       bloque del cursor tapa, y desde que las superficies son vidrio,
-       `--ntx-surface` es un blanco al 3% — la letra quedaría invisible sobre el
-       acento en vez de recortada contra él. */
+       bloque del cursor tapa. Cuando las superficies eran vidrio, `surface` era
+       un blanco al 2% y la letra quedaba invisible sobre el acento; hoy es un
+       opaco casi negro y daría parecido, pero `base` sigue siendo el contraste
+       más honesto contra el bloque encendido. */
     color: var(--ntx-base);
     box-shadow: 0 0 7px var(--accent);
   }
@@ -774,7 +758,6 @@ button {
   gap: 16px;
   padding: 0 12px;
   background: var(--ntx-chrome);
-  backdrop-filter: var(--ntx-blur-heavy);
   box-shadow: inset 0 1px 0 var(--ntx-hairline);
   font-size: 10.5px;
   color: var(--ntx-faint);

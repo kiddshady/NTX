@@ -25,13 +25,19 @@ import type { ITheme } from '@xterm/xterm'
  *
  * El magenta es el mismo `#ff2e88` del ícono de la app, a propósito.
  *
- * ── Las superficies son VIDRIO ──────────────────────────────────────────────
+ * ── Las superficies ─────────────────────────────────────────────────────────
  *
- * `surface`, `sunk`, `chrome`, `elevated` y `hover` NO son colores opacos: son
- * blancos con alfa que se apoyan sobre el sustrato y se completan con el
- * `backdrop-filter` que les pone base.css. En clave oscura el vidrio se define
- * por el canto iluminado (`edgeLit`) y la sombra, no por el relleno — si se
- * sube el relleno para "verlo mejor", se aclara a gris y deja de ser vidrio.
+ * El 20 ago 2026 el velo se fue de la interfaz a pedido de Fran — quedó mate y
+ * plana, y el vidrio pasó a ser material exclusivo de los overlays (paleta,
+ * modales, tooltip, búsqueda). Ese mismo día `surface`, `sunk` y `chrome`
+ * pasaron de alfa a OPACOS, también a pedido: la cuadrícula del sustrato se
+ * veía a través de paneles y chrome, y la quiso sólo en el fondo desnudo (los
+ * gaps del grid). Son el mismo blanco al 1.9%/0.9%/1.4% de siempre, aplanado
+ * sobre la base.
+ *
+ * `elevated` y `hover` siguen en alfa: `elevated` ES el vidrio de la paleta
+ * (sin alfa el blur no tendría nada que mostrar), y `hover` siempre pinta
+ * encima de superficies ya opacas.
  */
 export interface Palette {
   /**
@@ -43,19 +49,18 @@ export interface Palette {
    * tenga un solo frame claro, así que si cambia acá, cambia en los tres.
    */
   base: string
-  /** Vidrio del panel enfocado. */
+  /** El panel enfocado. */
   surface: string
-  /** Vidrio del panel SIN foco: un peldaño más abajo. */
+  /** El panel SIN foco: un peldaño más abajo. */
   sunk: string
   /**
-   * Vidrio del chrome: titlebar, tab strip y status bar.
+   * El chrome: titlebar, tab strip y status bar.
    *
-   * Más tenue que `surface`, no más oscuro. Con superficies opacas el chrome se
-   * despegaba hundiéndose por debajo del `base`; con vidrio se despega dejando
-   * pasar más sustrato, y los paneles quedan flotando por encima igual.
+   * Un peldaño entre `sunk` y `surface`: más claro que la base para despegarse
+   * de ella, más callado que el panel enfocado para no competirle.
    */
   chrome: string
-  /** Vidrio elevado: paleta de comandos, tab activa. */
+  /** Lo elevado: la paleta de comandos (que sigue siendo vidrio), tab activa. */
   elevated: string
   /** El realce de un elemento bajo el cursor. */
   hover: string
@@ -68,7 +73,9 @@ export interface Palette {
    *
    * Es lo que hace que una superficie se lea como un canto de vidrio y no como
    * un rectángulo gris con opacidad. Va bastante más alto que `hairline`: es un
-   * reflejo, no un borde.
+   * reflejo, no un borde. Desde el 20 ago 2026 sólo lo llevan los overlays de
+   * vidrio (paleta, modales, tooltip, búsqueda) — la interfaz mate perdió el
+   * canto junto con el blur.
    */
   edgeLit: string
 
@@ -95,9 +102,11 @@ export const PALETTE: Palette = {
      mismo movimiento. */
   base: '#050507',
 
-  surface: 'rgba(255,255,255,0.019)',
-  sunk: 'rgba(255,255,255,0.009)',
-  chrome: 'rgba(255,255,255,0.014)',
+  /* Opacos (20 ago 2026): blanco al 1.9% / 0.9% / 1.4% aplanado sobre #050507.
+     Si la base cambia, estos tres se recalculan con ella. */
+  surface: '#0a0a0c',
+  sunk: '#070709',
+  chrome: '#09090a',
   elevated: 'rgba(255,255,255,0.04)',
   hover: 'rgba(255,255,255,0.035)',
   hairline: 'rgba(255,255,255,0.058)',
@@ -177,11 +186,11 @@ export function xtermTheme(palette: Palette, paneAccent: string): ITheme {
     /**
      * TRANSPARENTE, y no `palette.surface`.
      *
-     * El panel ya es una superficie de vidrio con su `backdrop-filter`. Si xterm
-     * pintara su propio fondo encima —aunque fuese el mismo rgba— lo estaría
-     * duplicando: el alfa se aplicaría dos veces y el interior del panel
-     * quedaría más claro que su propio borde. El terminal no aporta fondo; lo
-     * pone el panel que lo contiene.
+     * El panel ya pinta su superficie en alfa. Si xterm pintara su propio fondo
+     * encima —aunque fuese el mismo rgba— lo estaría duplicando: el alfa se
+     * aplicaría dos veces y el interior del panel quedaría más claro que su
+     * propio borde. El terminal no aporta fondo; lo pone el panel que lo
+     * contiene.
      */
     background: '#00000000',
     foreground: palette.fg,
