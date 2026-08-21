@@ -28,19 +28,27 @@
   --ntx-normal: 0.22s;
   --ntx-slow: 0.34s;
 
-  /* El vidrio, que desde el 20 ago 2026 es material EXCLUSIVO de lo que flota
-     (paleta, modales, tooltip, búsqueda). La interfaz permanente quedó mate y
-     plana —el pedido fue sacarle el velo— así que ninguna superficie fija
-     lleva backdrop-filter. En un overlay el blur no es decoración: se posa
-     sobre contenido arbitrario y es lo que le garantiza el contraste.
+  /* Acá vivía `--ntx-blur`. NTX no tiene más vidrio: el 20 ago 2026 se fue de la
+     interfaz permanente y el 21 se fue de los overlays, que eran el último
+     reducto — paleta, modales, búsqueda y tooltip, en ese orden.
 
-     `saturate` va alto a propósito: en clave acromática lo poco que atraviesa
-     es luz casi sin color, y sin saturar el resultado se lava a gris parejo.
+     El argumento del blur siempre fue el contraste: un overlay se posa sobre
+     contenido arbitrario y el desenfoque le garantiza un fondo legible sin
+     importar qué haya abajo. Es cierto, pero lo resuelve igual de bien un fondo
+     OPACO, y opaco no te obliga a tener dos materiales conviviendo. Hoy cada
+     overlay elige un color de la escalera según sobre qué se apoya, y listo.
 
-     Y las sombras son largas y suaves: la profundidad la da la elevación, nunca
-     un contorno duro. */
-  --ntx-blur: blur(17px) saturate(135%);
+     Si alguna vez vuelve, el par que estaba calibrado era
+     `blur(17px) saturate(135%)`. El `saturate` iba alto a propósito: en clave
+     acromática lo poco que atraviesa es luz casi sin color, y sin saturarlo el
+     resultado se lavaba a gris parejo.
 
+     Queda en pie el único `backdrop-filter` de la app —el `blur(3px)` del
+     scrim—, que no es material: es el atenuador de lo que la paleta tapa.
+
+     Las sombras son largas y suaves: la profundidad la da la elevación, nunca un
+     contorno duro. Ahora más que nunca, porque son —con el hairline— lo único
+     que recorta un overlay contra lo de atrás. */
   --ntx-shadow: 0 2px 8px rgb(0 0 0 / 0.34), 0 12px 34px rgb(0 0 0 / 0.42);
   --ntx-shadow-lg: 0 8px 24px rgb(0 0 0 / 0.44), 0 32px 80px rgb(0 0 0 / 0.58);
 }
@@ -283,9 +291,22 @@ button {
   color: var(--ntx-muted);
   background: color-mix(in srgb, var(--ntx-fg) 4%, transparent);
 }
+/* La tab activa NO usa `--ntx-elevated`, aunque lo usó hasta el 21 ago 2026.
+   Lo usaba por coincidencia: los dos eran "blanco al 4%". Pero `elevated` es la
+   superficie de los overlays y está anclada a la BASE —es lo que hay detrás de
+   la paleta y los modales, a través del scrim—, mientras que la tab se apoya en
+   el CHROME. Cuando `elevated` pasó a opaco, la tab activa quedó 4 niveles más
+   oscura que el hover de una inactiva: pasar el mouse por una tab apagada la
+   dejaba más clara que la prendida.
+
+   Así que la tab dice lo que en realidad es: un realce sobre el chrome, primo
+   del hover de acá arriba. El 4,5% no es un número redondo porque no busca
+   serlo — es el que reproduce exactamente el #131314 que la tab venía teniendo.
+   Que sea apenas medio punto más que el hover es a propósito y es de siempre:
+   lo que marca la tab activa es el anillo y el texto en `fg`, no el fondo. */
 .ntx-tab[data-active='true'] {
   color: var(--ntx-fg);
-  background: var(--ntx-elevated);
+  background: color-mix(in srgb, var(--ntx-fg) 4.5%, transparent);
   box-shadow: inset 0 0 0 1px var(--ntx-hairline);
 }
 .ntx-tab__label {
@@ -638,10 +659,34 @@ button {
 
 /* --- Búsqueda en el scrollback ----------------------------------------------
  *
- * Flota adentro del panel, colgada del hairline de la cabecera. Lleva el mismo
- * vidrio que el tooltip —base casi opaca, no la escalera— y por el mismo motivo:
- * se posa sobre texto de terminal, así que su contraste no puede depender de lo
- * que haya escrito abajo.
+ * Flota adentro del panel, colgada del hairline de la cabecera. Se posa sobre
+ * texto de terminal, así que su contraste no puede depender de lo que haya
+ * escrito abajo: no usa la escalera, usa `base`.
+ *
+ * Mate desde el 21 ago 2026, con la paleta y los modales. Acá el cambio es más
+ * chico de lo que parece —venía en base al 88%, o sea que ya era casi opaca— y
+ * lo que se va es el 12% que dejaba pasar, que era justo el que dejaba asomar
+ * un renglón de terminal por debajo del campo.
+ *
+ * La dirección se dio vuelta el 21 ago 2026. Venía en `base`, un peldaño por
+ * DEBAJO del panel, con el argumento de que sin scrim que le hundiera el fondo
+ * se igualaría al panel y desaparecería. Dos cosas con eso:
+ *
+ * Una, el peldaño era casi nada: entre `base` y `surface` hay 1,2 de L*, apenas
+ * el umbral de discriminación. Lo que separaba la ficha nunca fue el relleno,
+ * fue el hairline que la contornea y la sombra que empoza debajo — el relleno
+ * sólo se llevaba el crédito, que es lo que pasa siempre que un borde encierra
+ * una región.
+ *
+ * Y dos, se contradecía con la sombra. Un `0 8px 20px -8px` proyectado hacia
+ * abajo dice "floto arriba"; un relleno más oscuro que el fondo dice "estoy
+ * hundido". Las dos señales no pueden ser ciertas. Gana la sombra, que es la
+ * herramienta primaria de profundidad de la casa.
+ *
+ * Así que se apoya al nivel del panel, igual que la paleta y los modales. Sobre
+ * panel enfocado queda a cero de diferencia de fondo y la sostienen el contorno
+ * y la sombra; sobre panel sin foco queda un peldaño ARRIBA, que es la
+ * dirección que la sombra venía anunciando.
  */
 @keyframes ntx-search-in {
   from {
@@ -662,8 +707,7 @@ button {
   height: 32px;
   padding: 0 6px 0 11px;
   border-radius: var(--ntx-radius);
-  background: color-mix(in srgb, var(--ntx-base) 88%, transparent);
-  backdrop-filter: var(--ntx-blur);
+  background: var(--ntx-elevated);
   color: var(--ntx-faint);
   box-shadow:
     inset 0 1px 0 var(--ntx-edge-lit),
@@ -872,10 +916,17 @@ button {
   display: flex;
   flex-direction: column;
   border-radius: var(--ntx-radius-lg);
+  /* Mate y al nivel del panel (21 ago 2026). Antes era la superficie más
+     vidriada de la app —`elevated` en alfa + blur(34px)— y el argumento era que
+     el blur garantiza el contraste sobre contenido arbitrario. Pero eso resuelve
+     la legibilidad, no la coherencia: la app entera es mate desde el día
+     anterior y la paleta quedó siendo la única cosa que dejaba ver lo que hay
+     atrás. Ahora tapa.
+
+     Y no tapa siendo más clara: `elevated` vale lo mismo que `surface`, así que
+     esto se apoya donde la terminal. El recorte lo hacen el scrim de atrás, la
+     sombra y el hairline — no un salto de luminancia. */
   background: var(--ntx-elevated);
-  /* Más denso que el de los paneles: es la superficie más alta de la app y el
-     texto de abajo tiene que quedar ilegible, no apenas borroso. */
-  backdrop-filter: blur(34px) saturate(150%);
   overflow: hidden;
   /* Elevación por sombra, no por línea gruesa: el hairline de adentro sólo
      separa el campo de la lista.
@@ -1070,12 +1121,16 @@ button {
   z-index: 200;
   padding: 4px 8px;
   border-radius: var(--ntx-radius-sm);
-  /* El único que NO usa el vidrio de la escalera. Un tooltip aparece sobre lo
-     que haya —texto de terminal, otro panel, la paleta—, así que su contraste no
-     puede depender del fondo: lleva base casi opaco. El blur queda igual, para
-     que no se sienta de otro material que el resto. */
-  background: color-mix(in srgb, var(--ntx-base) 88%, transparent);
-  backdrop-filter: var(--ntx-blur);
+  /* Un tooltip aparece sobre lo que haya —texto de terminal, otro panel, la
+     paleta—, así que su contraste no puede depender del fondo. Eso lo resuelve
+     ser OPACO, no en qué peldaño se apoya; el peldaño es una decisión aparte y
+     la toma con la búsqueda, por el mismo argumento de la sombra (ver allá).
+
+     Fue el último en perder el blur (21 ago 2026) y el que más se resistía: el
+     comentario de acá decía que lo mantenía "para que no se sienta de otro
+     material que el resto", y ese argumento se dio vuelta solo cuando el resto
+     terminó de pasarse a mate. Hoy el material común es este. */
+  background: var(--ntx-elevated);
   color: var(--ntx-muted);
   font-size: 11px;
   white-space: nowrap;
@@ -1116,16 +1171,21 @@ button {
   padding-top: 0;
 }
 
-/* La misma superficie que la paleta (el vidrio más alto de la app), con otra
-   entrada: sube desde abajo en vez de caer, para que el gesto diga "esto vino
-   a preguntarte algo" y no "esto bajó del chrome". */
+/* La misma superficie que la paleta, con otra entrada: sube desde abajo en vez
+   de caer, para que el gesto diga "esto vino a preguntarte algo" y no "esto
+   bajó del chrome".
+
+   "La misma que la paleta" es literal y conviene que siga siéndolo. Y desde la
+   tarde del 21 ago 2026 es la misma que TODOS los overlays: `--ntx-elevated`,
+   el nivel del panel. La búsqueda y el tooltip estuvieron unas horas un peldaño
+   más abajo y volvieron acá — el scrim no elige superficie (ver themes.ts).
+   Perdieron el blur el mismo día. */
 .ntx-modal {
   width: min(400px, calc(100% - 48px));
   height: fit-content;
   padding: 22px 24px;
   border-radius: var(--ntx-radius-lg);
   background: var(--ntx-elevated);
-  backdrop-filter: blur(34px) saturate(150%);
   box-shadow:
     inset 0 1px 0 var(--ntx-edge-lit),
     inset 0 0 0 1px var(--ntx-hairline),

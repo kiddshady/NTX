@@ -27,21 +27,47 @@ import type { ITheme } from '@xterm/xterm'
  *
  * ── Las superficies ─────────────────────────────────────────────────────────
  *
- * El 20 ago 2026 el velo se fue de la interfaz a pedido de Fran — quedó mate y
- * plana, y el vidrio pasó a ser material exclusivo de los overlays (paleta,
- * modales, tooltip, búsqueda). Ese mismo día `surface`, `sunk` y `chrome`
- * pasaron de alfa a OPACOS, también a pedido: la cuadrícula del sustrato se
- * veía a través de paneles y chrome, y la quiso sólo en el fondo desnudo (los
- * gaps del grid). Son el mismo blanco al 1.9%/0.9%/1.4% de siempre, aplanado
- * sobre la base.
+ * TODAS las superficies de NTX son mate y opacas. No queda vidrio en la app.
  *
- * `elevated` y `hover` siguen en alfa: `elevated` ES el vidrio de la paleta
- * (sin alfa el blur no tendría nada que mostrar), y `hover` siempre pinta
- * encima de superficies ya opacas.
+ * Llegó en dos pasos, los dos a pedido de Fran. El 20 ago 2026 el velo se fue de
+ * la interfaz: `surface`, `sunk` y `chrome` pasaron de alfa a OPACOS porque la
+ * cuadrícula del sustrato se veía a través de paneles y chrome, y la quería sólo
+ * en el fondo desnudo (los gaps del grid). Son el mismo blanco al 1.9%/0.9%/1.4%
+ * de siempre, aplanado sobre la base. Ese día el vidrio se replegó a los
+ * overlays, que quedaron como último reducto.
+ *
+ * El 21 ago cayó el reducto: paleta, modales, búsqueda y tooltip, en ese orden.
+ * `elevated` siguió el camino de los otros tres y además BAJÓ, porque mate no
+ * alcanzaba si encima seguía siendo lo más claro de la pantalla — hoy vale lo
+ * mismo que `surface` y la paleta se apoya al nivel del panel enfocado en vez de
+ * flotar arriba de la escalera.
+ *
+ * ── Cómo se despega un overlay sin ser más claro ────────────────────────────
+ *
+ * Sin blur, un overlay se recorta con SOMBRA Y HAIRLINE. Los cuatro —paleta,
+ * modales, búsqueda y tooltip— se apoyan en `elevated`, o sea al nivel del
+ * panel, y ninguno se aclara ni se oscurece respecto de su fondo.
+ *
+ * Ese "ninguno" corrige una regla que vivió unas horas el mismo 21 ago: decía
+ * que los overlays SIN scrim (búsqueda, tooltip) tenían que irse a `base`, un
+ * peldaño por DEBAJO, porque nada les hundía el fondo y si se igualaban al panel
+ * iban a desaparecer. No se sostuvo por dos lados. El peldaño eran 1,2 de L*,
+ * apenas el umbral de discriminación — nunca fue el relleno lo que los separaba,
+ * fue el contorno que los encierra y la sombra que empoza debajo. Y pedía un
+ * relleno hundido abajo de una sombra proyectada hacia abajo, o sea pedirle a la
+ * misma ficha que diga "floto" y "estoy enterrada" al mismo tiempo.
+ *
+ * Así que el scrim no elige peldaño. Elige otra cosa, y por eso sigue estando:
+ * atenuar lo que el overlay tapa, para que el ojo no vuelva ahí.
+ *
+ * `hover` es el único que sigue en alfa, y no por vidrio: siempre pinta encima
+ * de superficies ya opacas, así que necesita ser un realce y no un color.
  */
 export interface Palette {
   /**
-   * Fondo de la app: el sustrato sobre el que se apoya todo el vidrio.
+   * Fondo de la app: el piso de la escalera de superficies. Desde el 21 ago 2026
+   * es sólo eso — ningún componente se apoya acá, ni siquiera los overlays sin
+   * scrim, que hasta esa tarde lo usaban (ver la nota de arriba).
    *
    * Este valor está replicado en otros DOS lugares y los tres tienen que
    * coincidir: el `backgroundColor` de la BrowserWindow (src/main/window.ts) y el
@@ -60,22 +86,38 @@ export interface Palette {
    * de ella, más callado que el panel enfocado para no competirle.
    */
   chrome: string
-  /** Lo elevado: la paleta de comandos (que sigue siendo vidrio), tab activa. */
+  /**
+   * La superficie de TODOS los overlays: paleta, modales, búsqueda y tooltip.
+   *
+   * El nombre quedó de cuando era el vidrio más alto de la app. Hoy "elevado"
+   * es la POSICIÓN, no el color: vale lo mismo que `surface`, y lo que separa un
+   * overlay de su fondo son la sombra y el hairline, no ser más claro. Ni más
+   * oscuro — la búsqueda y el tooltip lo intentaron unas horas el 21 ago 2026.
+   *
+   * No lo usa nada que se apoye en el chrome —la tab activa lo hacía y dejó de
+   * hacerlo el 21 ago 2026, ver .ntx-tab[data-active]—: esto está aplanado sobre
+   * la base, y sobre el chrome daría un color más oscuro que su propio hover.
+   */
   elevated: string
   /** El realce de un elemento bajo el cursor. */
   hover: string
-  /** Contorno del vidrio. */
+  /** Contorno de una superficie: el borde de los overlays y de la tab activa. */
   hairline: string
   /** Divisor interno, más callado. */
   hairlineSoft: string
   /**
    * El filo iluminado de arriba.
    *
-   * Es lo que hace que una superficie se lea como un canto de vidrio y no como
-   * un rectángulo gris con opacidad. Va bastante más alto que `hairline`: es un
-   * reflejo, no un borde. Desde el 20 ago 2026 sólo lo llevan los overlays de
-   * vidrio (paleta, modales, tooltip, búsqueda) — la interfaz mate perdió el
-   * canto junto con el blur.
+   * Va bastante más alto que `hairline` porque no es un borde: es el filo de
+   * arriba agarrando luz. Lo llevan los CUATRO overlays y nada más (paleta,
+   * modales, búsqueda, tooltip) — la interfaz permanente lo perdió el 20 ago
+   * 2026 junto con el blur.
+   *
+   * Sobrevivió al pase a mate del 21 ago, y ahí cambió de rol: era lo que hacía
+   * leer la superficie como un canto de vidrio, y hoy es sencillamente el borde
+   * superior del panel. Sin él un overlay no tiene techo — el hairline al 5,8%
+   * no alcanza contra un scrim oscuro y difuso. Un realce de 1px al 7% es un
+   * bisel, no un reflejo; lo que delataba al vidrio era el ver a través.
    */
   edgeLit: string
 
@@ -107,7 +149,18 @@ export const PALETTE: Palette = {
   surface: '#0a0a0c',
   sunk: '#070709',
   chrome: '#09090a',
-  elevated: 'rgba(255,255,255,0.04)',
+  /* Opaco desde el 21 ago 2026, y ese mismo día bajado hasta acá: es el MISMO
+     valor que `surface`, a propósito. Primero salió opaco en #0f0f11 (blanco al
+     4%, el alfa que tenía de vidrio, aplanado sobre la base), pero eso lo dejaba
+     como un escalón nuevo arriba de todo y la paleta seguía leyéndose como una
+     tarjeta clara flotando. El pedido fue lo contrario: que esté al nivel de la
+     terminal. Así que se apoya donde el panel enfocado y no inventa peldaño.
+
+     Que duplique a `surface` no es un descuido — es la definición. Sigue siendo
+     un token aparte porque el ROL es otro (la superficie de los overlays, no la
+     del panel) y porque es la perilla única para moverla sin tocar los paneles.
+     Si la base cambia, se recalcula igual que `surface`. */
+  elevated: '#0a0a0c',
   hover: 'rgba(255,255,255,0.035)',
   hairline: 'rgba(255,255,255,0.058)',
   hairlineSoft: 'rgba(255,255,255,0.034)',
@@ -125,13 +178,21 @@ export const PALETTE: Palette = {
    *
    * Los cuatro escalones de abajo se subieron el 18 ago 2026 porque no se leían:
    * medidos contra `base`, `faint` daba 2,3:1 y `ghost` 1,4:1, cuando el mínimo
-   * de WCAG AA para texto chico es 4,5:1. Y el número real es peor todavía,
-   * porque este texto no se apoya sobre `base` pelado sino sobre el vidrio, que
-   * aclara el fondo y achica la diferencia.
+   * de WCAG AA para texto chico es 4,5:1.
    *
    * Ahora, contra `base`: muted 9,7:1 · dim 6,6:1 · faint 5,1:1 · ghost 4,0:1.
    * `ghost` es el único que no llega a AA y es a propósito — sólo lo usan cosas
    * de las que uno no necesita enterarse (PIDs, contadores, atajos ya sabidos).
+   *
+   * Esos números son los REALES desde el 21 ago 2026. Antes acá había un caveat
+   * —"el número real es peor todavía, porque este texto no se apoya sobre `base`
+   * pelado sino sobre el vidrio, que aclara el fondo"— que murió con el vidrio.
+   * Hoy el peor fondo posible para este texto es `surface`/`elevated` (#0a0a0c),
+   * apenas por encima de `base`, y ahí la escalera baja una décima: faint 5,0:1
+   * y ghost 3,9:1. Ese peor caso es además el caso NORMAL desde la tarde del 21
+   * ago: con la búsqueda y el tooltip mudados a `elevated`, ya no queda texto de
+   * chrome apoyado sobre `base` pelado. Tomá la línea de arriba como el techo y
+   * estas dos cifras como lo que se mide en pantalla.
    *
    * Subir estos NO es lo mismo que aclarar la app: el fondo sigue casi negro y
    * el blanco pleno sigue reservado para `fg`.
@@ -186,19 +247,25 @@ export function xtermTheme(palette: Palette, paneAccent: string): ITheme {
     /**
      * TRANSPARENTE, y no `palette.surface`.
      *
-     * El panel ya pinta su superficie en alfa. Si xterm pintara su propio fondo
-     * encima —aunque fuese el mismo rgba— lo estaría duplicando: el alfa se
-     * aplicaría dos veces y el interior del panel quedaría más claro que su
-     * propio borde. El terminal no aporta fondo; lo pone el panel que lo
-     * contiene.
+     * El terminal no aporta fondo: lo pone el panel que lo contiene, que es
+     * quien sabe si está enfocado (`surface`) o no (`sunk`). Si xterm pintara
+     * el suyo encima, el interior del panel se quedaría clavado en un color
+     * mientras el borde cambia con el foco.
+     *
+     * Cuando los paneles eran alfa el motivo era todavía más duro —el mismo
+     * rgba aplicado dos veces aclaraba el interior contra su propio borde— y
+     * eso se terminó el 20 ago 2026 con las superficies opacas. Pero la
+     * conclusión no cambió, así que esto se queda.
      */
     background: '#00000000',
     foreground: palette.fg,
     // El cursor toma el acento del panel: es la señal más directa de cuál está
     // enfocado, sin tener que buscar el borde.
     cursor: paneAccent,
-    // Es el color del texto TAPADO por el cursor, así que va contra el acento y
-    // no contra la superficie: sobre vidrio transparente, `surface` no tapa nada.
+    // Es el color del texto TAPADO por el bloque del cursor, o sea que se dibuja
+    // ENCIMA del acento. Va contra el acento, entonces, y no contra la superficie
+    // del panel: tiene que ser oscuro porque el cursor es un cian o un magenta
+    // prendido, no porque atrás haya tal o cual gris.
     cursorAccent: palette.base,
     // El resaltado de selección es el mismo tinte que el `::selection` del resto
     // de la app, para que marcar texto se sienta igual adentro y afuera.

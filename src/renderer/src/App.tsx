@@ -528,8 +528,9 @@ export function App(): JSX.Element {
 
   return (
     <div className="ntx-app">
-      {/* El sustrato que el vidrio difumina. Va primero y no recibe eventos: no
-          es una capa de efecto por encima como era el CRT, es el fondo mismo. */}
+      {/* El sustrato: grano y cuadrícula. Va primero y no recibe eventos — no es
+          una capa de efecto por encima como era el CRT, es el fondo mismo. Desde
+          que las superficies son opacas sólo asoma por los gaps del grid. */}
       <div className="ntx-bg" aria-hidden="true" />
 
       <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
