@@ -415,33 +415,67 @@ button {
   flex-shrink: 0;
   background: var(--mark);
   box-shadow: 0 0 6px var(--mark);
-  transition: opacity var(--ntx-normal) var(--ntx-ease);
+  /* Background y box-shadow acompañan a opacity porque las animaciones de
+     abajo laten EN COLOR, y al cancelarse la transición es quien suaviza la
+     vuelta al reposo — mismo rol que siempre tuvo con la de opacity. */
+  transition:
+    opacity var(--ntx-normal) var(--ntx-ease),
+    background var(--ntx-normal) var(--ntx-ease),
+    box-shadow var(--ntx-normal) var(--ntx-ease);
 }
 .ntx-tab[data-active='false'] .ntx-tab__mark {
   opacity: 0.45;
 }
+/* Las dos animaciones de la marca laten EN COLOR, nunca en opacity, y no es
+   una preferencia estética: es ClearType.
+
+   Una animación de opacity se va al compositor: el puntito gana una capa
+   propia mientras dura. Los paneles pintan DESPUÉS que el tab strip, y sus
+   sombras —el `0 32px 80px` del enfocado sobre todo— pisan esa capa, así que
+   Chromium los promueve en cascada a capas propias también. Y un panel en
+   capa compositeada, con esquinas redondeadas y sombra (bordes no opacos),
+   pierde el antialiasing subpixel: TODO el texto de las terminales pasa a
+   gris, más flaco y apagado, mientras el puntito respire — y vuelve al
+   terminar. Se veía como una atenuación de glow global correlacionada con el
+   comando corriendo.
+
+   Fundir el color hacia transparente da el mismo pixel compositado que bajar
+   la opacity, pero es un repaint de main thread sobre un punto de 6px: no
+   crea capa, no promueve a nadie, y el ClearType queda en paz. */
+
 /* Algo corre en esa shell desde hace más de un par de segundos: el punto
-   respira lento, el mismo pulso vivo del led de la status bar. Es "trabajando",
-   no "mirame" — por eso ni acelera ni ensancha el glow como el aviso de abajo,
+   respira lento, el pulso vivo del led de la status bar. Es "trabajando", no
+   "mirame" — por eso ni acelera ni ensancha el glow como el aviso de abajo,
    que además le gana en cascada si alguna vez conviven. */
+@keyframes ntx-tab-busy {
+  0%,
+  100% {
+    background: var(--mark);
+    box-shadow: 0 0 6px var(--mark);
+  }
+  50% {
+    background: color-mix(in srgb, var(--mark) 35%, transparent);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--mark) 35%, transparent);
+  }
+}
 .ntx-tab__mark[data-busy='true'] {
-  animation: ntx-pulse 2.4s var(--ntx-ease) infinite;
+  animation: ntx-tab-busy 2.4s var(--ntx-ease) infinite;
 }
 
 /* Un comando largo terminó ahí mientras mirabas otra cosa: el punto late con su
    acento, más ancho de glow que el pulso de la status bar porque compite con
    una fila de tabs y no con el vacío. Se apaga solo al enfocar el panel — la
-   transición de opacity ya existente suaviza la salida de la animación. */
+   transición de la marca suaviza la salida de la animación. */
 @keyframes ntx-tab-notify {
   0%,
   100% {
-    opacity: 1;
+    background: var(--mark);
     box-shadow:
       0 0 6px var(--mark),
       0 0 14px color-mix(in srgb, var(--mark) 55%, transparent);
   }
   50% {
-    opacity: 0.3;
+    background: color-mix(in srgb, var(--mark) 30%, transparent);
     box-shadow: 0 0 3px color-mix(in srgb, var(--mark) 25%, transparent);
   }
 }

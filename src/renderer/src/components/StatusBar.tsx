@@ -99,9 +99,10 @@ export function StatusBar({ stats, active, accent, palette, onOpenAbout }: Statu
           <Icon name="info" size={12} strokeWidth={1.5} />
         </button>
         <span className="ntx-status__live" />
-        <span className="ntx-status__value" style={{ color: palette.warn }}>
-          {clock}
-        </span>
+        {/* En el gris de los demás valores, como corresponde: estuvo en warn un
+            tiempo y era decoración — la hora no es una alerta, y el amarillo
+            tiene rol fijo. El color le llega heredado de la barra. */}
+        <span className="ntx-status__value">{clock}</span>
       </span>
     </footer>
   )
