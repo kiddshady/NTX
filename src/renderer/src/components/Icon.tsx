@@ -26,6 +26,7 @@ export type IconName =
   | 'swatch'
   | 'eraser'
   | 'shell'
+  | 'duplicate'
   | 'folder'
   | 'skull'
   | 'search'
@@ -94,6 +95,17 @@ const PATHS: Record<IconName, JSX.Element> = {
     <>
       <rect x="3" y="4" width="18" height="16" rx="2" />
       <path d="M7 10l3 2.5L7 15" />
+    </>
+  ),
+  // Duplicar shell: dos ventanas encimadas, la de adelante con su prompt. El
+  // truco de la de atrás es el mismo de `restore`: se dibuja incompleta a
+  // propósito — le faltan justo los trazos que la de adelante taparía, y así
+  // no queda ningún cruce en el medio.
+  duplicate: (
+    <>
+      <rect x="4" y="9" width="13" height="11" rx="2" />
+      <path d="M7.5 12.5l2.8 2.2-2.8 2.2" />
+      <path d="M8.5 4.5H19a2.5 2.5 0 0 1 2.5 2.5V15.5" />
     </>
   ),
   folder: <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,

@@ -472,6 +472,21 @@ export function App(): JSX.Element {
     }
 
     if (activePane) {
+      // Duplicar = mismo perfil Y misma carpeta, dicho explícito. spawn() pelado
+      // hoy hereda las dos cosas del panel enfocado, pero este comando no
+      // depende de ese default: pasa los argumentos porque ése es su contrato.
+      list.push({
+        id: 'duplicate',
+        label: `Duplicate shell · ${activePane.profileLabel}`,
+        icon: 'duplicate',
+        desc: full
+          ? `The grid already holds ${MAX_PANES} shells`
+          : `Same profile, standing in ${shortPath(activePane.cwd, 2) || 'its folder'}`,
+        hint: full ? 'Full' : undefined,
+        run: () => {
+          if (!full) void spawn(activePane.profileId, activePane.cwd)
+        }
+      })
       list.push({
         id: 'find',
         label: 'Find in scrollback',
