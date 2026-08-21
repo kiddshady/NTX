@@ -199,6 +199,100 @@ button {
     repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.014) 0 1px, transparent 1px 34px);
 }
 
+/* --- El vidrio (CRT) --------------------------------------------------------
+ *
+ * La contraparte del sustrato (21 ago 2026): si `.ntx-bg` es el piso que asoma
+ * DETRÁS de todo, esto es el vidrio DELANTE de todo — scanlines de tubo
+ * cubriendo la ventana completa. Vive por encima del scrim (80) y del propio
+ * tooltip (200) a propósito: el efecto es del monitor, no de la escena, así que
+ * los modales, la paleta y hasta los tooltips quedan del otro lado del vidrio.
+ * No hay nada que hacer por componente — cualquier overlay nuevo nace ya
+ * cubierto. `pointer-events: none`: se mira a través, nunca se toca.
+ *
+ * Recto a pedido: sin viñeta ni curvatura (el `inset box-shadow` de 120px con
+ * el que ntermx oscurecía las esquinas es justo lo que no se quiso traer) y sin
+ * fósforo RGB — en clave acromática unas franjas de color serían decorar con lo
+ * que la paleta raciona. Las líneas van de borde a borde, parejas.
+ *
+ * Son negro translúcido y no un color de la paleta: la scanline de un tubo real
+ * es ausencia de luz, así que oscurece lo que pisa. Sobre la base casi negra
+ * desaparece sola; sobre texto y superficies se nota — exactamente donde un CRT
+ * las muestra. El knob de intensidad es ese 0.2.
+ *
+ * El período y el grosor NO están hardcodeados: los calza CrtLayer a píxel
+ * físico vía `--ntx-crt-period` y `--ntx-crt-line` (los fallbacks de acá son el
+ * caso 100%). Con un período fraccionario en device pixels el antialiasing hace
+ * líneas desparejas y aparecen bandas — el porqué completo está en el
+ * componente.
+ *
+ * El parpadeo anima la opacidad DEL VIDRIO, no la de la escena: lo que respira
+ * es la tinta de las líneas (0.85 → 1); el contenido de atrás no pulsa.
+ * `steps(1, end)` sostiene cada valor y salta seco al siguiente — un tubo
+ * tiembla, no hace fade — y los porcentajes van desparejos para que el loop de
+ * 5s no marque un compás. Es opacity sobre una capa compositeada: cero
+ * repaints.
+ */
+.ntx-crt {
+  position: absolute;
+  inset: 0;
+  z-index: 300;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0.2) 0 var(--ntx-crt-line, 1px),
+    transparent var(--ntx-crt-line, 1px) var(--ntx-crt-period, 3px)
+  );
+  animation: ntx-crt-flicker 5s steps(1, end) infinite;
+}
+
+@keyframes ntx-crt-flicker {
+  0% {
+    opacity: 1;
+  }
+  7% {
+    opacity: 0.9;
+  }
+  11% {
+    opacity: 0.97;
+  }
+  19% {
+    opacity: 0.93;
+  }
+  23% {
+    opacity: 1;
+  }
+  36% {
+    opacity: 0.95;
+  }
+  41% {
+    opacity: 0.88;
+  }
+  44% {
+    opacity: 0.97;
+  }
+  57% {
+    opacity: 0.92;
+  }
+  64% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.94;
+  }
+  78% {
+    opacity: 0.99;
+  }
+  87% {
+    opacity: 0.9;
+  }
+  93% {
+    opacity: 0.96;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 /* --- Titlebar -------------------------------------------------------------- */
 .ntx-titlebar {
   display: flex;

@@ -7,6 +7,7 @@ import { CommandPalette, type Command } from './components/CommandPalette'
 import { AboutModal } from './components/AboutModal'
 import { UpdateModal } from './components/UpdateModal'
 import { TooltipLayer } from './components/TooltipLayer'
+import { CrtLayer } from './components/CrtLayer'
 import { MAX_PANES, formatDuration, setHomeDir, shortPath, type PaneState } from './lib/panes'
 import { forgetPane } from './lib/ptyBus'
 import { PALETTE, paneAccent } from './term/themes'
@@ -528,9 +529,11 @@ export function App(): JSX.Element {
 
   return (
     <div className="ntx-app">
-      {/* El sustrato: grano y cuadrícula. Va primero y no recibe eventos — no es
-          una capa de efecto por encima como era el CRT, es el fondo mismo. Desde
-          que las superficies son opacas sólo asoma por los gaps del grid. */}
+      {/* El sustrato: grano y cuadrícula. Va primero y no recibe eventos — es el
+          fondo mismo, no una capa de efecto. La capa de efecto existe pero vive
+          en la otra punta del árbol: el vidrio CRT, que mira todo desde
+          adelante. Desde que las superficies son opacas el sustrato sólo asoma
+          por los gaps del grid. */}
       <div className="ntx-bg" aria-hidden="true" />
 
       <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
@@ -592,6 +595,11 @@ export function App(): JSX.Element {
       />
 
       <TooltipLayer />
+
+      {/* El vidrio CRT cierra el árbol: scanlines POR DELANTE de todo — scrim,
+          paleta, modales y tooltips incluidos. El efecto es del monitor, no de
+          la escena; por eso es UNA capa acá y no un ajuste por overlay. */}
+      <CrtLayer />
     </div>
   )
 }
