@@ -6,9 +6,9 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { SearchAddon } from '@xterm/addon-search'
 import { Icon } from './Icon'
 import { SearchBar, type SearchQuery, type SearchResults } from './SearchBar'
-import { attachPane } from '../lib/ptyBus'
+import { attachPane, attachReader } from '../lib/ptyBus'
 import { mixHex, xtermTheme, type Palette } from '../term/themes'
-import { paneTitle, type PaneState } from '../lib/panes'
+import { paneTitle, pathForShell, type PaneState } from '../lib/panes'
 
 interface TerminalPaneProps {
   pane: PaneState
@@ -57,6 +57,11 @@ export function TerminalPane({
   const search = useRef<SearchAddon | null>(null)
   const [dead, setDead] = useState<number | null>(null)
   const [searchResults, setSearchResults] = useState<SearchResults | null>(null)
+  // Un archivo en vuelo sobre el panel: enciende el anillo de "soltá acá".
+  const [dropping, setDropping] = useState(false)
+  // dragenter/dragleave disparan por cada hijo que el puntero cruza; el
+  // contador es el truco clásico para saber cuándo se fue del panel DE VERDAD.
+  const dragDepth = useRef(0)
 
   // Los callbacks van por ref para que el efecto de montaje no dependa de ellos:
   // si dependiera, cada render de App destruiría y recrearía la terminal entera,
@@ -197,6 +202,26 @@ export function TerminalPane({
       }
     )
 
+    // El scrollback, para los comandos de copiar/guardar de la paleta. Lee el
+    // buffer NORMAL a propósito: es el que tiene la historia — el alterno es la
+    // pantalla de una TUI (btop, lazygit), que no es lo que uno quiere llevarse.
+    // Las filas envueltas se recosen a su línea lógica: un renglón largo vuelve
+    // a ser UN renglón, no tantos como cortes hizo el ancho del panel.
+    const detachReader = attachReader(paneId, () => {
+      const buffer = terminal.buffer.normal
+      const lines: string[] = []
+      for (let i = 0; i < buffer.length; i++) {
+        const line = buffer.getLine(i)
+        if (!line) continue
+        const text = line.translateToString(true)
+        if (line.isWrapped && lines.length > 0) lines[lines.length - 1] += text
+        else lines.push(text)
+      }
+      // El vacío del final no es historia: es el resto del viewport.
+      while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+      return lines.join('\n')
+    })
+
     term.current = terminal
     fit.current = fitAddon
     search.current = searchAddon
@@ -224,6 +249,7 @@ export function TerminalPane({
       cancelAnimationFrame(first)
       observer.disconnect()
       detach()
+      detachReader()
       // Dispose de la terminal se lleva también a sus addons cargados.
       terminal.dispose()
       term.current = null
@@ -297,13 +323,58 @@ export function TerminalPane({
     setSearchResults(null)
   }, [])
 
+  // --- Soltar archivos: la ruta cae en el prompt --------------------------------
+  //
+  // Lo que se escribe no es la ruta cruda: pathForShell la traduce y la cita en
+  // el idioma de ESTA shell (/mnt/c para WSL, barras para Git Bash, comillas de
+  // PowerShell o cmd según toque). Va directo al pty, el mismo camino que el
+  // pegado — y con un espacio al final, para seguir tipeando sin tocar nada.
+
+  const onDragEnter = (event: React.DragEvent): void => {
+    if (dead !== null || !event.dataTransfer.types.includes('Files')) return
+    event.preventDefault()
+    dragDepth.current += 1
+    setDropping(true)
+  }
+
+  const onDragOver = (event: React.DragEvent): void => {
+    if (dead !== null || !event.dataTransfer.types.includes('Files')) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+  }
+
+  const onDragLeave = (): void => {
+    dragDepth.current = Math.max(0, dragDepth.current - 1)
+    if (dragDepth.current === 0) setDropping(false)
+  }
+
+  const onDrop = (event: React.DragEvent): void => {
+    dragDepth.current = 0
+    setDropping(false)
+    if (dead !== null) return
+    const files = Array.from(event.dataTransfer.files)
+    if (files.length === 0) return
+    event.preventDefault()
+    const text = files
+      .map((file) => pathForShell(window.ntx.pathForFile(file), pane.profileId))
+      .join(' ')
+    if (text) window.ntx.write(paneId, `${text} `)
+    // Soltaste acá: este panel pasa a ser el tuyo, y con él vuelve el teclado.
+    onFocus()
+  }
+
   return (
     <section
       className="ntx-pane"
       data-focused={focused}
       data-closing={pane.closing}
+      data-dropping={dropping}
       style={{ ['--accent' as string]: accent }}
       onMouseDown={onFocus}
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
     >
       <header className="ntx-pane__head ntx-chrome">
         <span className="ntx-pane__num">

@@ -24,6 +24,13 @@ Electron + xterm.js + node-pty.
   flota en el panel activo y resalta todos los matches con su acento: filtra
   mientras tipeás, Enter y Shift Enter saltan entre resultados, `Aa` exige
   mayúsculas exactas, y Esc la cierra devolviéndole el teclado al shell.
+- **El scrollback se lleva.** Desde la paleta: «Copy scrollback» manda todo lo
+  que el panel imprimió al portapapeles, y «Save scrollback to a file» lo
+  escribe como texto plano donde elijas. Las líneas largas vuelven enteras, no
+  cortadas donde el ancho del panel las envolvió.
+- **Soltá un archivo sobre un panel** y su ruta cae en el prompt, citada y
+  traducida al idioma de esa shell: comillas de PowerShell o cmd según toque,
+  `/mnt/c/...` para WSL, barras normales para Git Bash.
 - **Status bar con datos reales**: CPU y memoria del sistema, el directorio de la
   shell activa y su branch de git.
 - **Vive en el tray.** Cerrar esconde en vez de matar, y `Ctrl Alt X` la trae de
@@ -37,6 +44,9 @@ Electron + xterm.js + node-pty.
   la ventana está en el tray o detrás de otra, llega además una notificación de
   Windows —silenciosa— cuyo click te deja parado en ese panel. Funciona en
   PowerShell, Git Bash y WSL vía OSC 133; cmd no tiene dónde colgar la marca.
+- **Y mientras corre, se ve.** Pasados un par de segundos, el punto de la tab
+  respira lento —"trabajando", no "mirame"— y la status bar cuenta el tiempo
+  del comando del panel activo, en el acento de ese panel.
 - **Se actualiza sola.** Escanea los releases de este repo, descarga en silencio
   y avisa recién cuando sólo falta reiniciar. La versión y el escaneo manual
   viven en el About (el ícono de info de la titlebar).

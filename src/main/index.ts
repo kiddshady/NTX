@@ -1,4 +1,6 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, session, shell, Tray } from 'electron'
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, session, shell, Tray } from 'electron'
+import { writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { createMainWindow } from './window.js'
 import { detectProfiles } from './profiles.js'
 import { PtyManager } from './pty.js'
@@ -182,6 +184,33 @@ function registerIpc(): void {
   // arrancar. Los shells nuevos los abre él por el camino de siempre (pty:spawn).
   ipcMain.handle('session:load', () => loadSession())
   ipcMain.on('session:save', (_e, session: SavedSession) => saveSession(session))
+
+  // Guardar el scrollback como texto plano donde el usuario elija. El diálogo y
+  // la escritura viven acá porque son del main: el renderer ni elige rutas del
+  // disco ni lo toca. Cancelar y fallar devuelven lo mismo (null) a propósito —
+  // para el renderer las dos significan "no hay archivo", y el que falla es un
+  // guardado manual que el usuario puede reintentar con otra ruta.
+  ipcMain.handle(
+    'file:save-text',
+    async (_e, suggestedName: string, content: string): Promise<string | null> => {
+      if (!mainWindow) return null
+      const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+        title: 'Save scrollback',
+        defaultPath: join(app.getPath('downloads'), suggestedName),
+        filters: [
+          { name: 'Text', extensions: ['txt'] },
+          { name: 'All files', extensions: ['*'] }
+        ]
+      })
+      if (canceled || !filePath) return null
+      try {
+        await writeFile(filePath, content, 'utf8')
+        return filePath
+      } catch {
+        return null
+      }
+    }
+  )
 
   ipcMain.on('updates:check', () => updater?.check())
   ipcMain.on('updates:install', () => updater?.install())

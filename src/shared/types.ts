@@ -97,6 +97,19 @@ export interface NtxApi {
   onStats(handler: (stats: SystemStats) => void): () => void
   /** El renderer avisa el cwd que vio por OSC 7; main resuelve el branch. */
   reportCwd(paneId: string, cwd: string): void
+  /**
+   * La ruta absoluta de un File soltado sobre la ventana. Vive en el preload
+   * porque `File.path` ya no existe en Electron: lo resuelve webUtils, que el
+   * renderer no puede tocar. El parámetro va como `unknown` porque este archivo
+   * también lo compila el tsconfig de node, que no carga los tipos del DOM.
+   */
+  pathForFile(file: unknown): string
+  /**
+   * Diálogo de guardar + escritura del texto plano, en un solo viaje. Devuelve
+   * la ruta elegida, o null si se canceló (o no se pudo escribir). Va por el
+   * main porque el diálogo es suyo: el renderer no elige rutas del disco.
+   */
+  saveText(suggestedName: string, content: string): Promise<string | null>
   session: {
     /** La escena del arranque anterior, o null si no hay nada que restaurar. */
     load(): Promise<SavedSession | null>

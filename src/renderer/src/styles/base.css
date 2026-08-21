@@ -420,6 +420,14 @@ button {
 .ntx-tab[data-active='false'] .ntx-tab__mark {
   opacity: 0.45;
 }
+/* Algo corre en esa shell desde hace más de un par de segundos: el punto
+   respira lento, el mismo pulso vivo del led de la status bar. Es "trabajando",
+   no "mirame" — por eso ni acelera ni ensancha el glow como el aviso de abajo,
+   que además le gana en cascada si alguna vez conviven. */
+.ntx-tab__mark[data-busy='true'] {
+  animation: ntx-pulse 2.4s var(--ntx-ease) infinite;
+}
+
 /* Un comando largo terminó ahí mientras mirabas otra cosa: el punto late con su
    acento, más ancho de glow que el pulso de la status bar porque compite con
    una fila de tabs y no con el vacío. Se apaga solo al enfocar el panel — la
@@ -590,6 +598,19 @@ button {
   opacity: 0;
   transform: scale(0.97);
   pointer-events: none;
+}
+
+/* Un archivo en vuelo sobre el panel: el anillo se enciende en el acento y una
+   luz suave se asoma desde el borde — "soltá acá y la ruta cae en el prompt".
+   No hay texto ni overlay: el gesto ya lo dice, y las transiciones que el panel
+   y su ::after ya tienen hacen la entrada y la salida solas. */
+.ntx-pane[data-dropping='true'] {
+  background: var(--ntx-surface);
+}
+.ntx-pane[data-dropping='true']::after {
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    inset 0 0 30px -18px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .ntx-pane__head {
@@ -930,6 +951,13 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* El contador del comando corriendo entra esfumado, no de golpe. La salida es
+   seca como la de branch y path: los items de la barra viven y mueren con su
+   estado, y acá manda la consistencia de la fila. */
+.ntx-status__run {
+  animation: ntx-fade-in var(--ntx-normal) var(--ntx-ease);
+}
+
 .ntx-status__right {
   margin-left: auto;
   display: inline-flex;

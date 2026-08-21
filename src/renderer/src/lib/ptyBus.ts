@@ -70,4 +70,29 @@ export function forgetPane(paneId: string): void {
   exitHandlers.delete(paneId)
   pending.delete(paneId)
   exited.delete(paneId)
+  readers.delete(paneId)
+}
+
+/* ---------------------------------------------------------------------------
+ * Lo que el panel expone hacia arriba: su scrollback.
+ *
+ * La terminal vive adentro de <TerminalPane> y los comandos de la paleta viven
+ * en App — este registro es el puente en la otra dirección. Cada panel deja un
+ * lector (una función, no una copia: el buffer se lee recién cuando alguien lo
+ * pide) y App lo consulta por id, igual que el bus de datos de arriba.
+ * ------------------------------------------------------------------------- */
+
+const readers = new Map<string, () => string>()
+
+/** El panel registra cómo leerle el scrollback. Devuelve el desregistrador. */
+export function attachReader(paneId: string, read: () => string): () => void {
+  readers.set(paneId, read)
+  return () => {
+    readers.delete(paneId)
+  }
+}
+
+/** El scrollback completo de un panel, o null si (ya) no está. */
+export function scrollbackOf(paneId: string): string | null {
+  return readers.get(paneId)?.() ?? null
 }

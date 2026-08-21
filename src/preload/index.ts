@@ -1,5 +1,5 @@
 import { homedir } from 'node:os'
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import type {
   NtxApi,
@@ -39,6 +39,12 @@ const api: NtxApi = {
   onCwd: (handler) => subscribe<[string, string, string | null]>('pane:cwd', handler),
   onStats: (handler) => subscribe<[SystemStats]>('stats', handler),
   reportCwd: (paneId, cwd) => ipcRenderer.send('pane:report-cwd', paneId, cwd),
+
+  // El cast dice lo que el tipo compartido no puede: esto ES un File. La API lo
+  // declara unknown porque el tsconfig de node no carga el DOM (ver types.ts).
+  pathForFile: (file) => webUtils.getPathForFile(file as Parameters<typeof webUtils.getPathForFile>[0]),
+  saveText: (suggestedName, content) =>
+    ipcRenderer.invoke('file:save-text', suggestedName, content) as Promise<string | null>,
 
   session: {
     load: () => ipcRenderer.invoke('session:load') as Promise<SavedSession | null>,

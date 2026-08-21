@@ -34,6 +34,8 @@ export type IconName =
   | 'arrowDown'
   | 'list'
   | 'info'
+  | 'clipboard'
+  | 'download'
 
 /** Trazos de 24×24, todos con el mismo grosor para que convivan. */
 const PATHS: Record<IconName, JSX.Element> = {
@@ -155,6 +157,24 @@ const PATHS: Record<IconName, JSX.Element> = {
       <circle cx="12" cy="12" r="8.5" />
       <path d="M12 11.2v4.6" />
       <circle cx="12" cy="7.9" r="1.15" fill="currentColor" stroke="none" />
+    </>
+  ),
+  // Copiar scrollback: la tablita con su clip. El borde de arriba se dibuja con
+  // un hueco donde se apoya el clip — mismo criterio que `restore`: ningún
+  // trazo cruza a otro.
+  clipboard: (
+    <>
+      <path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
+      <rect x="9" y="2.5" width="6" height="3.5" rx="1.2" />
+      <path d="M9 11h6M9 15h6" />
+    </>
+  ),
+  // Guardar scrollback: la flecha que baja a la bandeja.
+  download: (
+    <>
+      <path d="M12 3.5V14" />
+      <path d="M7.5 9.5 12 14l4.5-4.5" />
+      <path d="M4.5 15.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3" />
     </>
   )
 }

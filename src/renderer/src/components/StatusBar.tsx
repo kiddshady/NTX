@@ -1,14 +1,36 @@
 import { useEffect, useState, type JSX } from 'react'
 import { Icon } from './Icon'
-import { shortPath, type PaneState } from '../lib/panes'
+import { formatDuration, shortPath, type PaneState } from '../lib/panes'
 import type { Palette } from '../term/themes'
 import type { SystemStats } from '../../../shared/types'
 
 interface StatusBarProps {
   stats: SystemStats
   active: PaneState | undefined
+  /** El acento del panel activo: el contador de ocupado habla en SU color. */
+  accent: string
   palette: Palette
   onOpenAbout: () => void
+}
+
+/** Cuánto lleva corriendo, refrescado por segundo — o null si nada corre. El
+ *  timer existe SÓLO mientras hay un busySince que contar; en reposo la barra
+ *  no gasta ni un tick de más (el reloj de al lado ya tiene el suyo). */
+function useElapsed(since: number | null): string | null {
+  const [label, setLabel] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (since === null) {
+      setLabel(null)
+      return
+    }
+    const tick = (): void => setLabel(formatDuration(Date.now() - since))
+    tick()
+    const timer = window.setInterval(tick, 1_000)
+    return () => window.clearInterval(timer)
+  }, [since])
+
+  return label
 }
 
 function useClock(): string {
@@ -23,8 +45,9 @@ function useClock(): string {
   return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
 }
 
-export function StatusBar({ stats, active, palette, onOpenAbout }: StatusBarProps): JSX.Element {
+export function StatusBar({ stats, active, accent, palette, onOpenAbout }: StatusBarProps): JSX.Element {
   const clock = useClock()
+  const running = useElapsed(active?.busySince ?? null)
 
   return (
     <footer className="ntx-status ntx-chrome">
@@ -51,6 +74,17 @@ export function StatusBar({ stats, active, palette, onOpenAbout }: StatusBarProp
           <span className="ntx-status__value ntx-copyable" data-tip={active.cwd}>
             {shortPath(active.cwd)}
           </span>
+        </span>
+      )}
+
+      {/* Cuánto lleva el comando del panel activo, en el acento de ESE panel —
+          es el mismo pulso que respira en su tab, dicho en números. Va al final
+          de la fila: su ancho cambia por segundo, y acá atrás el temblor se lo
+          come el espacio libre en vez de correr a los vecinos. */}
+      {running !== null && (
+        <span className="ntx-status__item ntx-status__run" style={{ ['--tone' as string]: accent }}>
+          <b>run</b>
+          <span className="ntx-status__value">{running}</span>
         </span>
       )}
 

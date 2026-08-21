@@ -9,7 +9,7 @@ import { UpdateModal } from './components/UpdateModal'
 import { TooltipLayer } from './components/TooltipLayer'
 import { CrtLayer } from './components/CrtLayer'
 import { MAX_PANES, formatDuration, setHomeDir, shortPath, type PaneState } from './lib/panes'
-import { forgetPane } from './lib/ptyBus'
+import { forgetPane, scrollbackOf } from './lib/ptyBus'
 import { PALETTE, paneAccent } from './term/themes'
 import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
 
@@ -18,6 +18,11 @@ const PANE_EXIT_MS = 220
 
 /** Un comando que tardó menos que esto no merece aviso: lo viste terminar. */
 const NOTIFY_MIN_MS = 6_000
+
+/** Y uno que tarda menos que esto no merece marca de ocupado: cada Enter no
+ *  puede hacer parpadear la tab. Más corto que el del aviso a propósito — la
+ *  marca es para verla MIENTRAS corre, y a los 6s ya te la perdiste media. */
+const BUSY_MIN_MS = 2_000
 
 /** El tamaño de siempre; Ctrl 0 vuelve acá. */
 const FONT_SIZE_DEFAULT = 12.5
@@ -77,6 +82,27 @@ export function App(): JSX.Element {
   // marca del shell no puede costar un render.
   const commandStart = useRef(new Map<string, number>())
 
+  // Los timers que encienden la marca de ocupado pasado BUSY_MIN_MS. Sólo un
+  // comando que sobrevive el umbral toca el estado — así el render se paga
+  // únicamente cuando hay algo que mostrar.
+  const busyTimer = useRef(new Map<string, number>())
+
+  /** Apaga la marca de ocupado de un panel: el timer pendiente si no llegó a
+   *  disparar, y el busySince si llegó. El setPanes devuelve el MISMO array
+   *  cuando no había nada encendido, para que React ni parpadee. */
+  const clearBusy = useCallback((paneId: string): void => {
+    const timer = busyTimer.current.get(paneId)
+    if (timer !== undefined) {
+      window.clearTimeout(timer)
+      busyTimer.current.delete(paneId)
+    }
+    setPanes((previous) =>
+      previous.some((pane) => pane.id === paneId && pane.busySince !== null)
+        ? previous.map((pane) => (pane.id === paneId ? { ...pane, busySince: null } : pane))
+        : previous
+    )
+  }, [])
+
   // --- Zoom -----------------------------------------------------------------
 
   const zoom = useCallback((delta: number): void => {
@@ -99,6 +125,20 @@ export function App(): JSX.Element {
     window.addEventListener('wheel', onWheel, { capture: true, passive: false })
     return () => window.removeEventListener('wheel', onWheel, { capture: true })
   }, [zoom])
+
+  // Un archivo soltado FUERA de un panel (titlebar, gaps del grid) caería en el
+  // default de Chromium: navegar la ventana al file:// y llevarse la app
+  // puesta. Se traga acá, una sola vez; los panes manejan su drop antes de que
+  // esto llegue a opinar.
+  useEffect(() => {
+    const swallow = (event: DragEvent): void => event.preventDefault()
+    window.addEventListener('dragover', swallow)
+    window.addEventListener('drop', swallow)
+    return () => {
+      window.removeEventListener('dragover', swallow)
+      window.removeEventListener('drop', swallow)
+    }
+  }, [])
 
   // Abrir el About descarta el aviso pendiente: ahí adentro ya se ve el estado
   // y el botón de reiniciar, mostrarlo dos veces sería perseguir.
@@ -167,7 +207,8 @@ export function App(): JSX.Element {
           branch: snapshot.branch,
           pid: snapshot.pid,
           closing: false,
-          notify: false
+          notify: false,
+          busySince: null
         }
       ]
     })
@@ -178,9 +219,10 @@ export function App(): JSX.Element {
     // en el mismo frame se siente como un crash, no como un cierre.
     window.ntx.kill(paneId)
     // Si la búsqueda vivía en este panel, se va con él. Y su comando en vuelo
-    // ya no le debe aviso a nadie.
+    // ya no le debe aviso ni marca de ocupado a nadie.
     setSearch((previous) => (previous?.paneId === paneId ? null : previous))
     commandStart.current.delete(paneId)
+    clearBusy(paneId)
     setPanes((previous) =>
       previous.map((pane) => (pane.id === paneId ? { ...pane, closing: true } : pane))
     )
@@ -193,7 +235,7 @@ export function App(): JSX.Element {
         return next
       })
     }, PANE_EXIT_MS)
-  }, [])
+  }, [clearBusy])
 
   // Arranque: detectamos shells y remontamos la escena del arranque anterior —
   // mismos paneles, mismos perfiles, mismas carpetas. El contenido no vuelve
@@ -287,12 +329,16 @@ export function App(): JSX.Element {
 
   const onPaneExit = useCallback(
     (paneId: string, code: number): void => {
+      // La shell murió: lo que estuviera corriendo murió con ella, así que la
+      // marca de ocupado no puede quedar contando sobre un panel muerto.
+      commandStart.current.delete(paneId)
+      clearBusy(paneId)
       // Salida limpia (un `exit` del usuario) = cerramos el panel. Salida con
       // error = lo dejamos abierto, porque el motivo está escrito ahí adentro y
       // cerrarlo se lo lleva puesto.
       if (code === 0) closePane(paneId)
     },
-    [closePane]
+    [closePane, clearBusy]
   )
 
   // --- Aviso de comando terminado ---------------------------------------------
@@ -301,8 +347,27 @@ export function App(): JSX.Element {
     const starts = commandStart.current
     if (running) {
       starts.set(paneId, Date.now())
+      // La marca de ocupado espera su umbral ANTES de tocar el estado: un
+      // comando instantáneo entra y sale de este handler sin costar un render.
+      // El timer relee el arranque al disparar — si para entonces llegó el D,
+      // el mapa ya no lo tiene y no hay nada que encender.
+      const pending = busyTimer.current.get(paneId)
+      if (pending !== undefined) window.clearTimeout(pending)
+      busyTimer.current.set(
+        paneId,
+        window.setTimeout(() => {
+          busyTimer.current.delete(paneId)
+          const since = starts.get(paneId)
+          if (since === undefined) return
+          setPanes((previous) =>
+            previous.map((pane) => (pane.id === paneId ? { ...pane, busySince: since } : pane))
+          )
+        }, BUSY_MIN_MS)
+      )
       return
     }
+
+    clearBusy(paneId)
 
     const startedAt = starts.get(paneId)
     // Un D sin C es el prompt respirando (arranque, Enter en vacío): no corre nada.
@@ -340,7 +405,7 @@ export function App(): JSX.Element {
         if (current !== -1) setFocused(current)
       }
     }
-  }, [])
+  }, [clearBusy])
 
   // El latido se apaga cuando el panel por fin recibe la mirada: foco de panel,
   // o la ventana volviendo al frente con ese panel ya enfocado.
@@ -495,6 +560,34 @@ export function App(): JSX.Element {
         hint: 'Ctrl Shift F',
         run: openSearch
       })
+      // El scrollback se lleva: al portapapeles o a un archivo. Los dos leen el
+      // buffer recién al ejecutarse (scrollbackOf), nunca al armar la lista.
+      list.push({
+        id: 'copy-scrollback',
+        label: 'Copy scrollback',
+        icon: 'clipboard',
+        desc: `Everything the ${activePane.profileLabel} pane has printed, to the clipboard`,
+        run: () => {
+          const text = scrollbackOf(activePane.id)
+          if (text) void navigator.clipboard.writeText(text)
+        }
+      })
+      list.push({
+        id: 'save-scrollback',
+        label: 'Save scrollback to a file',
+        icon: 'download',
+        desc: 'Plain text, wherever you choose',
+        run: () => {
+          const text = scrollbackOf(activePane.id)
+          if (!text) return
+          const now = new Date()
+          const pad = (value: number): string => String(value).padStart(2, '0')
+          const stamp =
+            `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
+            `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+          void window.ntx.saveText(`ntx-${activePane.profileId}-${stamp}.txt`, text)
+        }
+      })
       list.push({
         id: 'close',
         label: 'Close the active shell',
@@ -592,7 +685,13 @@ export function App(): JSX.Element {
         ))}
       </main>
 
-      <StatusBar stats={stats} active={panes[focused]} palette={palette} onOpenAbout={openAbout} />
+      <StatusBar
+        stats={stats}
+        active={panes[focused]}
+        accent={accentOf(focused)}
+        palette={palette}
+        onOpenAbout={openAbout}
+      />
 
       <CommandPalette
         open={paletteOpen}
