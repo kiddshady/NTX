@@ -851,6 +851,26 @@ button {
  * y la sombra; sobre panel sin foco queda un peldaño ARRIBA, que es la
  * dirección que la sombra venía anunciando.
  */
+/* Acá la entrada y la salida SÍ van en opacity, y está medido que es seguro —
+ * al revés que en el tab strip, donde una transición de opacity apagaba el
+ * ClearType de todas las terminales (el mecanismo, arriba en `.ntx-tab__mark`).
+ *
+ * Medido el 22 ago 2026 con tres shells: abriendo con Ctrl+Shift+F y cerrando
+ * con Escape, el LayerTree suma UNA capa —esta barra— mientras corre la
+ * animación y la suelta al terminar, y la cuenta de paneles compositeados no se
+ * mueve; los fringes de subpixel del texto de los paneles se quedan clavados.
+ * Con el bug del tab strip reinyectado a propósito, el mismo aparato los ve
+ * caer a cero: la medición sabía detectarlo y acá no encontró nada.
+ *
+ * La razón es estructural. La barra vive DENTRO del panel, que recorta con
+ * `overflow: hidden`, así que su capa no llega a pisar a ningún hermano que
+ * pinte después. Lo del tab strip era la situación inversa: la sombra del panel
+ * enfocado —80px de blur tirados desde 32px de offset— trepa unos 48px por
+ * ENCIMA del borde del panel, se mete en la fila de tabs, y ahí sí alcanzaba a
+ * las capas de los puntitos.
+ *
+ * O sea que la prohibición de opacity es del tab strip, no de la app entera.
+ * Acá la transición se queda: no hay nada que curar. */
 @keyframes ntx-search-in {
   from {
     opacity: 0;
