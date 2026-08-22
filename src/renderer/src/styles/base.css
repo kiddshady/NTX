@@ -415,19 +415,22 @@ button {
   flex-shrink: 0;
   background: var(--mark);
   box-shadow: 0 0 6px var(--mark);
-  /* Background y box-shadow acompañan a opacity porque las animaciones de
-     abajo laten EN COLOR, y al cancelarse la transición es quien suaviza la
-     vuelta al reposo — mismo rol que siempre tuvo con la de opacity. */
+  /* Estas dos transiciones hacen doble turno: suavizan el prendido/apagado
+     del cambio de tab y la vuelta al reposo cuando una animación de abajo se
+     cancela. Opacity no transiciona acá — el porqué, abajo. */
   transition:
-    opacity var(--ntx-normal) var(--ntx-ease),
     background var(--ntx-normal) var(--ntx-ease),
     box-shadow var(--ntx-normal) var(--ntx-ease);
 }
+/* La marca de una tab apagada se atenúa fundiendo el COLOR al 45%, no con
+   `opacity: 0.45`: el mismo pixel en reposo, pero el viaje hasta ahí es un
+   repaint, no una capa. */
 .ntx-tab[data-active='false'] .ntx-tab__mark {
-  opacity: 0.45;
+  background: color-mix(in srgb, var(--mark) 45%, transparent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--mark) 45%, transparent);
 }
-/* Las dos animaciones de la marca laten EN COLOR, nunca en opacity, y no es
-   una preferencia estética: es ClearType.
+/* NADA en el tab strip anima NI transiciona opacity, y no es una preferencia
+   estética: es ClearType.
 
    Una animación de opacity se va al compositor: el puntito gana una capa
    propia mientras dura. Los paneles pintan DESPUÉS que el tab strip, y sus
@@ -439,9 +442,18 @@ button {
    terminar. Se veía como una atenuación de glow global correlacionada con el
    comando corriendo.
 
+   Y una TRANSICIÓN de opacity composita exactamente igual que una animación,
+   solo que más corto (cazado el 22 ago 2026, medido con LayerTree + captura
+   de pantalla): la marca que se atenuaba con `opacity: 0.45` y la cruz que
+   aparecía de 0 a 1 le regalaban al compositor cuatro capas por cada cambio
+   de shell, un panel entero se promovía y despromovía en cascada, y su texto
+   quedaba en gris ~230 ms — "parpadean todas las letras" en cada Ctrl+N. Por
+   eso la marca se atenúa fundiendo el color y la cruz aparece tiñendo
+   `currentColor` desde transparente.
+
    Fundir el color hacia transparente da el mismo pixel compositado que bajar
-   la opacity, pero es un repaint de main thread sobre un punto de 6px: no
-   crea capa, no promueve a nadie, y el ClearType queda en paz. */
+   la opacity, pero es un repaint de main thread: no crea capa, no promueve a
+   nadie, y el ClearType queda en paz. */
 
 /* Algo corre en esa shell desde hace más de un par de segundos: el punto
    respira lento, el pulso vivo del led de la status bar. Es "trabajando", no
@@ -482,20 +494,22 @@ button {
 .ntx-tab__mark[data-notify='true'] {
   animation: ntx-tab-notify 1.5s var(--ntx-ease) infinite;
 }
+/* Escondida, la cruz se tiñe transparente en vez de bajar a `opacity: 0`: el
+   trazo del SVG es currentColor, así que el fundido se ve igual, pero viaja
+   por color — sin capa compositeada (el porqué, arriba en la marca). */
 .ntx-tab__close {
   display: inline-flex;
   flex-shrink: 0;
-  color: var(--ntx-ghost);
-  opacity: 0;
-  transition:
-    opacity var(--ntx-fast) var(--ntx-ease),
-    color var(--ntx-fast) var(--ntx-ease);
+  color: transparent;
+  transition: color var(--ntx-fast) var(--ntx-ease);
 }
 .ntx-tab:hover .ntx-tab__close,
 .ntx-tab[data-active='true'] .ntx-tab__close {
-  opacity: 1;
+  color: var(--ntx-ghost);
 }
-.ntx-tab__close:hover {
+/* Con :hover en las dos puntas para ganarle en especificidad a la regla de
+   arriba — la cruz hovereada siempre tiene a su tab hovereada debajo. */
+.ntx-tab:hover .ntx-tab__close:hover {
   color: var(--ntx-alt);
 }
 
