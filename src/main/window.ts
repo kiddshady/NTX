@@ -11,8 +11,8 @@ import { BrowserWindow, screen, shell } from 'electron'
  */
 export const BASE_COLOR = '#050507'
 
-const WIN_W = 1280
-const WIN_H = 820
+const WIN_W = 1200
+const WIN_H = 800
 
 export function createMainWindow(): BrowserWindow {
   // Centramos a mano sobre el área útil (descuenta la taskbar). Tiene que ser a
