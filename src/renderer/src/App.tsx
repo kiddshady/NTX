@@ -598,18 +598,6 @@ export function App(): JSX.Element {
       })
     }
 
-    panes.forEach((pane, index) => {
-      if (index === focused) return
-      list.push({
-        id: `focus:${pane.id}`,
-        label: `Go to shell ${index + 1} · ${pane.profileLabel}`,
-        icon: 'caret',
-        desc: pane.cwd ?? 'Moves focus to that pane',
-        hint: `Ctrl ${index + 1}`,
-        run: () => setFocused(index)
-      })
-    })
-
     // Sólo aparece cuando hay algo que resetear: en reposo sería ruido.
     if (fontSize !== FONT_SIZE_DEFAULT) {
       list.push({
