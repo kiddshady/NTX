@@ -26,7 +26,6 @@ export type IconName =
   | 'swatch'
   | 'eraser'
   | 'shell'
-  | 'duplicate'
   | 'folder'
   | 'skull'
   | 'search'
@@ -35,7 +34,6 @@ export type IconName =
   | 'list'
   | 'info'
   | 'clipboard'
-  | 'download'
 
 /** Trazos de 24×24, todos con el mismo grosor para que convivan. */
 const PATHS: Record<IconName, JSX.Element> = {
@@ -99,17 +97,6 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M7 10l3 2.5L7 15" />
     </>
   ),
-  // Duplicar shell: dos ventanas encimadas, la de adelante con su prompt. El
-  // truco de la de atrás es el mismo de `restore`: se dibuja incompleta a
-  // propósito — le faltan justo los trazos que la de adelante taparía, y así
-  // no queda ningún cruce en el medio.
-  duplicate: (
-    <>
-      <rect x="4" y="9" width="13" height="11" rx="2" />
-      <path d="M7.5 12.5l2.8 2.2-2.8 2.2" />
-      <path d="M8.5 4.5H19a2.5 2.5 0 0 1 2.5 2.5V15.5" />
-    </>
-  ),
   folder: <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
   // El shell que se murió.
   skull: (
@@ -167,14 +154,6 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
       <rect x="9" y="2.5" width="6" height="3.5" rx="1.2" />
       <path d="M9 11h6M9 15h6" />
-    </>
-  ),
-  // Guardar scrollback: la flecha que baja a la bandeja.
-  download: (
-    <>
-      <path d="M12 3.5V14" />
-      <path d="M7.5 9.5 12 14l4.5-4.5" />
-      <path d="M4.5 15.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3" />
     </>
   )
 }

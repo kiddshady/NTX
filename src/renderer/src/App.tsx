@@ -537,21 +537,6 @@ export function App(): JSX.Element {
     }
 
     if (activePane) {
-      // Duplicar = mismo perfil Y misma carpeta, dicho explícito. spawn() pelado
-      // hoy hereda las dos cosas del panel enfocado, pero este comando no
-      // depende de ese default: pasa los argumentos porque ése es su contrato.
-      list.push({
-        id: 'duplicate',
-        label: `Duplicate shell · ${activePane.profileLabel}`,
-        icon: 'duplicate',
-        desc: full
-          ? `The grid already holds ${MAX_PANES} shells`
-          : `Same profile, standing in ${shortPath(activePane.cwd, 2) || 'its folder'}`,
-        hint: full ? 'Full' : undefined,
-        run: () => {
-          if (!full) void spawn(activePane.profileId, activePane.cwd)
-        }
-      })
       list.push({
         id: 'find',
         label: 'Find in scrollback',
@@ -560,8 +545,8 @@ export function App(): JSX.Element {
         hint: 'Ctrl Shift F',
         run: openSearch
       })
-      // El scrollback se lleva: al portapapeles o a un archivo. Los dos leen el
-      // buffer recién al ejecutarse (scrollbackOf), nunca al armar la lista.
+      // El scrollback se lleva al portapapeles. Lee el buffer recién al
+      // ejecutarse (scrollbackOf), nunca al armar la lista.
       list.push({
         id: 'copy-scrollback',
         label: 'Copy scrollback',
@@ -570,22 +555,6 @@ export function App(): JSX.Element {
         run: () => {
           const text = scrollbackOf(activePane.id)
           if (text) void navigator.clipboard.writeText(text)
-        }
-      })
-      list.push({
-        id: 'save-scrollback',
-        label: 'Save scrollback to a file',
-        icon: 'download',
-        desc: 'Plain text, wherever you choose',
-        run: () => {
-          const text = scrollbackOf(activePane.id)
-          if (!text) return
-          const now = new Date()
-          const pad = (value: number): string => String(value).padStart(2, '0')
-          const stamp =
-            `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
-            `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-          void window.ntx.saveText(`ntx-${activePane.profileId}-${stamp}.txt`, text)
         }
       })
       list.push({

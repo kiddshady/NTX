@@ -43,8 +43,6 @@ const api: NtxApi = {
   // El cast dice lo que el tipo compartido no puede: esto ES un File. La API lo
   // declara unknown porque el tsconfig de node no carga el DOM (ver types.ts).
   pathForFile: (file) => webUtils.getPathForFile(file as Parameters<typeof webUtils.getPathForFile>[0]),
-  saveText: (suggestedName, content) =>
-    ipcRenderer.invoke('file:save-text', suggestedName, content) as Promise<string | null>,
 
   session: {
     load: () => ipcRenderer.invoke('session:load') as Promise<SavedSession | null>,

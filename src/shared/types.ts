@@ -104,12 +104,6 @@ export interface NtxApi {
    * también lo compila el tsconfig de node, que no carga los tipos del DOM.
    */
   pathForFile(file: unknown): string
-  /**
-   * Diálogo de guardar + escritura del texto plano, en un solo viaje. Devuelve
-   * la ruta elegida, o null si se canceló (o no se pudo escribir). Va por el
-   * main porque el diálogo es suyo: el renderer no elige rutas del disco.
-   */
-  saveText(suggestedName: string, content: string): Promise<string | null>
   session: {
     /** La escena del arranque anterior, o null si no hay nada que restaurar. */
     load(): Promise<SavedSession | null>

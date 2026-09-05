@@ -17,16 +17,14 @@ Electron + xterm.js + node-pty.
   foco: nunca hay dos colores prendidos a la vez.
 - **Paleta de comandos** (el botón de la lista, arriba a la izquierda) con
   filtro por subsecuencia: `nsp` encuentra «New shell · PowerShell». Abre
-  shells, duplica la activa (mismo perfil, misma carpeta), salta entre paneles
-  y muestra el About. Sin atajo, a propósito: es un
+  shells, salta entre paneles y muestra el About. Sin atajo, a propósito: es un
   menú, y las teclas son del shell.
 - **Búsqueda en el scrollback** (`Ctrl Shift F`, o desde la paleta). La barra
   flota en el panel activo y resalta todos los matches con su acento: filtra
   mientras tipeás, Enter y Shift Enter saltan entre resultados, `Aa` exige
   mayúsculas exactas, y Esc la cierra devolviéndole el teclado al shell.
-- **El scrollback se lleva.** Desde la paleta: «Copy scrollback» manda todo lo
-  que el panel imprimió al portapapeles, y «Save scrollback to a file» lo
-  escribe como texto plano donde elijas. Las líneas largas vuelven enteras, no
+- **El scrollback se lleva.** «Copy scrollback», desde la paleta, manda todo lo
+  que el panel imprimió al portapapeles. Las líneas largas vuelven enteras, no
   cortadas donde el ancho del panel las envolvió.
 - **Soltá un archivo sobre un panel** y su ruta cae en el prompt, citada y
   traducida al idioma de esa shell: comillas de PowerShell o cmd según toque,
