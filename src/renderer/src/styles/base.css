@@ -786,7 +786,9 @@ button {
   }
   50% {
     background-color: inherit;
-    color: var(--accent);
+    /* Al apagarse el bloque, el carácter vuelve al color normal de la terminal;
+       no debe conservar el acento del cursor. */
+    color: var(--ntx-fg);
     box-shadow: none;
   }
 }
