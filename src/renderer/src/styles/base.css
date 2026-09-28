@@ -748,6 +748,48 @@ button {
   overflow-y: auto;
 }
 
+/* --- La barra de scroll de xterm --------------------------------------------
+ *
+ * xterm la muestra al entrar el mouse y la esconde al salir, y lo hace con
+ * OPACITY: 100ms de entrada y 800ms de salida (`.visible` / `.invisible.fade`
+ * en xterm.css). Es el mismo bug del tab strip con otra cara (28 sep 2026,
+ * medido con LayerTree): mientras la barra del panel 1 se funde, su capa
+ * vive en el borde derecho del panel — justo donde llega la sombra del panel
+ * 2, que pinta después. El panel 2 entero se promueve por `Overlap` durante
+ * los 800ms y se despromueve al terminar: dos re-rasterizaciones de su texto,
+ * y el glow de las letras cambia con sólo pasar el mouse de un panel al otro.
+ * Acá el `overflow: hidden` del panel NO salva, como sí salva a la búsqueda:
+ * la búsqueda vive lejos del borde, la barra está pegada a él.
+ *
+ * Fundido en color, entonces: la barra queda siempre a opacidad plena y lo
+ * que aparece y desaparece es el fondo del slider. Mismo pixel y mismos
+ * tiempos que xterm, pero es repaint y no crea capa. `pointer-events: none`
+ * del estado invisible se queda como está: escondida sigue sin atajar clicks.
+ *
+ * Y el `z-index: 11` queda FIJO. `.visible` no trae sólo la opacity: también
+ * sube la barra a z 11, y ese salto solo alcanza para que el panel 2 pierda
+ * el squashing y se promueva por `Overlap` todo el rato que el mouse está
+ * encima de él (medido: sin opacity en juego, el panel igual entraba y salía
+ * del compositor con cada cruce). Con el z fijo en los dos estados el árbol
+ * de capas no se mueve ni un nodo al pasear el mouse.
+ *
+ * `.ntx-pane .ntx-pane__term` por lo mismo que el cursor: el color del slider
+ * lo inyecta xterm en un <style> que va después de esta hoja. */
+.ntx-pane .ntx-pane__term .xterm-scrollable-element > .scrollbar {
+  opacity: 1;
+  z-index: 11;
+  transition: none;
+}
+.ntx-pane .ntx-pane__term .xterm-scrollable-element > .scrollbar > .slider {
+  transition: background-color 100ms linear;
+}
+.ntx-pane .ntx-pane__term .xterm-scrollable-element > .invisible > .slider {
+  background: transparent;
+}
+.ntx-pane .ntx-pane__term .xterm-scrollable-element > .invisible.fade > .slider {
+  transition-duration: 800ms;
+}
+
 /* --- El cursor ------------------------------------------------------------- */
 /* Bloque de acento con aureola, igual que la maqueta.
  *
