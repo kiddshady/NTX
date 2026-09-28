@@ -337,6 +337,46 @@ export function applyPalette(palette: Palette): void {
   for (const [name, value] of Object.entries(vars)) {
     root.style.setProperty(`--ntx-${name}`, value)
   }
+  applyInk(palette)
+}
+
+/**
+ * Le da a cada clase de color de xterm (`.xterm-fg-N`) su color también como
+ * variable, `--ntx-ink`.
+ *
+ * Existe por el cursor. Con el bloque apagado, la letra de abajo tiene que
+ * volver a SU color — el amarillo del prompt, el cian de una ruta — y no al
+ * blanco genérico. Pero xterm le pisa el color a la celda del cursor con una
+ * regla propia (`cursorAccent`), más fuerte que la de `.xterm-fg-N`, y desde
+ * CSS no hay forma de pedir "el color que esta clase te habría dado". La
+ * variable es esa forma: base.css la lee en la celda del cursor.
+ *
+ * Los colores truecolor no pasan por acá: xterm los pone como `style` inline,
+ * que ya le gana a la regla del cursor sin ayuda.
+ *
+ * Son las 256 porque xterm usa clase para toda la paleta indexada: las 16 de
+ * la paleta y las 240 restantes (16-255), que son fijas en todas las terminales
+ * — el cubo 6×6×6 y la rampa de grises — y xterm las calcula igual.
+ */
+function applyInk(palette: Palette): void {
+  const hex = (r: number, g: number, b: number): string =>
+    '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')
+  const colors = [...palette.ansi]
+  const levels = [0, 95, 135, 175, 215, 255]
+  for (let i = 0; i < 216; i++) {
+    colors.push(hex(levels[Math.floor(i / 36)]!, levels[Math.floor(i / 6) % 6]!, levels[i % 6]!))
+  }
+  for (let i = 0; i < 24; i++) {
+    const c = 8 + i * 10
+    colors.push(hex(c, c, c))
+  }
+  let style = document.getElementById('ntx-ink')
+  if (!style) {
+    style = document.createElement('style')
+    style.id = 'ntx-ink'
+    document.head.append(style)
+  }
+  style.textContent = colors.map((c, i) => `.xterm-fg-${i}{--ntx-ink:${c}}`).join('')
 }
 
 /**

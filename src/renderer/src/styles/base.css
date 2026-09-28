@@ -818,24 +818,39 @@ button {
 @keyframes ntx-cursor-blink {
   0% {
     background-color: var(--accent);
-    /* `--ntx-base` y NO `--ntx-surface`: éste es el color de la LETRA que el
-       bloque del cursor tapa. Cuando las superficies eran vidrio, `surface` era
-       un blanco al 2% y la letra quedaba invisible sobre el acento; hoy es un
-       opaco casi negro y daría parecido, pero `base` sigue siendo el contraste
-       más honesto contra el bloque encendido. */
-    color: var(--ntx-base);
     box-shadow: 0 0 7px var(--accent);
   }
   50% {
     background-color: inherit;
-    /* Al apagarse el bloque, el carácter vuelve al color normal de la terminal;
-       no debe conservar el acento del cursor. */
-    color: var(--ntx-fg);
     box-shadow: none;
   }
 }
+/* La letra parpadea aparte, y no por prolijidad: en la fase apagada tiene que
+ * volver a SU color — amarillo, cian, el que tuviera — y un keyframe no puede
+ * nombrar "el color que tenías". Lo que sí puede es no nombrar nada: el
+ * extremo que falta toma el valor de la cascada. Con `steps(2, jump-none)` la
+ * primera mitad del ciclo se queda en `from` (la letra oscura sobre el bloque)
+ * y la segunda salta a la cascada, en el mismo 50% en que el `step-end` de
+ * arriba apaga el bloque.
+ *
+ * `--ntx-base` y NO `--ntx-surface` para la letra tapada: cuando las superficies
+ * eran vidrio, `surface` era un blanco al 2% y la letra quedaba invisible sobre
+ * el acento; hoy es un opaco casi negro y daría parecido, pero `base` sigue
+ * siendo el contraste más honesto contra el bloque encendido. */
+@keyframes ntx-cursor-ink {
+  from {
+    color: var(--ntx-base);
+  }
+}
+/* Y la cascada tiene que ser el color de la letra, no el `cursorAccent` que
+ * xterm le fija a la celda del cursor. `--ntx-ink` lo deja cada `.xterm-fg-N`
+ * (ver applyInk en themes.ts); sin clase, la letra es del color por defecto.
+ * Un truecolor viene inline y le gana a esta regla solo: también vuelve bien. */
 .ntx-pane .ntx-pane__term .xterm-rows.xterm-focus .xterm-cursor.xterm-cursor-blink.xterm-cursor-block {
-  animation: ntx-cursor-blink 1.1s step-end infinite;
+  color: var(--ntx-ink, var(--ntx-fg));
+  animation:
+    ntx-cursor-blink 1.1s step-end infinite,
+    ntx-cursor-ink 1.1s steps(2, jump-none) infinite;
 }
 
 /* Panel sin foco. xterm lo dibuja como un contorno hueco; la maqueta lo quiere
