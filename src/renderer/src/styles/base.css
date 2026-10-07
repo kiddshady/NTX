@@ -942,7 +942,10 @@ button {
   /* Los 24px de la cabecera y un respiro: cuelga del hairline, no lo pisa. */
   top: 31px;
   right: 10px;
-  z-index: 4;
+  /* Arriba de la scrollbar de xterm, que está fija en z 11 (ver más arriba) y
+     compite en el mismo contexto: `.ntx-pane__term` no abre uno propio. Con
+     menos, la barra le pasaba por encima al borde derecho de la búsqueda. */
+  z-index: 12;
   display: flex;
   align-items: center;
   gap: 6px;
