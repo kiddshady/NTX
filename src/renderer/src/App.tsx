@@ -579,16 +579,8 @@ export function App(): JSX.Element {
       })
     }
 
-    list.push({
-      id: 'about',
-      label: 'About NTX',
-      icon: 'info',
-      desc: 'Version, updates and the repo',
-      run: openAbout
-    })
-
     return list
-  }, [profiles, panes, focused, palette, spawn, closePane, openAbout, openSearch, fontSize])
+  }, [profiles, panes, focused, palette, spawn, closePane, openSearch, fontSize])
 
   // --- Render ----------------------------------------------------------------
 
