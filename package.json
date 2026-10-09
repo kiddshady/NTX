@@ -15,16 +15,19 @@
     "dist": "npm run build && electron-builder --win",
     "dist:nsis": "npm run build && electron-builder --win nsis",
     "dist:portable": "npm run build && electron-builder --win portable",
-    "postinstall": "node scripts/postinstall.cjs"
+    "postinstall": "node scripts/postinstall.cjs",
+    "test": "node scripts/test-remote.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
-    "node-pty": "1.1.0"
+    "node-pty": "1.1.0",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
+    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^5.2.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "^0.16.0",

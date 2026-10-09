@@ -330,15 +330,20 @@ export function TerminalPane({
   // PowerShell o cmd según toque). Va directo al pty, el mismo camino que el
   // pegado — y con un espacio al final, para seguir tipeando sin tocar nada.
 
+  // Un panel de otra máquina no acepta archivos: la ruta de ESTE disco no existe
+  // allá, y pegarla en su prompt sería mentirle. Sin preventDefault el cursor
+  // dice "no se puede" solo, y el drop cae en el tragadero de App.
+  const remote = pane.remote !== undefined
+
   const onDragEnter = (event: React.DragEvent): void => {
-    if (dead !== null || !event.dataTransfer.types.includes('Files')) return
+    if (dead !== null || remote || !event.dataTransfer.types.includes('Files')) return
     event.preventDefault()
     dragDepth.current += 1
     setDropping(true)
   }
 
   const onDragOver = (event: React.DragEvent): void => {
-    if (dead !== null || !event.dataTransfer.types.includes('Files')) return
+    if (dead !== null || remote || !event.dataTransfer.types.includes('Files')) return
     event.preventDefault()
     event.dataTransfer.dropEffect = 'copy'
   }
@@ -351,7 +356,7 @@ export function TerminalPane({
   const onDrop = (event: React.DragEvent): void => {
     dragDepth.current = 0
     setDropping(false)
-    if (dead !== null) return
+    if (dead !== null || remote) return
     const files = Array.from(event.dataTransfer.files)
     if (files.length === 0) return
     event.preventDefault()
@@ -381,6 +386,21 @@ export function TerminalPane({
           <Icon name="caret" size={9} />
           {String(index + 1).padStart(2, '0')}
         </span>
+        {/* La máquina, si no es ésta. Apagada mientras no se la alcanza: el panel
+            sigue ahí y tipear se encola, pero tiene que verse que del otro lado
+            ahora no hay nadie. */}
+        {pane.remote && (
+          <span
+            className="ntx-pane__host"
+            data-online={pane.remote.online}
+            data-tip={pane.remote.online ? `Runs on ${pane.remote.host}` : `Waiting for ${pane.remote.host}…`}
+          >
+            <Icon name="machine" size={11} strokeWidth={1.6} />
+            {pane.remote.host}
+            {/* Siempre montado: se despliega y se pliega con el estado, no salta. */}
+            <span className="ntx-pane__host-state">offline</span>
+          </span>
+        )}
         <span className="ntx-pane__title">{paneTitle(pane)}</span>
         <span className="ntx-pane__pid ntx-copyable">
           {dead === null ? `PID ${pane.pid}` : `exit ${dead}`}

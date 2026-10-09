@@ -1613,3 +1613,479 @@ button {
   color: var(--ntx-muted);
   user-select: text;
 }
+
+/* ===========================================================================
+   Otras máquinas.
+   Un panel puede correr en otra PC de la LAN (la UCK1 manejada desde la UCX).
+   Lo remoto se marca con el ícono de pantalla y el nombre de la máquina, en
+   gris: es información de dónde, no un estado. Lo único que cambia de color es
+   la ausencia — una máquina que no está habla en amarillo, el de la atención.
+   =========================================================================== */
+
+/* --- En la cabecera del panel ------------------------------------------------ */
+.ntx-pane__host {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-family: var(--ntx-font-mono);
+  color: var(--ntx-dim);
+  transition: color var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-pane__host[data-online='false'] {
+  color: var(--ntx-warn);
+}
+/* "offline" se despliega al lado del nombre en vez de aparecer: ancho por
+   max-width, presencia por opacidad. */
+.ntx-pane__host-state {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  font-family: var(--ntx-font-ui);
+  transition:
+    max-width var(--ntx-normal) var(--ntx-ease),
+    opacity var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-pane__host[data-online='false'] .ntx-pane__host-state {
+  max-width: 60px;
+  opacity: 1;
+}
+/* Mientras la máquina no está, el panel entero baja un tono: sigue ahí, lo
+   tipeado se encola, pero se ve que del otro lado no hay nadie. */
+.ntx-pane__screen {
+  transition: opacity var(--ntx-slow) var(--ntx-ease);
+}
+.ntx-pane:has(.ntx-pane__host[data-online='false']) .ntx-pane__screen {
+  opacity: 0.55;
+}
+
+/* --- En la status bar ------------------------------------------------------- */
+/* El chip de máquina vive siempre en el DOM y se despliega por grid 0fr → 1fr:
+   así lo que viene atrás se corre suave. Plegado se come su propio gap con el
+   margen negativo, para que la barra en reposo quede exactamente como antes. */
+.ntx-status__machine {
+  display: inline-grid;
+  grid-template-columns: 0fr;
+  margin-right: -16px;
+  opacity: 0;
+  color: var(--ntx-dim);
+  transition:
+    grid-template-columns var(--ntx-normal) var(--ntx-ease),
+    margin-right var(--ntx-normal) var(--ntx-ease),
+    opacity var(--ntx-normal) var(--ntx-ease),
+    color var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-status__machine[data-show='true'] {
+  grid-template-columns: 1fr;
+  margin-right: 0;
+  opacity: 1;
+}
+.ntx-status__machine[data-online='false'] {
+  color: var(--ntx-warn);
+}
+.ntx-status__machine-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* El botón de Machines, con su punto de "esta máquina está compartida". */
+.ntx-status__machines {
+  position: relative;
+}
+.ntx-status__share {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ntx-accent);
+  box-shadow: 0 0 5px var(--ntx-accent);
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity var(--ntx-normal) var(--ntx-ease),
+    transform var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-status__machines[data-sharing='true'] .ntx-status__share {
+  opacity: 1;
+  transform: scale(1);
+}
+.ntx-status__share[data-live='true'] {
+  animation: ntx-pulse 2.4s var(--ntx-ease) infinite;
+}
+
+/* --- Botones y campos que suma el modal ------------------------------------- */
+/* Lo destructivo habla en magenta, y recién armado: en reposo es un botón más. */
+.ntx-btn--danger[data-armed='true'],
+.ntx-btn--danger[data-armed='true']:hover:not(:disabled) {
+  color: var(--ntx-alt);
+  background: color-mix(in srgb, var(--ntx-alt) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ntx-alt) 50%, transparent);
+}
+
+.ntx-field {
+  height: 28px;
+  min-width: 0;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--ntx-radius-sm);
+  background: color-mix(in srgb, var(--ntx-fg) 4%, transparent);
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline);
+  font-family: var(--ntx-font-mono);
+  font-size: 11.5px;
+  color: var(--ntx-fg);
+  user-select: text;
+  transition:
+    box-shadow var(--ntx-fast) var(--ntx-ease),
+    background var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-field::placeholder {
+  font-family: var(--ntx-font-ui);
+  color: var(--ntx-ghost);
+}
+.ntx-field:hover {
+  background: color-mix(in srgb, var(--ntx-fg) 6%, transparent);
+}
+/* Un campo de texto se enfoca con el mouse también, y ahí el anillo sí hace
+   falta: es donde va a caer lo que tipeás. Va con :focus y no :focus-visible. */
+.ntx-field:focus {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ntx-accent) 65%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--ntx-accent) 14%, transparent);
+}
+
+/* Un interruptor dibujado: pista y bolita, con el texto que explica qué hace. */
+.ntx-switch {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--ntx-radius);
+  text-align: left;
+  transition: background var(--ntx-fast) var(--ntx-ease);
+}
+.ntx-switch:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ntx-fg) 4%, transparent);
+}
+.ntx-switch:disabled {
+  cursor: default;
+}
+.ntx-switch__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 30px;
+  height: 17px;
+  margin-top: 1px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--ntx-fg) 9%, transparent);
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline);
+  transition:
+    background var(--ntx-normal) var(--ntx-ease),
+    box-shadow var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--ntx-dim);
+  transition:
+    transform var(--ntx-normal) var(--ntx-ease),
+    background var(--ntx-normal) var(--ntx-ease),
+    box-shadow var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-switch[data-on='true'] .ntx-switch__track {
+  background: color-mix(in srgb, var(--ntx-accent) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ntx-accent) 55%, transparent);
+}
+.ntx-switch[data-on='true'] .ntx-switch__thumb {
+  transform: translateX(13px);
+  background: var(--ntx-accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ntx-accent) 70%, transparent);
+}
+.ntx-switch__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.ntx-switch__title {
+  font-size: 12.5px;
+  color: var(--ntx-fg);
+}
+.ntx-switch__desc {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ntx-muted);
+}
+
+/* Lo que se despliega: alto por grid 0fr → 1fr, nunca animando height. */
+.ntx-reveal,
+.ntx-pin {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--ntx-normal) var(--ntx-ease),
+    opacity var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-reveal[data-open='true'],
+.ntx-pin[data-open='true'] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.ntx-reveal__inner,
+.ntx-pin__inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* --- El modal de Machines --------------------------------------------------- */
+.ntx-machines {
+  width: min(480px, calc(100% - 48px));
+  max-height: calc(100% - 48px);
+  overflow-y: auto;
+}
+.ntx-machines__head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ntx-accent);
+}
+.ntx-machines__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ntx-fg);
+}
+.ntx-machines__block {
+  margin-top: 18px;
+}
+.ntx-machines__label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ntx-faint);
+}
+.ntx-machines__name {
+  font-family: var(--ntx-font-mono);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ntx-dim);
+  user-select: text;
+}
+
+/* Dónde escucha y quién está: dato, en mono y copiable. */
+.ntx-machines__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 8px 12px 0;
+  padding: 10px 12px;
+  border-radius: var(--ntx-radius-sm);
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline-soft);
+  font-size: 11.5px;
+}
+.ntx-machines__fact-key {
+  color: var(--ntx-faint);
+}
+.ntx-machines__fact-value {
+  min-width: 0;
+  font-family: var(--ntx-font-mono);
+  color: var(--ntx-fg);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.ntx-machines__fact-value--ui {
+  font-family: var(--ntx-font-ui);
+  color: var(--ntx-muted);
+}
+.ntx-machines__row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 12px 12px 2px;
+}
+.ntx-machines__empty {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ntx-muted);
+}
+
+/* El PIN: lo único grande del modal, porque se lee de una pantalla a la otra. */
+.ntx-pin__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.ntx-pin[data-open='true'] .ntx-pin__inner {
+  margin: 12px 12px 0;
+  padding: 14px 0 12px;
+  border-radius: var(--ntx-radius-sm);
+  background: color-mix(in srgb, var(--ntx-accent) 6%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ntx-accent) 30%, transparent);
+}
+.ntx-pin__inner {
+  transition:
+    margin var(--ntx-normal) var(--ntx-ease),
+    padding var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-pin__label {
+  font-size: 11px;
+  color: var(--ntx-muted);
+}
+.ntx-pin__code {
+  font-family: var(--ntx-font-mono);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  /* El espaciado de la última letra empuja el bloque: se compensa para que
+     los seis dígitos queden centrados de verdad. */
+  margin-right: -0.3em;
+  color: var(--ntx-accent);
+  user-select: text;
+}
+.ntx-pin__expiry {
+  font-family: var(--ntx-font-mono);
+  font-size: 10.5px;
+  color: var(--ntx-faint);
+}
+
+/* Las máquinas emparejadas. */
+.ntx-peers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ntx-peer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px 9px 12px;
+  border-radius: var(--ntx-radius-sm);
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline-soft);
+  animation: ntx-fade-in var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-peer__dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ntx-ghost);
+  transition:
+    background var(--ntx-normal) var(--ntx-ease),
+    box-shadow var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-peer[data-phase='online'] .ntx-peer__dot {
+  background: var(--ntx-accent);
+  box-shadow: 0 0 6px var(--ntx-accent);
+}
+.ntx-peer[data-phase='offline'] .ntx-peer__dot {
+  background: var(--ntx-warn);
+}
+.ntx-peer[data-phase='failed'] .ntx-peer__dot {
+  background: var(--ntx-alt);
+}
+.ntx-peer__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.ntx-peer__name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--ntx-fg);
+  user-select: text;
+}
+.ntx-peer__address {
+  font-family: var(--ntx-font-mono);
+  font-size: 10.5px;
+  color: var(--ntx-faint);
+}
+.ntx-peer__status {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ntx-muted);
+  user-select: text;
+  transition: color var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-peer[data-phase='failed'] .ntx-peer__status {
+  color: var(--ntx-alt);
+}
+.ntx-peer__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Emparejar con otra: dirección, PIN y el botón, en una fila. */
+.ntx-pair {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.ntx-pair__address {
+  flex: 1;
+}
+.ntx-pair__pin {
+  width: 76px;
+  text-align: center;
+  letter-spacing: 0.2em;
+}
+.ntx-pair__result {
+  margin: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ntx-accent);
+  user-select: text;
+  transition:
+    max-height var(--ntx-normal) var(--ntx-ease),
+    margin var(--ntx-normal) var(--ntx-ease),
+    opacity var(--ntx-normal) var(--ntx-ease),
+    color var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-pair__result[data-show='true'] {
+  max-height: 60px;
+  margin-top: 8px;
+  opacity: 1;
+}
+.ntx-pair__result[data-ok='false'] {
+  color: var(--ntx-alt);
+}
+
+.ntx-machines__addresses {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* El acento deshabilitado no puede seguir pareciendo la acción a tomar. */
+.ntx-btn--accent:disabled {
+  color: var(--ntx-ghost);
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline);
+}

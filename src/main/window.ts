@@ -14,7 +14,7 @@ export const BASE_COLOR = '#050507'
 const WIN_W = 1200
 const WIN_H = 800
 
-export function createMainWindow(): BrowserWindow {
+export function createMainWindow({ hidden = false }: { hidden?: boolean } = {}): BrowserWindow {
   // Centramos a mano sobre el área útil (descuenta la taskbar). Tiene que ser a
   // mano porque abajo pasamos x/y explícitos, y eso desactiva el auto-centrado.
   const { x: waX, y: waY, width: waW, height: waH } = screen.getPrimaryDisplay().workArea
@@ -68,13 +68,19 @@ export function createMainWindow(): BrowserWindow {
   }
 
   win.once('ready-to-show', () => {
-    // El flash del compositor pasa acá — off-screen, invisible.
-    win.show()
+    // El flash del compositor pasa acá — off-screen, invisible. Arrancada
+    // escondida (con Windows, para compartir la máquina) se compone igual pero
+    // sin robar el foco, y se vuelve a esconder: así el primer show de verdad,
+    // desde el tray, es el de una ventana ya compuesta y no flashea.
+    if (hidden) win.showInactive()
+    else win.show()
     // Y le damos al DWM tiempo de asentar ese show antes de mover. Moverla
     // demasiado rápido dispara un SEGUNDO flash, ya en destino. 200 ms es el
     // valor validado; 120 resultó intermitente.
     setTimeout(() => {
-      if (!win.isDestroyed()) win.setPosition(winX, winY)
+      if (win.isDestroyed()) return
+      if (hidden) win.hide()
+      win.setPosition(winX, winY)
     }, 200)
   })
 

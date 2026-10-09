@@ -1,3 +1,5 @@
+import type { RemotePaneInfo } from '../../../shared/remote'
+
 /** Un panel tal como lo ve el renderer. */
 export interface PaneState {
   /** El id que devolvió el main al abrir el pty. */
@@ -17,6 +19,9 @@ export interface PaneState {
    *  enciende recién pasado el umbral de App: para esta marca los comandos
    *  instantáneos no existen, así cada Enter no hace parpadear la tab. */
   busySince: number | null
+  /** Sólo si la shell corre en otra máquina: cuál, su home y si hoy se la
+   *  alcanza. Opcional porque NTX Mobile arma estos mismos paneles sin él. */
+  remote?: RemotePaneInfo
 }
 
 /** Cuántas shells entran en el grid. Más de cuatro dejan de leerse. */
@@ -34,12 +39,13 @@ export function setHomeDir(dir: string): void {
  * deja el último tramo. La status bar tiene 26px de alto y compite con el resto
  * del chrome, así que la ruta completa no entra.
  */
-export function shortPath(fullPath: string, maxSegments = 3): string {
+export function shortPath(fullPath: string, maxSegments = 3, home = homeDir): string {
   if (!fullPath) return ''
 
   let path = fullPath.replace(/\//g, '\\')
-  if (homeDir && path.toLowerCase().startsWith(homeDir.toLowerCase())) {
-    path = `~${path.slice(homeDir.length)}`
+  const base = home.replace(/[\\/]+$/, '')
+  if (base && path.toLowerCase().startsWith(base.toLowerCase())) {
+    path = `~${path.slice(base.length)}`
   }
 
   const segments = path.split('\\').filter(Boolean)
@@ -48,9 +54,21 @@ export function shortPath(fullPath: string, maxSegments = 3): string {
   return `…\\${segments.slice(-maxSegments).join('\\')}`
 }
 
-/** El título del panel: el perfil, y dónde está parado. */
+/** El home contra el que se acortan las rutas de un panel: el de SU máquina.
+ *  Una ruta de la UCK1 acortada contra el home de la UCX diría cualquier cosa. */
+export function paneHome(pane: PaneState): string {
+  return pane.remote ? pane.remote.home : homeDir
+}
+
+/** "UCK1 · " delante de lo que sea de otra máquina; nada para las de acá. */
+function hostPrefix(pane: PaneState): string {
+  return pane.remote ? `${pane.remote.host} · ` : ''
+}
+
+/** El título del panel: el perfil, y dónde está parado. La máquina no va acá:
+ *  en la cabecera del panel tiene su propio chip, que además dice si está. */
 export function paneTitle(pane: PaneState): string {
-  const where = shortPath(pane.cwd, 2)
+  const where = shortPath(pane.cwd, 2, paneHome(pane))
   return where ? `${pane.profileLabel} — ${where}` : pane.profileLabel
 }
 
@@ -59,8 +77,10 @@ export function paneTabLabel(pane: PaneState): string {
   const shell = pane.profileLabel.split(' ')[0]
   // shortPath ya colapsa el home a `~`; sin esto la tab del home diría el nombre
   // de usuario, que no le sirve a nadie.
-  const where = shortPath(pane.cwd, 1)
-  return where ? `${shell} · ${where.replace(/^…\\/, '')}` : pane.profileLabel
+  const where = shortPath(pane.cwd, 1, paneHome(pane))
+  return where
+    ? `${hostPrefix(pane)}${shell} · ${where.replace(/^…\\/, '')}`
+    : `${hostPrefix(pane)}${pane.profileLabel}`
 }
 
 /**

@@ -8,7 +8,11 @@ import { readStats } from './stats.js'
 import { bringToFront, createTray, toggleWindow, HOTKEY } from './tray.js'
 import { createUpdater, type Updater } from './updater.js'
 import { loadSession, saveSession } from './session.js'
+import { Host } from './host.js'
+import { Peers } from './peers.js'
+import { loadRemoteConfig, newToken, saveRemoteConfig, type RemoteConfig } from './remoteConfig.js'
 import type { PaneSnapshot, SavedSession, ShellProfile, SpawnOptions } from '../shared/types.js'
+import type { HostState } from '../shared/remote.js'
 
 /** La casa del proyecto. Única URL que la app abre; el renderer no manda URLs. */
 const REPO_URL = 'https://github.com/kiddshady/NTX'
@@ -18,6 +22,17 @@ let tray: Tray | null = null
 let profiles: ShellProfile[] = []
 let statsTimer: NodeJS.Timeout | null = null
 let updater: Updater | null = null
+
+/** Las otras máquinas: las que ésta maneja (peers) y, si comparte, el host. */
+let remoteConfig: RemoteConfig
+let peers: Peers | null = null
+let host: Host | null = null
+
+/**
+ * Arrancada por Windows al iniciar sesión: va directo al tray. Es el modo de
+ * la máquina que comparte — tiene que estar escuchando sin que nadie abra nada.
+ */
+const startHidden = process.argv.includes('--hidden')
 
 /**
  * Cerrar la ventana manda NTX al tray; salir de verdad es explícito.
@@ -76,8 +91,26 @@ if (!app.requestSingleInstanceLock()) {
 
     hardenContentSecurityPolicy()
     profiles = detectProfiles()
+    remoteConfig = loadRemoteConfig()
     registerIpc()
-    mainWindow = createMainWindow()
+    mainWindow = createMainWindow({ hidden: startHidden })
+
+    peers = new Peers(
+      remoteConfig,
+      () => saveRemoteConfig(remoteConfig),
+      {
+        data: (paneId, data) => toRenderer('pty:data', paneId, data),
+        exit: (paneId, code) => toRenderer('pty:exit', paneId, code),
+        cwd: (paneId, cwd, branch) => toRenderer('pane:cwd', paneId, cwd, branch),
+        info: (paneId, info) => toRenderer('pane:remote', paneId, info),
+        stats: (peerId, stats) => toRenderer('peer:stats', peerId, stats),
+        peers: (states) => toRenderer('remote:peers', states),
+        profiles: () => toRenderer('profiles:changed', allProfiles())
+      },
+      app.getVersion()
+    )
+    peers.start()
+    if (remoteConfig.host.enabled) startHost()
 
     statsTimer = setInterval(() => toRenderer('stats', readStats()), 1_000)
 
@@ -119,9 +152,64 @@ if (!app.requestSingleInstanceLock()) {
     updater?.dispose()
     globalShortcut.unregister(HOTKEY)
     tray?.destroy()
-    // Sin esto los shells quedan vivos como procesos huérfanos.
+    // Sin esto los shells quedan vivos como procesos huérfanos. Las de otras
+    // máquinas también: el `bye` le dice a cada host que las suelte ya.
     ptys.killAll()
+    peers?.shutdown()
+    host?.stop()
   })
+}
+
+/** Los perfiles de esta máquina y, detrás, los de las máquinas emparejadas. */
+function allProfiles(): ShellProfile[] {
+  return [...profiles, ...(peers?.profiles() ?? [])]
+}
+
+function startHost(): void {
+  if (host) return
+  host = new Host({
+    token: remoteConfig.host.token,
+    port: remoteConfig.host.port,
+    version: app.getVersion(),
+    profiles: () => profiles,
+    onState: (state) => toRenderer('host:state', state)
+  })
+}
+
+function stopHost(): void {
+  host?.stop()
+  host = null
+}
+
+function hostState(): HostState {
+  return (
+    host?.state() ?? {
+      enabled: false,
+      addresses: [],
+      port: remoteConfig.host.port,
+      name: '',
+      clients: [],
+      pairing: null
+    }
+  )
+}
+
+/**
+ * Prender o apagar el host. Lo acompaña el arranque con Windows (escondida en
+ * el tray): una máquina que comparte tiene que estar escuchando sin que nadie
+ * abra NTX a mano. Sólo empaquetada — en dev el exe es electron.exe y quedaría
+ * registrado eso. Se toca sólo acá, al cambiar el switch: si alguien puso NTX
+ * en el inicio por su cuenta, el arranque normal no se lo desarma.
+ */
+function setHostEnabled(enabled: boolean): HostState {
+  remoteConfig.host.enabled = enabled
+  saveRemoteConfig(remoteConfig)
+  if (enabled) startHost()
+  else stopHost()
+  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: enabled, args: ['--hidden'] })
+  const state = hostState()
+  toRenderer('host:state', state)
+  return state
 }
 
 /**
@@ -154,9 +242,12 @@ function hardenContentSecurityPolicy(): void {
 }
 
 function registerIpc(): void {
-  ipcMain.handle('profiles:list', () => profiles)
+  ipcMain.handle('profiles:list', () => allProfiles())
 
   ipcMain.handle('pty:spawn', async (_e, options: SpawnOptions): Promise<PaneSnapshot> => {
+    // Un perfil de otra máquina: el panel nace ya, su shell cuando se pueda.
+    if (peers?.isRemoteProfile(options.profileId)) return peers.spawn(options)
+
     const profile = profiles.find((p) => p.id === options.profileId) ?? profiles[0]
     if (!profile) throw new Error('No shell available on this machine')
 
@@ -171,15 +262,29 @@ function registerIpc(): void {
     }
   })
 
-  ipcMain.on('pty:write', (_e, paneId: string, data: string) => ptys.write(paneId, data))
-  ipcMain.on('pty:resize', (_e, paneId: string, cols: number, rows: number) =>
-    ptys.resize(paneId, cols, rows)
-  )
-  ipcMain.on('pty:kill', (_e, paneId: string) => ptys.kill(paneId))
+  // Cada panel va a donde vive su shell: a este PtyManager o al socket de su
+  // máquina. El renderer no distingue; el id alcanza.
+  ipcMain.on('pty:write', (_e, paneId: string, data: string) => {
+    if (peers?.owns(paneId)) peers.write(paneId, data)
+    else ptys.write(paneId, data)
+  })
+  ipcMain.on('pty:resize', (_e, paneId: string, cols: number, rows: number) => {
+    if (peers?.owns(paneId)) peers.resize(paneId, cols, rows)
+    else ptys.resize(paneId, cols, rows)
+  })
+  ipcMain.on('pty:kill', (_e, paneId: string) => {
+    if (peers?.owns(paneId)) peers.kill(paneId)
+    else ptys.kill(paneId)
+  })
 
   // El renderer ve el OSC 7 y nos pasa el cwd; nosotros le resolvemos el branch.
-  // Va en el main porque es quien puede lanzar procesos.
+  // Va en el main porque es quien puede lanzar procesos. El de una shell remota
+  // lo resuelve su host, que es donde existe esa carpeta.
   ipcMain.on('pane:report-cwd', (_e, paneId: string, cwd: string) => {
+    if (peers?.owns(paneId)) {
+      peers.reportCwd(paneId, cwd)
+      return
+    }
     if (ptys.cwdOf(paneId) === cwd) return // mismo directorio: no rehacemos nada
     ptys.setCwd(paneId, cwd)
     void branchFor(cwd).then((branch) => toRenderer('pane:cwd', paneId, cwd, branch))
@@ -189,6 +294,29 @@ function registerIpc(): void {
   // arrancar. Los shells nuevos los abre él por el camino de siempre (pty:spawn).
   ipcMain.handle('session:load', () => loadSession())
   ipcMain.on('session:save', (_e, session: SavedSession) => saveSession(session))
+
+  // Las otras máquinas, de los dos lados.
+  ipcMain.handle('remote:peers', () => peers?.states() ?? [])
+  ipcMain.handle('remote:pair', (_e, address: string, pin: string) =>
+    peers ? peers.pair(String(address), String(pin)) : { ok: false, error: 'Not ready yet.' }
+  )
+  ipcMain.on('remote:forget', (_e, peerId: string) => peers?.forget(String(peerId)))
+
+  ipcMain.handle('host:state', () => hostState())
+  ipcMain.handle('host:set-enabled', (_e, enabled: boolean) => setHostEnabled(enabled === true))
+  ipcMain.on('host:pair-open', () => host?.openPairing())
+  ipcMain.on('host:pair-close', () => host?.closePairing())
+  ipcMain.on('host:unpair-all', () => {
+    // Token nuevo: las máquinas emparejadas quedan afuera. Si se comparte, se
+    // reinicia el host para que lo use y corte a los que estaban.
+    remoteConfig.host.token = newToken()
+    saveRemoteConfig(remoteConfig)
+    if (host) {
+      stopHost()
+      startHost()
+    }
+    toRenderer('host:state', hostState())
+  })
 
   ipcMain.on('updates:check', () => updater?.check())
   ipcMain.on('updates:install', () => updater?.install())

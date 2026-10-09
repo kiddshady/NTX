@@ -1,16 +1,22 @@
 import { useEffect, useState, type JSX } from 'react'
 import { Icon } from './Icon'
-import { formatDuration, shortPath, type PaneState } from '../lib/panes'
+import { formatDuration, paneHome, shortPath, type PaneState } from '../lib/panes'
 import type { Palette } from '../term/themes'
 import type { SystemStats } from '../../../shared/types'
 
 interface StatusBarProps {
+  /** Las de la máquina del panel activo: si es de la UCK1, cpu y mem son de ella. */
   stats: SystemStats
   active: PaneState | undefined
   /** El acento del panel activo: el contador de ocupado habla en SU color. */
   accent: string
   palette: Palette
   onOpenAbout: () => void
+  /** El botón de Machines. Opcionales los dos: NTX Mobile usa esta misma barra
+   *  y no maneja máquinas. */
+  onOpenMachines?: () => void
+  /** Si ESTA máquina comparte, y cuántos están conectados ahora. */
+  sharing?: { on: boolean; clients: number }
 }
 
 /** Cuánto lleva corriendo, refrescado por segundo — o null si nada corre. El
@@ -45,12 +51,34 @@ function useClock(): string {
   return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
 }
 
-export function StatusBar({ stats, active, accent, palette, onOpenAbout }: StatusBarProps): JSX.Element {
+export function StatusBar({
+  stats,
+  active,
+  accent,
+  palette,
+  onOpenAbout,
+  onOpenMachines,
+  sharing
+}: StatusBarProps): JSX.Element {
   const clock = useClock()
   const running = useElapsed(active?.busySince ?? null)
 
   return (
     <footer className="ntx-status ntx-chrome">
+      {/* De qué máquina hablan cpu, mem y la ruta. Sólo aparece cuando NO es
+          ésta: en reposo la barra es la de siempre. Entra plegada y se
+          despliega, para que lo de al lado se corra en vez de saltar. */}
+      <span
+        className="ntx-status__item ntx-status__machine"
+        data-show={active?.remote !== undefined}
+        data-online={active?.remote?.online ?? true}
+      >
+        <span className="ntx-status__machine-inner">
+          <Icon name="machine" size={11} strokeWidth={1.6} />
+          <span className="ntx-status__value">{active?.remote?.host ?? ''}</span>
+        </span>
+      </span>
+
       <span className="ntx-status__item" style={{ ['--tone' as string]: palette.accent }}>
         <b>cpu</b>
         <span className="ntx-status__value ntx-status__gauge">{stats.cpu}%</span>
@@ -72,7 +100,7 @@ export function StatusBar({ stats, active, accent, palette, onOpenAbout }: Statu
         <span className="ntx-status__item ntx-status__path">
           <Icon name="folder" size={11} strokeWidth={1.5} />
           <span className="ntx-status__value ntx-copyable" data-tip={active.cwd}>
-            {shortPath(active.cwd)}
+            {shortPath(active.cwd, 3, paneHome(active))}
           </span>
         </span>
       )}
@@ -95,6 +123,24 @@ export function StatusBar({ stats, active, accent, palette, onOpenAbout }: Statu
           about vive acá abajo por lo mismo: es información de la app, y su
           lugar es el rincón de los datos quietos, no la titlebar. */}
       <span className="ntx-status__right">
+        {onOpenMachines && (
+          <button
+            className="ntx-status__btn ntx-status__machines"
+            data-sharing={sharing?.on ?? false}
+            data-tip={
+              sharing?.on
+                ? `Machines · sharing${sharing.clients ? ` · ${sharing.clients} connected` : ''}`
+                : 'Machines'
+            }
+            aria-label="Machines"
+            onClick={onOpenMachines}
+          >
+            <Icon name="machine" size={12} strokeWidth={1.5} />
+            {/* Esta máquina abierta a la red: un punto que no se apaga mientras
+                dure. Con alguien conectado, late. */}
+            <span className="ntx-status__share" data-live={(sharing?.clients ?? 0) > 0} />
+          </button>
+        )}
         <button className="ntx-status__btn" data-tip="About NTX" aria-label="About NTX" onClick={onOpenAbout}>
           <Icon name="info" size={12} strokeWidth={1.5} />
         </button>

@@ -1,5 +1,7 @@
 /** Tipos compartidos entre main, preload y renderer. */
 
+import type { HostState, PeerState, RemotePaneInfo } from './remote'
+
 /** Los shells que NTX sabe levantar. */
 export type ShellKind = 'pwsh' | 'powershell' | 'cmd' | 'wsl' | 'gitbash'
 
@@ -13,6 +15,9 @@ export interface ShellProfile {
   args: string[]
   /** Si el perfil trae un init propio que hay que dot-sourcear / ejecutar. */
   initFile?: string
+  /** Si la shell corre en OTRA máquina, su nombre ("UCK1"). Los perfiles
+   *  remotos llevan id `@<peer>/<perfil>` y no traen exec: los arranca el host. */
+  host?: string
 }
 
 /** Estado de un pty vivo, tal como lo ve el renderer. */
@@ -23,6 +28,8 @@ export interface PaneSnapshot {
   cwd: string
   branch: string | null
   pid: number
+  /** Sólo en los paneles de otra máquina: de cuál, y si hoy se la alcanza. */
+  remote?: RemotePaneInfo
 }
 
 export interface SpawnOptions {
@@ -136,4 +143,35 @@ export interface NtxApi {
     electron: string
     home: string
   }
+
+  // --- Otras máquinas ---------------------------------------------------------
+  //
+  // Opcionales porque NTX Mobile implementa esta misma interfaz sobre su
+  // WebSocket y no maneja máquinas: el renderer de NTX los usa con `?.` y,
+  // donde no están, la app es la de siempre.
+
+  /** La lista de perfiles cambió: apareció una máquina, o se la olvidó. */
+  onProfiles?(handler: (profiles: ShellProfile[]) => void): () => void
+  /** Lo que cambió de un panel remoto: si la máquina está, su pid real. */
+  onPaneRemote?(handler: (paneId: string, info: RemotePaneInfo) => void): () => void
+  remote?: {
+    peers(): Promise<PeerState[]>
+    onPeers(handler: (peers: PeerState[]) => void): () => void
+    /** CPU y memoria de OTRA máquina, por su id, una vez por segundo. */
+    onStats(handler: (peerId: string, stats: SystemStats) => void): () => void
+    /** Empareja con el NTX que comparte en `address`, con el PIN de su pantalla. */
+    pair(address: string, pin: string): Promise<PairResult>
+    forget(peerId: string): void
+  }
+  host?: {
+    state(): Promise<HostState>
+    onState(handler: (state: HostState) => void): () => void
+    setEnabled(enabled: boolean): Promise<HostState>
+    openPairing(): void
+    closePairing(): void
+    /** Token nuevo: todas las máquinas emparejadas quedan afuera. */
+    unpairAll(): void
+  }
 }
+
+export type PairResult = { ok: true; peer: PeerState } | { ok: false; error: string }

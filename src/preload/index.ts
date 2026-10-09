@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import type {
   NtxApi,
+  PairResult,
   PaneSnapshot,
   SavedSession,
   ShellProfile,
@@ -10,6 +11,7 @@ import type {
   SystemStats,
   UpdateState
 } from '../shared/types.js'
+import type { HostState, PeerState, RemotePaneInfo } from '../shared/remote.js'
 
 /**
  * Suscribe un handler a un canal y devuelve la función para desuscribirlo.
@@ -66,6 +68,26 @@ const api: NtxApi = {
   meta: {
     version: () => ipcRenderer.invoke('meta:version') as Promise<string>,
     openRepo: () => ipcRenderer.send('meta:open-repo')
+  },
+
+  onProfiles: (handler) => subscribe<[ShellProfile[]]>('profiles:changed', handler),
+  onPaneRemote: (handler) => subscribe<[string, RemotePaneInfo]>('pane:remote', handler),
+
+  remote: {
+    peers: () => ipcRenderer.invoke('remote:peers') as Promise<PeerState[]>,
+    onPeers: (handler) => subscribe<[PeerState[]]>('remote:peers', handler),
+    onStats: (handler) => subscribe<[string, SystemStats]>('peer:stats', handler),
+    pair: (address, pin) => ipcRenderer.invoke('remote:pair', address, pin) as Promise<PairResult>,
+    forget: (peerId) => ipcRenderer.send('remote:forget', peerId)
+  },
+
+  host: {
+    state: () => ipcRenderer.invoke('host:state') as Promise<HostState>,
+    onState: (handler) => subscribe<[HostState]>('host:state', handler),
+    setEnabled: (enabled) => ipcRenderer.invoke('host:set-enabled', enabled) as Promise<HostState>,
+    openPairing: () => ipcRenderer.send('host:pair-open'),
+    closePairing: () => ipcRenderer.send('host:pair-close'),
+    unpairAll: () => ipcRenderer.send('host:unpair-all')
   },
 
   platform: {

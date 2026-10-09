@@ -49,6 +49,43 @@ Electron + xterm.js + node-pty.
   y avisa recién cuando sólo falta reiniciar. La versión y el escaneo manual
   viven en el About (el ícono de info de la titlebar).
 
+## Shells de otra máquina
+
+NTX puede manejar las shells de otra PC de la LAN como si fueran propias: un
+panel de la laptop al lado de tres de la PC, en el mismo grid, con su acento,
+su búsqueda y su aviso de comando terminado. Las dos máquinas corren NTX; la
+que presta sus shells «comparte», y la otra se empareja con ella.
+
+1. En la máquina que comparte: botón **Machines** de la status bar → prendé
+   **Share this machine’s shells** → **Pair a machine**. Aparece un PIN de seis
+   dígitos que vale dos minutos.
+2. En la otra: **Machines** → escribí el nombre o la IP de la primera (por
+   ejemplo `UCK1`) y el PIN → **Pair**. Desde ahí sus shells aparecen en la
+   paleta como `New shell · UCK1 · PowerShell 7`, y en Machines con **New shell**.
+
+Lo que conviene saber:
+
+- **Se aguanta la red.** Si la conexión se corta, la shell sigue viva del otro
+  lado; el panel queda en «offline» y, al volver, recibe exactamente lo que se
+  perdió. Lo que tipees en el medio sale cuando vuelve.
+- **La escena se recuerda con las dos máquinas.** Si al arrancar la otra está
+  apagada, su panel espera y la shell arranca sola cuando aparece.
+- **Seguridad.** La máquina que comparte escucha sólo en loopback y en sus IP
+  privadas (LAN y Tailscale), nunca en todas las interfaces. Cada conexión
+  presenta una llave de 64 hex que se obtiene únicamente con el PIN que se ve
+  en la pantalla de esa máquina, con cinco intentos por ventana. **Unpair all**
+  cambia la llave y deja afuera a todas. La primera vez, Windows pregunta si
+  NTX puede usar la red: permitilo en redes **privadas**.
+- **Mientras comparte, arranca con Windows**, escondida en el tray: una máquina
+  que comparte tiene que estar escuchando sin que nadie abra nada.
+- Un panel remoto no acepta archivos arrastrados: la ruta de este disco no
+  existe en el otro.
+- Puerto `8724`. El protocolo (`src/shared/remote.ts`) es el mismo de NTX
+  Mobile, más el emparejamiento.
+
+`npm test` levanta un host y un cliente en esta misma PC y los prueba contra
+shells reales: emparejar, cortes de red, host apagado y despedida.
+
 ## Instalación
 
 Bajá `NTX-Setup-x.y.z.exe` del

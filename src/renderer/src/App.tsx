@@ -8,10 +8,12 @@ import { AboutModal } from './components/AboutModal'
 import { UpdateModal } from './components/UpdateModal'
 import { TooltipLayer } from './components/TooltipLayer'
 import { CrtLayer } from './components/CrtLayer'
-import { MAX_PANES, formatDuration, setHomeDir, shortPath, type PaneState } from './lib/panes'
+import { MachinesModal } from './components/MachinesModal'
+import { MAX_PANES, formatDuration, paneHome, setHomeDir, shortPath, type PaneState } from './lib/panes'
 import { forgetPane, scrollbackOf } from './lib/ptyBus'
 import { PALETTE, paneAccent } from './term/themes'
 import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
+import type { HostState, PeerState } from '../../shared/remote'
 
 /** Lo mismo que --ntx-normal: el panel tiene que terminar de irse antes de desmontarse. */
 const PANE_EXIT_MS = 220
@@ -53,6 +55,12 @@ export function App(): JSX.Element {
   // nunca dos veces por la misma.
   const [dismissedUpdate, setDismissedUpdate] = useState<string | null>(null)
   const [fontSize, setFontSize] = useState(loadFontSize)
+  // Las otras máquinas: las emparejadas (con sus cpu/mem) y, si ésta comparte,
+  // el estado de su host.
+  const [machinesOpen, setMachinesOpen] = useState(false)
+  const [peers, setPeers] = useState<PeerState[]>([])
+  const [peerStats, setPeerStats] = useState<Record<string, SystemStats>>({})
+  const [hostState, setHostState] = useState<HostState | null>(null)
 
   const palette = PALETTE
   const accentOf = useCallback((index: number) => paneAccent(palette, index), [palette])
@@ -74,7 +82,7 @@ export function App(): JSX.Element {
   const paletteOpenRef = useRef(paletteOpen)
   paletteOpenRef.current = paletteOpen
   const modalOpenRef = useRef(false)
-  modalOpenRef.current = aboutOpen || updatePromptOpen
+  modalOpenRef.current = aboutOpen || updatePromptOpen || machinesOpen
   const updateRef = useRef(update)
   updateRef.current = update
 
@@ -181,11 +189,18 @@ export function App(): JSX.Element {
     if (current.length >= MAX_PANES) return
 
     const targetProfile = profileId ?? current[focusedRef.current]?.profileId
+    // La carpeta del panel activo se hereda sólo si es de la MISMA máquina: una
+    // ruta de la UCX no significa nada en la UCK1. Los perfiles remotos traen
+    // la máquina en el id (`@<peer>/pwsh`); los locales, nada.
+    const machineOf = (id: string | undefined): string => (id?.startsWith('@') ? id.split('/')[0]! : '')
+    const focusedPane = current[focusedRef.current]
+    const inherited =
+      focusedPane && machineOf(focusedPane.profileId) === machineOf(targetProfile) ? focusedPane.cwd : undefined
     // El tamaño real lo pone el primer fit del panel; con esto el shell arranca
     // con algo razonable en vez de 0×0, que tira ConPTY abajo.
     const snapshot = await window.ntx.spawn({
       profileId: targetProfile ?? '',
-      cwd: cwd ?? current[focusedRef.current]?.cwd,
+      cwd: cwd ?? inherited,
       cols: 80,
       rows: 24,
       accent: paneAccent(PALETTE, current.length)
@@ -208,7 +223,8 @@ export function App(): JSX.Element {
           pid: snapshot.pid,
           closing: false,
           notify: false,
-          busySince: null
+          busySince: null,
+          remote: snapshot.remote
         }
       ]
     })
@@ -306,6 +322,32 @@ export function App(): JSX.Element {
 
   useEffect(() => window.ntx.onStats(setStats), [])
 
+  // --- Otras máquinas ----------------------------------------------------------
+
+  useEffect(() => {
+    const remote = window.ntx.remote
+    const host = window.ntx.host
+    void remote?.peers().then(setPeers)
+    void host?.state().then(setHostState)
+    const off = [
+      remote?.onPeers(setPeers),
+      remote?.onStats((peerId, next) => setPeerStats((previous) => ({ ...previous, [peerId]: next }))),
+      host?.onState(setHostState),
+      // Apareció una máquina o se olvidó una: la paleta ofrece sus shells.
+      window.ntx.onProfiles?.(setProfiles),
+      // Un panel remoto se enteró de algo: si su máquina está, y su pid real
+      // cuando la shell por fin arrancó del otro lado.
+      window.ntx.onPaneRemote?.((paneId, info) =>
+        setPanes((previous) =>
+          previous.map((pane) =>
+            pane.id === paneId ? { ...pane, remote: info, pid: info.pid ?? pane.pid } : pane
+          )
+        )
+      )
+    ]
+    return () => off.forEach((unsubscribe) => unsubscribe?.())
+  }, [])
+
   useEffect(() => window.ntx.updates.onState(setUpdate), [])
 
   useEffect(
@@ -395,8 +437,9 @@ export function App(): JSX.Element {
     // Y si la ventana entera está oculta o detrás de otra, un toast de Windows.
     // Silencioso: es una terminal avisando, no un chat reclamando.
     if (!attended) {
-      const notification = new Notification(`${pane.profileLabel} — command finished`, {
-        body: `${formatDuration(elapsed)} · exit ${exitCode} · ${shortPath(pane.cwd, 2)}`,
+      const where = pane.remote ? `${pane.remote.host} · ` : ''
+      const notification = new Notification(`${where}${pane.profileLabel} — command finished`, {
+        body: `${formatDuration(elapsed)} · exit ${exitCode} · ${shortPath(pane.cwd, 2, paneHome(pane))}`,
         silent: true
       })
       notification.onclick = () => {
@@ -521,9 +564,11 @@ export function App(): JSX.Element {
     const list: Command[] = []
 
     for (const profile of profiles) {
+      // Las de otra máquina llevan su nombre adelante: "New shell · UCK1 · PowerShell 7".
+      const label = profile.host ? `${profile.host} · ${profile.label}` : profile.label
       list.push({
         id: `new:${profile.id}`,
-        label: `New shell · ${profile.label}`,
+        label: `New shell · ${label}`,
         // Todas las shells con el mismo símbolo: lo que las distingue es el
         // nombre, y un ícono distinto para una sola sugiere una diferencia de
         // categoría que no existe — abrir WSL es abrir una shell, como el resto.
@@ -564,6 +609,18 @@ export function App(): JSX.Element {
         desc: `Ends the ${activePane.profileLabel} process`,
         hint: 'Ctrl Shift W',
         run: () => closePane(activePane.id)
+      })
+    }
+
+    // Machines vive a la vista en la status bar; acá es el mismo botón dicho
+    // con palabras, para quien ya tiene la paleta abierta.
+    if (window.ntx.remote) {
+      list.push({
+        id: 'machines',
+        label: 'Machines',
+        icon: 'machine',
+        desc: 'Share this machine’s shells, or pair with another one',
+        run: () => setMachinesOpen(true)
       })
     }
 
@@ -621,6 +678,7 @@ export function App(): JSX.Element {
               !paletteOpen &&
               !aboutOpen &&
               !updatePromptOpen &&
+              !machinesOpen &&
               search?.paneId !== pane.id
             }
             searchOpen={search?.paneId === pane.id}
@@ -635,11 +693,19 @@ export function App(): JSX.Element {
       </main>
 
       <StatusBar
-        stats={stats}
+        // cpu y mem son de la máquina donde corre el panel activo: mirando una
+        // shell de la UCK1, lo que importa es cómo está la UCK1.
+        stats={
+          panes[focused]?.remote
+            ? (peerStats[panes[focused]!.remote!.peer] ?? { cpu: 0, mem: 0 })
+            : stats
+        }
         active={panes[focused]}
         accent={accentOf(focused)}
         palette={palette}
         onOpenAbout={openAbout}
+        onOpenMachines={window.ntx.remote ? () => setMachinesOpen(true) : undefined}
+        sharing={{ on: hostState?.enabled ?? false, clients: hostState?.clients.length ?? 0 }}
       />
 
       <CommandPalette
@@ -649,6 +715,16 @@ export function App(): JSX.Element {
       />
 
       <AboutModal open={aboutOpen} update={update} onClose={() => setAboutOpen(false)} />
+
+      <MachinesModal
+        open={machinesOpen}
+        host={hostState}
+        peers={peers}
+        profiles={profiles}
+        full={panes.filter((pane) => !pane.closing).length >= MAX_PANES}
+        onSpawn={(profileId) => void spawn(profileId)}
+        onClose={() => setMachinesOpen(false)}
+      />
 
       <UpdateModal
         open={updatePromptOpen}
