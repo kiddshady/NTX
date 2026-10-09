@@ -16,16 +16,16 @@ Electron + xterm.js + node-pty.
   verdad. Cada panel tiene el suyo y lo enciende únicamente cuando tiene el
   foco: nunca hay dos colores prendidos a la vez.
 - **Paleta de comandos** (el botón de la lista, arriba a la izquierda) con
-  filtro por subsecuencia: `nsp` encuentra «New shell · PowerShell». Abre
-  shells, salta entre paneles y muestra el About. Sin atajo, a propósito: es un
-  menú, y las teclas son del shell.
-- **Búsqueda en el scrollback** (`Ctrl Shift F`, o desde la paleta). La barra
+  filtro por subsecuencia: `nsp` encuentra «New shell · PowerShell». Es para
+  elegir qué shell abrir, de esta máquina o de otra; lo demás tiene su tecla o
+  su botón a la vista. Sin atajo, a propósito: es un menú, y las teclas son del
+  shell.
+- **Los atajos, a mano.** El botón del signo de pregunta, en la status bar,
+  abre un modal con todos.
+- **Búsqueda en el scrollback** (`Ctrl Shift F`). La barra
   flota en el panel activo y resalta todos los matches con su acento: filtra
   mientras tipeás, Enter y Shift Enter saltan entre resultados, `Aa` exige
   mayúsculas exactas, y Esc la cierra devolviéndole el teclado al shell.
-- **El scrollback se lleva.** «Copy scrollback», desde la paleta, manda todo lo
-  que el panel imprimió al portapapeles. Las líneas largas vuelven enteras, no
-  cortadas donde el ancho del panel las envolvió.
 - **Soltá un archivo sobre un panel** y su ruta cae en el prompt, citada y
   traducida al idioma de esa shell: comillas de PowerShell o cmd según toque,
   `/mnt/c/...` para WSL, barras normales para Git Bash.
@@ -47,7 +47,7 @@ Electron + xterm.js + node-pty.
   del comando del panel activo, en el acento de ese panel.
 - **Se actualiza sola.** Escanea los releases de este repo, descarga en silencio
   y avisa recién cuando sólo falta reiniciar. La versión y el escaneo manual
-  viven en el About (el ícono de info de la titlebar).
+  viven en el About (el ícono de info de la status bar).
 
 ## Shells de otra máquina
 
@@ -95,9 +95,13 @@ instalador — ese no se auto-actualiza.
 
 ## Atajos
 
+Están también en la app: el botón del signo de pregunta de la status bar. La
+lista vive en `HelpModal.tsx`; un atajo nuevo se anota ahí y acá.
+
 | Atajo | Qué hace |
 |---|---|
 | `Ctrl 1`–`Ctrl 4` | Enfoca esa shell |
+| `Ctrl Tab` / `Ctrl Shift Tab` | Salta a la shell siguiente / anterior |
 | `Ctrl Shift T` | Nueva shell |
 | `Ctrl Shift W` | Cierra la shell activa |
 | `Ctrl Shift F` | Busca en el scrollback de la shell activa |

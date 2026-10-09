@@ -9,8 +9,9 @@ import { UpdateModal } from './components/UpdateModal'
 import { TooltipLayer } from './components/TooltipLayer'
 import { CrtLayer } from './components/CrtLayer'
 import { MachinesModal } from './components/MachinesModal'
+import { HelpModal } from './components/HelpModal'
 import { MAX_PANES, formatDuration, paneHome, setHomeDir, shortPath, type PaneState } from './lib/panes'
-import { forgetPane, scrollbackOf } from './lib/ptyBus'
+import { forgetPane } from './lib/ptyBus'
 import { PALETTE, paneAccent } from './term/themes'
 import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
 import type { HostState, PeerState } from '../../shared/remote'
@@ -49,6 +50,7 @@ export function App(): JSX.Element {
   // El nonce sube cuando se re-pide la que ya está abierta, para re-enfocarla.
   const [search, setSearch] = useState<{ paneId: string; nonce: number } | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
   const [stats, setStats] = useState<SystemStats>({ cpu: 0, mem: 0 })
   const [update, setUpdate] = useState<UpdateState>({ phase: 'idle' })
   // La versión cuyo aviso ya se descartó: el modal insiste por versión nueva,
@@ -82,7 +84,7 @@ export function App(): JSX.Element {
   const paletteOpenRef = useRef(paletteOpen)
   paletteOpenRef.current = paletteOpen
   const modalOpenRef = useRef(false)
-  modalOpenRef.current = aboutOpen || updatePromptOpen || machinesOpen
+  modalOpenRef.current = aboutOpen || updatePromptOpen || machinesOpen || helpOpen
   const updateRef = useRef(update)
   updateRef.current = update
 
@@ -560,7 +562,6 @@ export function App(): JSX.Element {
 
   const commands = useMemo<Command[]>(() => {
     const full = panes.length >= MAX_PANES
-    const activePane = panes[focused]
     const list: Command[] = []
 
     for (const profile of profiles) {
@@ -581,48 +582,10 @@ export function App(): JSX.Element {
       })
     }
 
-    if (activePane) {
-      list.push({
-        id: 'find',
-        label: 'Find in scrollback',
-        icon: 'search',
-        desc: `Searches what the ${activePane.profileLabel} pane has printed`,
-        hint: 'Ctrl Shift F',
-        run: openSearch
-      })
-      // El scrollback se lleva al portapapeles. Lee el buffer recién al
-      // ejecutarse (scrollbackOf), nunca al armar la lista.
-      list.push({
-        id: 'copy-scrollback',
-        label: 'Copy scrollback',
-        icon: 'clipboard',
-        desc: `Everything the ${activePane.profileLabel} pane has printed, to the clipboard`,
-        run: () => {
-          const text = scrollbackOf(activePane.id)
-          if (text) void navigator.clipboard.writeText(text)
-        }
-      })
-      list.push({
-        id: 'close',
-        label: 'Close the active shell',
-        icon: 'close',
-        desc: `Ends the ${activePane.profileLabel} process`,
-        hint: 'Ctrl Shift W',
-        run: () => closePane(activePane.id)
-      })
-    }
-
-    // Machines vive a la vista en la status bar; acá es el mismo botón dicho
-    // con palabras, para quien ya tiene la paleta abierta.
-    if (window.ntx.remote) {
-      list.push({
-        id: 'machines',
-        label: 'Machines',
-        icon: 'machine',
-        desc: 'Share this machine’s shells, or pair with another one',
-        run: () => setMachinesOpen(true)
-      })
-    }
+    // Nada más: lo que antes vivía acá (buscar, cerrar la shell, Machines)
+    // tiene su tecla o su botón a la vista, y los atajos están todos juntos en
+    // la ayuda de la status bar. La paleta queda para lo que se elige de una
+    // lista.
 
     // Sólo aparece cuando hay algo que resetear: en reposo sería ruido.
     if (fontSize !== FONT_SIZE_DEFAULT) {
@@ -637,7 +600,7 @@ export function App(): JSX.Element {
     }
 
     return list
-  }, [profiles, panes, focused, palette, spawn, closePane, openSearch, fontSize])
+  }, [profiles, panes, spawn, fontSize])
 
   // --- Render ----------------------------------------------------------------
 
@@ -679,6 +642,7 @@ export function App(): JSX.Element {
               !aboutOpen &&
               !updatePromptOpen &&
               !machinesOpen &&
+              !helpOpen &&
               search?.paneId !== pane.id
             }
             searchOpen={search?.paneId === pane.id}
@@ -704,6 +668,7 @@ export function App(): JSX.Element {
         accent={accentOf(focused)}
         palette={palette}
         onOpenAbout={openAbout}
+        onOpenHelp={() => setHelpOpen(true)}
         onOpenMachines={window.ntx.remote ? () => setMachinesOpen(true) : undefined}
         sharing={{ on: hostState?.enabled ?? false, clients: hostState?.clients.length ?? 0 }}
       />
@@ -713,6 +678,8 @@ export function App(): JSX.Element {
         commands={commands}
         onClose={() => setPaletteOpen(false)}
       />
+
+      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       <AboutModal open={aboutOpen} update={update} onClose={() => setAboutOpen(false)} />
 

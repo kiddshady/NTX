@@ -6,7 +6,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { SearchAddon } from '@xterm/addon-search'
 import { Icon } from './Icon'
 import { SearchBar, type SearchQuery, type SearchResults } from './SearchBar'
-import { attachPane, attachReader } from '../lib/ptyBus'
+import { attachPane } from '../lib/ptyBus'
 import { mixHex, xtermTheme, type Palette } from '../term/themes'
 import { paneTitle, pathForShell, type PaneState } from '../lib/panes'
 
@@ -222,26 +222,6 @@ export function TerminalPane({
       }
     )
 
-    // El scrollback, para los comandos de copiar/guardar de la paleta. Lee el
-    // buffer NORMAL a propósito: es el que tiene la historia — el alterno es la
-    // pantalla de una TUI (btop, lazygit), que no es lo que uno quiere llevarse.
-    // Las filas envueltas se recosen a su línea lógica: un renglón largo vuelve
-    // a ser UN renglón, no tantos como cortes hizo el ancho del panel.
-    const detachReader = attachReader(paneId, () => {
-      const buffer = terminal.buffer.normal
-      const lines: string[] = []
-      for (let i = 0; i < buffer.length; i++) {
-        const line = buffer.getLine(i)
-        if (!line) continue
-        const text = line.translateToString(true)
-        if (line.isWrapped && lines.length > 0) lines[lines.length - 1] += text
-        else lines.push(text)
-      }
-      // El vacío del final no es historia: es el resto del viewport.
-      while (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
-      return lines.join('\n')
-    })
-
     term.current = terminal
     fit.current = fitAddon
     search.current = searchAddon
@@ -269,7 +249,6 @@ export function TerminalPane({
       cancelAnimationFrame(first)
       observer.disconnect()
       detach()
-      detachReader()
       // Dispose de la terminal se lleva también a sus addons cargados.
       terminal.dispose()
       term.current = null

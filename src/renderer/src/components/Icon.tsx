@@ -33,7 +33,7 @@ export type IconName =
   | 'arrowDown'
   | 'list'
   | 'info'
-  | 'clipboard'
+  | 'help'
   | 'machine'
 
 /** Trazos de 24×24, todos con el mismo grosor para que convivan. */
@@ -147,14 +147,14 @@ const PATHS: Record<IconName, JSX.Element> = {
       <circle cx="12" cy="7.9" r="1.15" fill="currentColor" stroke="none" />
     </>
   ),
-  // Copiar scrollback: la tablita con su clip. El borde de arriba se dibuja con
-  // un hueco donde se apoya el clip — mismo criterio que `restore`: ningún
-  // trazo cruza a otro.
-  clipboard: (
+  // Ayuda: el signo de pregunta en el mismo círculo que la `info`, para que los
+  // dos botones del rincón se lean como hermanos. El punto va relleno por lo
+  // mismo que el de la i.
+  help: (
     <>
-      <path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
-      <rect x="9" y="2.5" width="6" height="3.5" rx="1.2" />
-      <path d="M9 11h6M9 15h6" />
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M9.6 9.6a2.5 2.5 0 0 1 4.85.85c0 1.65-2.45 2.2-2.45 3.6" />
+      <circle cx="12" cy="16.6" r="1.15" fill="currentColor" stroke="none" />
     </>
   ),
   // Otra máquina: una pantalla con su pie. Marca lo remoto en la cabecera de

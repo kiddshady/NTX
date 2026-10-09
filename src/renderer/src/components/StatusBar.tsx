@@ -12,6 +12,9 @@ interface StatusBarProps {
   accent: string
   palette: Palette
   onOpenAbout: () => void
+  /** La ayuda con los atajos. Opcional por lo mismo que Machines: NTX Mobile no
+   *  tiene teclado que explicar. */
+  onOpenHelp?: () => void
   /** El botón de Machines. Opcionales los dos: NTX Mobile usa esta misma barra
    *  y no maneja máquinas. */
   onOpenMachines?: () => void
@@ -57,6 +60,7 @@ export function StatusBar({
   accent,
   palette,
   onOpenAbout,
+  onOpenHelp,
   onOpenMachines,
   sharing
 }: StatusBarProps): JSX.Element {
@@ -116,7 +120,7 @@ export function StatusBar({
         </span>
       )}
 
-      {/* A la derecha, el about, el pulso y la hora.
+      {/* A la derecha, Machines, la ayuda, el about, el pulso y la hora.
           Antes había además una tira de versiones (utf-8 · ntx · electron ·
           chromium) que no se mira nunca: son datos de diagnóstico, no de uso, y
           competían por atención con lo que sí cambia mientras trabajás. El
@@ -139,6 +143,16 @@ export function StatusBar({
             {/* Esta máquina abierta a la red: un punto que no se apaga mientras
                 dure. Con alguien conectado, late. */}
             <span className="ntx-status__share" data-live={(sharing?.clients ?? 0) > 0} />
+          </button>
+        )}
+        {onOpenHelp && (
+          <button
+            className="ntx-status__btn"
+            data-tip="Keyboard shortcuts"
+            aria-label="Keyboard shortcuts"
+            onClick={onOpenHelp}
+          >
+            <Icon name="help" size={12} strokeWidth={1.5} />
           </button>
         )}
         <button className="ntx-status__btn" data-tip="About NTX" aria-label="About NTX" onClick={onOpenAbout}>
