@@ -76,6 +76,11 @@ export function TerminalPane({
 
   const paneId = pane.id
 
+  // Por ref como los callbacks: el handler de teclas se arma una sola vez al
+  // montar la terminal.
+  const remoteRef = useRef(pane.remote !== undefined)
+  remoteRef.current = pane.remote !== undefined
+
   useEffect(() => {
     const element = host.current
     if (!element) return
@@ -181,6 +186,21 @@ export function TerminalPane({
       // xterm, el navegador dispara su `paste` nativo y xterm lo pega solo. Hasta
       // la 0.17.0 acá además se pegaba a mano, y el texto salía DOS veces.
       if (event.shiftKey && key === 'v') {
+        return false
+      }
+      // El Ctrl+V pelado NO lo pega NTX: xterm lo manda a la shell como ^V (y
+      // con eso frena el pegado nativo del navegador), y lo resuelve PSReadLine
+      // leyendo el portapapeles de la máquina donde CORRE. En una shell de acá
+      // es el tuyo; en una de otra máquina es el de ella, donde no copiaste
+      // nada, y el pegado salía vacío (en cmd, un "^V" literal).
+      //
+      // En los paneles remotos la tecla se le saca a xterm y nada más: sin su
+      // preventDefault, Chromium dispara su `paste` nativo con el portapapeles
+      // de ESTA máquina, y xterm lo pega por su camino de siempre (bracketed
+      // paste incluido). Pegar a mano además lo duplicaba — medido. El costo es
+      // que ahí ^V ya no llega crudo (el bloque visual de vim, por ejemplo): lo
+      // mismo que hace Windows Terminal.
+      if (!event.shiftKey && !event.altKey && key === 'v' && remoteRef.current) {
         return false
       }
       if (!event.shiftKey && key === 'c' && terminal.hasSelection()) {
