@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { app, BrowserWindow, globalShortcut, ipcMain, session, shell, Tray } from 'electron'
 import { createMainWindow } from './window.js'
 import { detectProfiles } from './profiles.js'
@@ -42,6 +43,12 @@ const ptys = new PtyManager({
   onData: (paneId, data) => toRenderer('pty:data', paneId, data),
   onExit: (paneId, code) => toRenderer('pty:exit', paneId, code)
 })
+
+// En dev, otra carpeta de datos: con la de la instalada, el lock de abajo haría
+// que `npm run dev` se cierre solo apenas NTX está abierto en el tray (o sea
+// siempre), y la escena y las máquinas emparejadas de prueba pisarían las de
+// verdad. Tiene que ir antes del lock, que se ata a esta carpeta.
+if (!app.isPackaged) app.setPath('userData', join(app.getPath('appData'), 'NTX-dev'))
 
 // Una sola instancia: abrir NTX de nuevo enfoca la que ya está corriendo en vez
 // de levantar una segunda con sus propios shells.
