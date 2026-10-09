@@ -177,10 +177,10 @@ export function TerminalPane({
         copy()
         return false
       }
+      // Ctrl+Shift+V es "pegar como texto" para Chromium: al sacarle la tecla a
+      // xterm, el navegador dispara su `paste` nativo y xterm lo pega solo. Hasta
+      // la 0.17.0 acá además se pegaba a mano, y el texto salía DOS veces.
       if (event.shiftKey && key === 'v') {
-        void navigator.clipboard.readText().then((text) => {
-          if (text) window.ntx.write(paneId, text)
-        })
         return false
       }
       if (!event.shiftKey && key === 'c' && terminal.hasSelection()) {
