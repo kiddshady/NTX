@@ -68,6 +68,11 @@ Lo que conviene saber:
 - **Se aguanta la red.** Si la conexión se corta, la shell sigue viva del otro
   lado; el panel queda en «offline» y, al volver, recibe exactamente lo que se
   perdió. Lo que tipees en el medio sale cuando vuelve.
+- **Copiar cruza de máquina.** Lo que seleccionás en NTX se copia acá, venga
+  de donde venga el panel. Y cuando copia un programa de la otra máquina
+  (Claude Code, vim…) NTX recibe su OSC 52 y lo deja en el portapapeles de
+  esta máquina, no en el de aquella. Al revés no: ningún programa puede leer
+  lo que copiaste.
 - **La escena se recuerda con las dos máquinas.** Si al arrancar la otra está
   apagada, su panel espera y la shell arranca sola cuando aparece.
 - **Seguridad.** La máquina que comparte escucha sólo en loopback y en sus IP

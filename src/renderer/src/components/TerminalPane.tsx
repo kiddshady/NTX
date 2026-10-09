@@ -10,6 +10,10 @@ import { attachPane } from '../lib/ptyBus'
 import { mixHex, xtermTheme, type Palette } from '../term/themes'
 import { paneTitle, pathForShell, type PaneState } from '../lib/panes'
 
+// Tope del base64 de un OSC 52 (~1 MB de texto): un copiado de verdad no llega
+// ni cerca, y un programa desbocado no nos llena el portapapeles.
+const OSC52_MAX = 1_400_000
+
 interface TerminalPaneProps {
   pane: PaneState
   index: number
@@ -145,6 +149,26 @@ export function TerminalPane({
         } catch {
           // Un payload mal escapado no puede tumbar el parser de la terminal.
         }
+      }
+      return true
+    })
+
+    // OSC 52: un programa de la terminal pide "copiá esto" por la terminal misma,
+    // como `52;c;<base64>`. Es la única copia que cruza de máquina: Claude Code,
+    // en un panel remoto, copia al portapapeles de la máquina donde CORRE (la
+    // otra) y además emite este OSC — y esto lo deja en el de ESTA. Sólo
+    // escritura: el `?` que pide LEER el portapapeles se ignora, porque le daría
+    // a cualquier programa (de cualquier máquina) lo que copiaste.
+    terminal.parser.registerOscHandler(52, (payload) => {
+      const separator = payload.indexOf(';')
+      const data = separator < 0 ? '' : payload.slice(separator + 1)
+      if (!data || data === '?' || data.length > OSC52_MAX) return true
+      try {
+        const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0))
+        const text = new TextDecoder().decode(bytes)
+        if (text) void navigator.clipboard.writeText(text)
+      } catch {
+        // Base64 roto: se descarta sin tumbar el parser.
       }
       return true
     })
