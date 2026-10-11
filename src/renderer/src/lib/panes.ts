@@ -1,4 +1,5 @@
 import type { RemotePaneInfo } from '../../../shared/remote'
+import type { ShellProfile } from '../../../shared/types'
 
 /** Un panel tal como lo ve el renderer. */
 export interface PaneState {
@@ -26,6 +27,22 @@ export interface PaneState {
 
 /** Cuántas shells entran en el grid. Más de cuatro dejan de leerse. */
 export const MAX_PANES = 4
+
+/** El PowerShell 7 de otra máquina que abre Ctrl+Shift+M. Si el panel activo
+ *  ya es de otra máquina, de ésa: con dos emparejadas, seguís en la que estás.
+ *  Si no, la primera emparejada. Los perfiles remotos siguen en la lista con la
+ *  máquina apagada (salen de remote.json), así que el panel nace igual y
+ *  arranca cuando ella aparece, como los de una escena guardada. */
+export function otherMachinePwsh(
+  profiles: ShellProfile[],
+  focusedProfileId?: string
+): ShellProfile | undefined {
+  const peerOf = (id: string | undefined): string | undefined =>
+    id?.startsWith('@') ? id.split('/')[0] : undefined
+  const remotes = profiles.filter((profile) => profile.host && profile.kind === 'pwsh')
+  const focusedPeer = peerOf(focusedProfileId)
+  return remotes.find((profile) => focusedPeer && peerOf(profile.id) === focusedPeer) ?? remotes[0]
+}
 
 /** El home del usuario, para poder acortar rutas contra él. */
 let homeDir = ''

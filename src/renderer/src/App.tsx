@@ -10,7 +10,7 @@ import { TooltipLayer } from './components/TooltipLayer'
 import { CrtLayer } from './components/CrtLayer'
 import { MachinesModal } from './components/MachinesModal'
 import { HelpModal } from './components/HelpModal'
-import { MAX_PANES, formatDuration, paneHome, setHomeDir, shortPath, type PaneState } from './lib/panes'
+import { MAX_PANES, formatDuration, otherMachinePwsh, paneHome, setHomeDir, shortPath, type PaneState } from './lib/panes'
 import { forgetPane } from './lib/ptyBus'
 import { PALETTE, paneAccent } from './term/themes'
 import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
@@ -87,6 +87,8 @@ export function App(): JSX.Element {
   modalOpenRef.current = aboutOpen || updatePromptOpen || machinesOpen || helpOpen
   const updateRef = useRef(update)
   updateRef.current = update
+  const profilesRef = useRef(profiles)
+  profilesRef.current = profiles
 
   // Qué panel tiene algo corriendo desde cuándo (OSC 133). Va en ref: cada
   // marca del shell no puede costar un render.
@@ -539,6 +541,16 @@ export function App(): JSX.Element {
         } else if (key === 'f') {
           event.preventDefault()
           openSearch()
+        } else if (key === 'm') {
+          // Un PowerShell 7 de la otra máquina, aunque el panel activo sea de
+          // ésta. Sin ninguna emparejada abre Machines, que es donde se empareja.
+          event.preventDefault()
+          const remote = otherMachinePwsh(
+            profilesRef.current,
+            panesRef.current[focusedRef.current]?.profileId
+          )
+          if (remote) void spawn(remote.id)
+          else setMachinesOpen(true)
         }
         return
       }
