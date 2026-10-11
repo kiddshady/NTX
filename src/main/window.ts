@@ -14,12 +14,33 @@ export const BASE_COLOR = '#050507'
 const WIN_W = 1200
 const WIN_H = 800
 
+/**
+ * El tamaño y la posición de entrada: 1200×800 achicado al área útil (descuenta
+ * la taskbar) y centrado ahí.
+ *
+ * Achicar no es opcional. En la UCK1 (1366×768, área útil 1366×720) los 800 de
+ * alto no entraban: centrar daba y = (720 − 800) / 2 = −40 y la barra de título
+ * nacía arriba de la pantalla, sin forma de agarrarla. Es el mismo fitIn() que
+ * ya tienen las apps de Onyx y Opal.
+ *
+ * Centramos a mano porque abajo pasamos x/y explícitos, y eso desactiva el
+ * auto-centrado.
+ */
+export function enAreaUtil(
+  a: { x: number; y: number; width: number; height: number }
+): { x: number; y: number; width: number; height: number } {
+  const width = Math.min(WIN_W, a.width)
+  const height = Math.min(WIN_H, a.height)
+  return {
+    width,
+    height,
+    x: Math.round(a.x + (a.width - width) / 2),
+    y: Math.round(a.y + (a.height - height) / 2)
+  }
+}
+
 export function createMainWindow({ hidden = false }: { hidden?: boolean } = {}): BrowserWindow {
-  // Centramos a mano sobre el área útil (descuenta la taskbar). Tiene que ser a
-  // mano porque abajo pasamos x/y explícitos, y eso desactiva el auto-centrado.
-  const { x: waX, y: waY, width: waW, height: waH } = screen.getPrimaryDisplay().workArea
-  const winX = Math.round(waX + (waW - WIN_W) / 2)
-  const winY = Math.round(waY + (waH - WIN_H) / 2)
+  const destino = enAreaUtil(screen.getPrimaryDisplay().workArea)
 
   const win = new BrowserWindow({
     // Nace fuera de pantalla, a propósito.
@@ -33,8 +54,8 @@ export function createMainWindow({ hidden = false }: { hidden?: boolean } = {}):
     // disparar el flash.
     x: -20000,
     y: -20000,
-    width: WIN_W,
-    height: WIN_H,
+    width: destino.width,
+    height: destino.height,
     minWidth: 760,
     minHeight: 520,
     frame: false,
@@ -80,7 +101,7 @@ export function createMainWindow({ hidden = false }: { hidden?: boolean } = {}):
     setTimeout(() => {
       if (win.isDestroyed()) return
       if (hidden) win.hide()
-      win.setPosition(winX, winY)
+      win.setPosition(destino.x, destino.y)
     }, 200)
   })
 

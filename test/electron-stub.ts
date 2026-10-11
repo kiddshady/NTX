@@ -10,3 +10,9 @@ export const app = {
   getPath: (): string => process.env.NTX_TEST_USERDATA ?? resolve(import.meta.dirname, '..', '.test-data'),
   getVersion: (): string => 'test'
 }
+
+/* window.ts los importa; el test de la ventana solo usa su cuenta pura
+   (enAreaUtil), así que alcanza con que existan. */
+export const BrowserWindow = class {}
+export const screen = {}
+export const shell = {}
