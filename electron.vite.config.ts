@@ -22,7 +22,11 @@ export default defineConfig({
     },
     plugins: [react()],
     build: {
-      rollupOptions: { input: { index: resolve('src/renderer/index.html') } }
+      rollupOptions: { input: { index: resolve('src/renderer/index.html') } },
+      // Las fuentes salen siempre como archivo. Vite incrusta como data: todo
+      // asset de menos de 4 kB, y la CSP (src/main/index.ts) tiene
+      // `font-src 'self'`: ntx-blocks.ttf pesa 2,8 kB y quedaba bloqueada.
+      assetsInlineLimit: (file) => (/\.(ttf|woff2?)$/.test(file) ? false : undefined)
     }
   }
 })

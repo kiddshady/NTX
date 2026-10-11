@@ -59,6 +59,48 @@
   font-display: block;
 }
 
+/* Los block elements (█ ▐ ▛ ▜ ▝ …), con los bordes de la celda un pelito afuera
+   para que los vecinos se pisen. Sin esto, todo dibujo hecho con bloques —el
+   mascot de Claude Code, las barras de btop— sale con una costura de 1px en cada
+   borde de celda: la celda mide 7,5px y el borde cae en medio píxel. La fuente
+   sale de JetBrains Mono con scripts/make-blocks.py, que explica el porqué entero;
+   el rango tiene que ser el mismo de ahí (U+2580–259F sin las tramas ░▒▓). Van
+   las cuatro caras que pide xterm para que Chromium no sintetice negrita ni
+   itálica: deformaría los bloques. Después de las de arriba a propósito: entre
+   caras de la misma familia gana la última que cubre el carácter. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/ntx-blocks.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  unicode-range: U+2580-2590, U+2594-259F;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/ntx-blocks.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: block;
+  unicode-range: U+2580-2590, U+2594-259F;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/ntx-blocks.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+  unicode-range: U+2580-2590, U+2594-259F;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/ntx-blocks.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: block;
+  unicode-range: U+2580-2590, U+2594-259F;
+}
+
 /* Los emojis, del tamaño de dos celdas. Salen de Segoe UI Emoji (la de Windows:
    no hay otra que dibuje en color), pero achicados. Un emoji ocupa dos celdas de
    la terminal (2 × 600/1000 em de JetBrains Mono = 1,2 em) y Segoe los dibuja de
