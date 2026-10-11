@@ -234,7 +234,22 @@ export function TerminalPane({
       return true
     })
 
-    terminal.onData((data) => window.ntx.write(paneId, data))
+    // Un emoji tipeado (con el teclado, Win+. o Moji) llega en dos tandas:
+    // Windows manda las dos mitades del par sustituto como dos teclas y xterm
+    // emite cada una apenas la recibe. Mandada sola, la mitad no se puede pasar
+    // a UTF-8 y la shell recibía dos «�»: la primera espera a la segunda.
+    let half = ''
+    terminal.onData((chunk) => {
+      let data = half + chunk
+      half = ''
+      const last = data.charCodeAt(data.length - 1)
+      if (last >= 0xd800 && last <= 0xdbff) {
+        half = data.slice(-1)
+        data = data.slice(0, -1)
+        if (!data) return
+      }
+      window.ntx.write(paneId, data)
+    })
     terminal.onResize(({ cols, rows }) => window.ntx.resize(paneId, cols, rows))
 
     const detach = attachPane(
