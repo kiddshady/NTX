@@ -44,6 +44,18 @@ export function otherMachinePwsh(
   return remotes.find((profile) => focusedPeer && peerOf(profile.id) === focusedPeer) ?? remotes[0]
 }
 
+/** La shell de ESTA máquina que abre Ctrl+Shift+T, la contracara de
+ *  otherMachinePwsh. Desde un panel local, la misma que ése; desde uno de otra
+ *  máquina, la de acá del mismo tipo (el pwsh de la UCK1 abre el pwsh de la
+ *  UCX). Sin equivalente, '': el main abre su perfil por defecto, y el main
+ *  sólo conoce los de acá. */
+export function thisMachineShell(profiles: ShellProfile[], focusedProfileId?: string): string {
+  const focused = profiles.find((profile) => profile.id === focusedProfileId)
+  if (!focused) return ''
+  if (!focused.host) return focused.id
+  return profiles.find((profile) => !profile.host && profile.kind === focused.kind)?.id ?? ''
+}
+
 /** El home del usuario, para poder acortar rutas contra él. */
 let homeDir = ''
 

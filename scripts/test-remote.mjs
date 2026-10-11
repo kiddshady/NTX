@@ -1,8 +1,8 @@
 /**
  * Arma y corre los tests de test/: remote.test.ts (host y cliente por LAN),
  * autostart.test.ts (el arranque con Windows al compartir), ventana.test.ts
- * (que la ventana entre en el área útil) y otra-maquina.test.ts (qué shell abre
- * Ctrl+Shift+M).
+ * (que la ventana entre en el área útil) y otra-maquina.test.ts (qué shell abren
+ * Ctrl+Shift+M y Ctrl+Shift+T).
  *
  *   npm test
  *

@@ -1,10 +1,11 @@
 /**
- * Qué shell abre Ctrl+Shift+M (otherMachinePwsh en src/renderer/src/lib/panes.ts):
- * un PowerShell 7 de otra máquina, nunca uno de ésta.
+ * Qué shell abre cada atajo (src/renderer/src/lib/panes.ts):
+ * - Ctrl+Shift+M (otherMachinePwsh): un PowerShell 7 de otra máquina, nunca uno de ésta.
+ * - Ctrl+Shift+T (thisMachineShell): una shell de ésta, nunca una de otra máquina.
  *
  *   npm test
  */
-import { otherMachinePwsh } from '../src/renderer/src/lib/panes'
+import { otherMachinePwsh, thisMachineShell } from '../src/renderer/src/lib/panes'
 import type { ShellProfile } from '../src/shared/types'
 
 let failures = 0
@@ -49,6 +50,17 @@ check(
   'una máquina sin pwsh no cuenta',
   otherMachinePwsh([...ucx, remote('k1', 'cmd', 'cmd', 'UCK1')], 'pwsh') === undefined
 )
+
+console.log('\nCtrl+Shift+T: una shell de esta máquina')
+
+const todas = [...ucx, ...uck1, ...otra]
+check('desde un panel local, el mismo perfil', thisMachineShell(todas, 'cmd') === 'cmd')
+check('desde el pwsh de la UCK1, el pwsh de acá', thisMachineShell(todas, '@k1/pwsh') === 'pwsh')
+check(
+  'desde un tipo que acá no hay, el perfil por defecto de acá',
+  thisMachineShell(todas, '@k1/powershell') === ''
+)
+check('sin panel activo, el perfil por defecto de acá', thisMachineShell(todas) === '')
 
 console.log(`\n${checks - failures}/${checks} ok`)
 process.exit(failures ? 1 : 0)

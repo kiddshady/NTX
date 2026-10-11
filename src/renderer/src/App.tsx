@@ -10,7 +10,7 @@ import { TooltipLayer } from './components/TooltipLayer'
 import { CrtLayer } from './components/CrtLayer'
 import { MachinesModal } from './components/MachinesModal'
 import { HelpModal } from './components/HelpModal'
-import { MAX_PANES, formatDuration, otherMachinePwsh, paneHome, setHomeDir, shortPath, type PaneState } from './lib/panes'
+import { MAX_PANES, formatDuration, otherMachinePwsh, paneHome, setHomeDir, shortPath, thisMachineShell, type PaneState } from './lib/panes'
 import { forgetPane } from './lib/ptyBus'
 import { PALETTE, paneAccent } from './term/themes'
 import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
@@ -532,8 +532,10 @@ export function App(): JSX.Element {
       // abre con su botón, siempre, desde cualquier estado del teclado.
       if (event.shiftKey) {
         if (key === 't') {
+          // Siempre una shell de ésta, aunque el panel activo sea de otra
+          // máquina: para la otra está Ctrl+Shift+M.
           event.preventDefault()
-          void spawn()
+          void spawn(thisMachineShell(profilesRef.current, panesRef.current[focusedRef.current]?.profileId))
         } else if (key === 'w') {
           event.preventDefault()
           const pane = panesRef.current[focusedRef.current]
@@ -633,7 +635,7 @@ export function App(): JSX.Element {
         accentOf={accentOf}
         onFocus={setFocused}
         onClose={closePane}
-        onNew={() => void spawn()}
+        onNew={() => void spawn(thisMachineShell(profilesRef.current, panesRef.current[focusedRef.current]?.profileId))}
       />
 
       <main className="ntx-grid" data-count={panes.length}>

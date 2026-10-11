@@ -28,7 +28,7 @@ const GROUPS: { title: string; items: Shortcut[] }[] = [
   {
     title: 'Shells',
     items: [
-      { label: 'New shell', combos: [['Ctrl', 'Shift', 'T']] },
+      { label: 'New shell on this machine', combos: [['Ctrl', 'Shift', 'T']] },
       { label: 'New PowerShell 7 on the other machine', combos: [['Ctrl', 'Shift', 'M']] },
       { label: 'Close the active shell', combos: [['Ctrl', 'Shift', 'W']] },
       { label: 'Next shell', combos: [['Ctrl', 'Tab']] },
