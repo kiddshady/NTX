@@ -59,6 +59,31 @@
   font-display: block;
 }
 
+/* Los emojis, del tamaño de dos celdas. Salen de Segoe UI Emoji (la de Windows:
+   no hay otra que dibuje en color), pero achicados. Un emoji ocupa dos celdas de
+   la terminal (2 × 600/1000 em de JetBrains Mono = 1,2 em) y Segoe los dibuja de
+   2812/2048 = 1,373 em: se metía casi un tercio de celda en la letra de al lado.
+   1,2 / 1,373 = 87,40 %. Los rangos son los que se dibujan anchos
+   (Emoji_Presentation): los demás símbolos ocupan una celda y siguen con el
+   respaldo de siempre. 400 y 700 porque son los dos pesos que pide xterm. Donde
+   no hay Segoe (el celu) la regla se cae sola. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: local('Segoe UI Emoji'), local('SegoeUIEmoji');
+  font-weight: 400;
+  font-style: normal;
+  size-adjust: 87.4%;
+  unicode-range: U+231A-231B,U+23E9-23EC,U+23F0,U+23F3,U+25FD-25FE,U+2614-2615,U+2648-2653,U+267F,U+2693,U+26A1,U+26AA-26AB,U+26BD-26BE,U+26C4-26C5,U+26CE,U+26D4,U+26EA,U+26F2-26F3,U+26F5,U+26FA,U+26FD,U+2705,U+270A-270B,U+2728,U+274C,U+274E,U+2753-2755,U+2757,U+2795-2797,U+27B0,U+27BF,U+2B1B-2B1C,U+2B50,U+2B55,U+1F004,U+1F0CF,U+1F18E,U+1F191-1F19A,U+1F200-1F2FF,U+1F300-1F64F,U+1F680-1F6FF,U+1F7E0-1F7EB,U+1F90C-1F9FF,U+1FA70-1FAFF;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: local('Segoe UI Emoji'), local('SegoeUIEmoji');
+  font-weight: 700;
+  font-style: normal;
+  size-adjust: 87.4%;
+  unicode-range: U+231A-231B,U+23E9-23EC,U+23F0,U+23F3,U+25FD-25FE,U+2614-2615,U+2648-2653,U+267F,U+2693,U+26A1,U+26AA-26AB,U+26BD-26BE,U+26C4-26C5,U+26CE,U+26D4,U+26EA,U+26F2-26F3,U+26F5,U+26FA,U+26FD,U+2705,U+270A-270B,U+2728,U+274C,U+274E,U+2753-2755,U+2757,U+2795-2797,U+27B0,U+27BF,U+2B1B-2B1C,U+2B50,U+2B55,U+1F004,U+1F0CF,U+1F18E,U+1F191-1F19A,U+1F200-1F2FF,U+1F300-1F64F,U+1F680-1F6FF,U+1F7E0-1F7EB,U+1F90C-1F9FF,U+1FA70-1FAFF;
+}
+
 /* El fallback del mono: los spinners braille (⠋⠙⠹) que usa medio ecosistema de
    CLIs no están en JetBrains Mono, y sin esto salen como cuadraditos. */
 @font-face {
