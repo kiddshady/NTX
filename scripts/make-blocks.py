@@ -78,6 +78,13 @@ def main() -> None:
                 y = ascent + E
             coords[i] = (x, y)
         glyph.recalcBounds(glyf)
+        # El lsb del hmtx tiene que seguir al xMin nuevo. El rasterizador ubica el
+        # glifo con el lsb, no con el contorno: si queda en 0 con xMin = -E, todo el
+        # bloque se corre E a la derecha (sobra 2E de un lado y falta del otro), y
+        # el pisotón de la izquierda no existe. Así salió la 0.19.1: dentro de un
+        # mismo span lo que sobraba a la derecha igual tapaba la costura. Con un
+        # fondo en la celda de al lado no (ver term/cellBackgrounds.ts).
+        font['hmtx'][name] = (advance, glyph.xMin)
 
     for record in font['name'].names:
         if record.nameID in (1, 4, 16):

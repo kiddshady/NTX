@@ -790,6 +790,38 @@ button {
   transition-duration: 800ms;
 }
 
+/* --- Los fondos de celda, debajo de todo el texto ---------------------------
+ *
+ * La explicación entera está en term/cellBackgrounds.ts: a los spans con fondo
+ * truecolor se les pasa el color a --ntx-cell-bg y lo pinta su ::before, con
+ * z-index -1, así ningún fondo tapa el pisotón de un bloque vecino (el mascot
+ * de Claude Code salía con una costura vertical).
+ *
+ * `.xterm-screen` aislado es el piso de esos -1: sin un contexto de apilamiento
+ * propio, el -1 se iría hasta el panel y quedaría debajo de su fondo. Aislada
+ * la pantalla entera y no cada fila, el fondo de una fila tampoco tapa lo que el
+ * bloque de arriba asoma hacia abajo.
+ *
+ * Y tiene que ser la pantalla, no `.xterm-rows`. La selección de xterm 6 es una
+ * capa en z 1 y además el fondo inline de cada span seleccionado, que lleva
+ * `.xterm-decoration-top` (z 2) para que la letra quede arriba de esa capa. Con
+ * `.xterm-rows` aislado, esos z 2 quedaban atrapados en un contexto debajo del
+ * z 1 y la selección tapaba el texto (medido). En la pantalla viven todas esas
+ * capas, así que entre ellas el orden no cambia. */
+.ntx-pane__term .xterm-screen {
+  isolation: isolate;
+}
+.ntx-pane__term .xterm-rows .ntx-cell-bg {
+  position: relative;
+}
+.ntx-pane__term .xterm-rows .ntx-cell-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--ntx-cell-bg);
+}
+
 /* --- El cursor ------------------------------------------------------------- */
 /* Bloque de acento con aureola, igual que la maqueta.
  *

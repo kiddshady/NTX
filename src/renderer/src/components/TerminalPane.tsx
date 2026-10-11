@@ -8,6 +8,7 @@ import { Icon } from './Icon'
 import { SearchBar, type SearchQuery, type SearchResults } from './SearchBar'
 import { attachPane } from '../lib/ptyBus'
 import { mixHex, xtermTheme, type Palette } from '../term/themes'
+import { lowerCellBackgrounds } from '../term/cellBackgrounds'
 import { paneTitle, pathForShell, type PaneState } from '../lib/panes'
 
 // Tope del base64 de un OSC 52 (~1 MB de texto): un copiado de verdad no llega
@@ -138,6 +139,7 @@ export function TerminalPane({
     terminal.unicode.activeVersion = '11'
 
     terminal.open(element)
+    const stopCellBackgrounds = lowerCellBackgrounds(terminal)
 
     // OSC 7: el shell nos dice en qué directorio está parado en cada prompt.
     // Llega como file:///C:/Users/... y con los espacios en %20.
@@ -287,6 +289,7 @@ export function TerminalPane({
     return () => {
       cancelAnimationFrame(first)
       observer.disconnect()
+      stopCellBackgrounds()
       detach()
       // Dispose de la terminal se lleva también a sus addons cargados.
       terminal.dispose()
