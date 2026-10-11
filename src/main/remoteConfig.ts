@@ -21,6 +21,10 @@ export interface HostConfig {
   /** 64 hex. Se regenera con "Unpair all": todos los clientes quedan afuera. */
   token: string
   port: number
+  /** Cómo arranca con Windows al compartir: la clave Run, o una tarea programada
+   *  como admin (ver autostart.ts). Se recuerda porque desde un NTX común una
+   *  tarea creada como admin puede no verse. */
+  autostart?: 'run' | 'task'
 }
 
 export interface PeerConfig {
@@ -74,7 +78,8 @@ export function loadRemoteConfig(): RemoteConfig {
     host: {
       enabled: host.enabled === true,
       token: typeof host.token === 'string' && /^[0-9a-f]{64}$/.test(host.token) ? host.token : base.host.token,
-      port: Number.isInteger(host.port) && host.port! > 0 && host.port! < 65536 ? host.port! : DEFAULT_PORT
+      port: Number.isInteger(host.port) && host.port! > 0 && host.port! < 65536 ? host.port! : DEFAULT_PORT,
+      ...(host.autostart === 'task' || host.autostart === 'run' ? { autostart: host.autostart } : {})
     },
     peers: []
   }

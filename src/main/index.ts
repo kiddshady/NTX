@@ -10,6 +10,7 @@ import { createUpdater, type Updater } from './updater.js'
 import { loadSession, saveSession } from './session.js'
 import { Host } from './host.js'
 import { Peers } from './peers.js'
+import { syncAutostart } from './autostart.js'
 import { loadRemoteConfig, newToken, saveRemoteConfig, type RemoteConfig } from './remoteConfig.js'
 import type { PaneSnapshot, SavedSession, ShellProfile, SpawnOptions } from '../shared/types.js'
 import type { HostState } from '../shared/remote.js'
@@ -110,7 +111,11 @@ if (!app.requestSingleInstanceLock()) {
       app.getVersion()
     )
     peers.start()
-    if (remoteConfig.host.enabled) startHost()
+    if (remoteConfig.host.enabled) {
+      startHost()
+      // Un NTX elevado que comparte se pone en regla solo: tarea sí, Run no.
+      void syncAutostart(true, remoteConfig, saveRemoteConfig, { onlyIfElevated: true })
+    }
 
     statsTimer = setInterval(() => toRenderer('stats', readStats()), 1_000)
 
@@ -198,15 +203,15 @@ function hostState(): HostState {
  * Prender o apagar el host. Lo acompaña el arranque con Windows (escondida en
  * el tray): una máquina que comparte tiene que estar escuchando sin que nadie
  * abra NTX a mano. Sólo empaquetada — en dev el exe es electron.exe y quedaría
- * registrado eso. Se toca sólo acá, al cambiar el switch: si alguien puso NTX
- * en el inicio por su cuenta, el arranque normal no se lo desarma.
+ * registrado eso. Arranca como está corriendo: con la clave Run si es un NTX
+ * común, con una tarea programada si corre como admin (autostart.ts).
  */
 function setHostEnabled(enabled: boolean): HostState {
   remoteConfig.host.enabled = enabled
   saveRemoteConfig(remoteConfig)
   if (enabled) startHost()
   else stopHost()
-  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: enabled, args: ['--hidden'] })
+  void syncAutostart(enabled, remoteConfig, saveRemoteConfig)
   const state = hostState()
   toRenderer('host:state', state)
   return state
