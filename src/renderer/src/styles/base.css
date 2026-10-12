@@ -973,7 +973,11 @@ button {
   position: absolute;
   /* Los 24px de la cabecera y un respiro: cuelga del hairline, no lo pisa. */
   top: 31px;
-  right: 10px;
+  /* La scrollbar de xterm tiene su carril propio: los 10px de padding de la
+     terminal más sus 14px (el ancho por defecto de xterm 6, no le pasamos
+     `overviewRuler`). La ficha flota a la izquierda de ese carril con 8px de
+     respiro; en `right: 10px` el slider tope arriba nacía debajo de ella. */
+  right: 32px;
   /* Arriba de la scrollbar de xterm, que está fija en z 11 (ver más arriba) y
      compite en el mismo contexto: `.ntx-pane__term` no abre uno propio. Con
      menos, la barra le pasaba por encima al borde derecho de la búsqueda. */
