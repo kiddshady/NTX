@@ -12,16 +12,26 @@ applyPalette(PALETTE)
 const root = document.getElementById('root')
 if (!root) throw new Error('Falta #root en index.html')
 
-// Los emojis se cargan antes de que exista la primera terminal. xterm mide el
-// ancho de cada carácter la primera vez que lo ve y lo cachea: si el primer
-// emoji se midiera con el respaldo (Segoe a tamaño completo, ver fonts.css),
-// quedaría corrido para siempre. Son fuentes locales: tarda milisegundos.
-const emojiReady = Promise.all([
-  document.fonts.load(`13px 'JetBrains Mono'`, '😀'),
-  document.fonts.load(`700 13px 'JetBrains Mono'`, '😀')
-]).catch(() => {})
+// Todas las caras de la terminal se cargan antes de que exista la primera. xterm
+// mide el ancho de cada carácter la primera vez que lo ve y lo cachea hasta que
+// cambie la fuente: si lo mide mientras su cara todavía está cargando, lo mide
+// con el respaldo y le corrige el ancho con letter-spacing para siempre. Pasó
+// con el ⏵⏵ del modo auto de Claude Code: sale de Noto Sans Symbols 2 (586/1000
+// em), se medía con Segoe UI Symbol (1 em) y le tocaban -5px por glifo, así que
+// los dos triángulos quedaban uno encima del otro y el texto de al lado corrido.
+// Sólo en el panel que lo mostraba primero, y el zoom lo arreglaba porque limpia
+// esa caché. Lo mismo valía para el emoji, los bloques y las itálicas: por eso
+// van todas las caras y no un carácter de muestra. Son archivos locales: tarda
+// milisegundos.
+const TERMINAL_FONTS = new Set(['JetBrains Mono', 'Noto Sans Symbols 2'])
+const fontsReady = Promise.all(
+  [...document.fonts]
+    .filter((face) => TERMINAL_FONTS.has(face.family.replace(/["']/g, '')))
+    // Una cara que falte (Segoe UI Emoji en el celu) no frena a las demás.
+    .map((face) => face.load().catch(() => {}))
+)
 
-void emojiReady.then(() => {
+void fontsReady.then(() => {
   createRoot(root).render(
     <StrictMode>
       <App />
