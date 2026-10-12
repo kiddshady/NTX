@@ -596,25 +596,13 @@ export function App(): JSX.Element {
       })
     }
 
-    // Nada más: lo que antes vivía acá (buscar, cerrar la shell, Machines)
-    // tiene su tecla o su botón a la vista, y los atajos están todos juntos en
-    // la ayuda de la status bar. La paleta queda para lo que se elige de una
-    // lista.
-
-    // Sólo aparece cuando hay algo que resetear: en reposo sería ruido.
-    if (fontSize !== FONT_SIZE_DEFAULT) {
-      list.push({
-        id: 'zoom-reset',
-        label: `Reset zoom · now at ${fontSize}px`,
-        icon: 'search',
-        desc: 'Back to 12.5px — Ctrl +/− and Ctrl+wheel zoom',
-        hint: 'Ctrl 0',
-        run: () => setFontSize(FONT_SIZE_DEFAULT)
-      })
-    }
+    // Nada más: lo que antes vivía acá (buscar, cerrar la shell, Machines,
+    // resetear el zoom) tiene su tecla o su botón a la vista, y los atajos están
+    // todos juntos en la ayuda de la status bar. La paleta queda para lo que se
+    // elige de una lista.
 
     return list
-  }, [profiles, panes, spawn, fontSize])
+  }, [profiles, panes, spawn])
 
   // --- Render ----------------------------------------------------------------
 
