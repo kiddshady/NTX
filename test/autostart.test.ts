@@ -35,6 +35,17 @@ check('común, dejar de compartir con una tarea de admin: no la puede borrar y l
 p = planAutostart({ enabled: false, elevated: false, tasks: [], mode: 'run' })
 check('común, dejar de compartir: saca la Run y nada más', !p.run && !p.create && !p.remove.length && !p.warning)
 
+// La tarea que quedó apuntando a la carpeta vieja después de que el instalador se mudara.
+const S = ['\\Umbro\\NTX (admin al iniciar)']
+p = planAutostart({ enabled: true, elevated: true, tasks: [], stale: S, mode: 'task' })
+check('elevado, con una tarea huérfana: la vuelve a apuntar y no crea otra', !p.create && !p.run && p.repoint.join() === S.join() && p.fix.join() === S.join())
+p = planAutostart({ enabled: true, elevated: true, tasks: T, stale: S, mode: 'task' })
+check('elevado, con una buena y una huérfana: apunta la huérfana y pone en regla las dos', !p.create && p.repoint.join() === S.join() && p.fix.length === 2)
+p = planAutostart({ enabled: true, elevated: false, tasks: [], stale: S, mode: 'run' })
+check('común, con una huérfana: no pone la Run (sería una copia común) y lo avisa', !p.run && !p.repoint.length && !!p.warning && p.mode === 'task')
+p = planAutostart({ enabled: false, elevated: true, tasks: [], stale: S, mode: 'task' })
+check('elevado, dejar de compartir: también borra la huérfana', p.remove.join() === S.join())
+
 console.log('\nLos scripts de PowerShell')
 const ps = (script: string, env: Record<string, string> = {}): string =>
   execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script], {
@@ -50,13 +61,14 @@ const settings = ps("(New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -Don
 check('la tarea arranca a batería, no se corta al desenchufar y no tiene tope de 72 h', settings === 'False|False|PT0S', settings)
 
 check('isElevated contesta sí o no', typeof (await isElevated()) === 'boolean')
-check('un exe que no lanza nadie no tiene tareas', (await findTasks('C:\\no\\existe\\NTX-de-prueba.exe')).length === 0)
+const nadie = await findTasks('C:\\no\\existe\\NTX-de-prueba.exe')
+check('un exe que no lanza nadie no tiene tareas', nadie.tasks.length === 0 && nadie.stale.length === 0)
 // Una tarea real de esta máquina: findTasks tiene que encontrarla por su programa.
 const sample = ps("$ErrorActionPreference='SilentlyContinue'; foreach ($t in Get-ScheduledTask) { $x = @($t.Actions)[0].Execute; if ($x -and (Test-Path ([Environment]::ExpandEnvironmentVariables($x.Trim('\"'))))) { '{0}|{1}' -f ($t.TaskPath + $t.TaskName), $x; break } }")
 if (sample) {
   const [task, exe] = sample.split('|')
   const found = await findTasks(exe.replace(/^"|"$/g, '').replace(/%([^%]+)%/g, (_, v: string) => process.env[v] ?? `%${v}%`))
-  check('encuentra una tarea de verdad por su programa', found.includes(task), `${task} no está en ${found.join(', ')}`)
+  check('encuentra una tarea de verdad por su programa', found.tasks.includes(task), `${task} no está en ${found.tasks.join(', ')}`)
 } else {
   console.log('  (esta máquina no tiene tareas con un programa a la vista: se saltea)')
 }

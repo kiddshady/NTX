@@ -26,6 +26,13 @@
  * fábrica, una tarea NO arranca si la notebook está a batería, y corta el
  * programa a las 72 horas. Las que lanzan NTX van con las dos cosas apagadas,
  * también si las creó otro.
+ *
+ * Y una tercera: la tarea guarda la ruta del exe, y la ruta puede cambiar. En
+ * la UCK1 (12 oct 2026) el updater corrió desde un NTX elevado y el instalador
+ * pasó de %LOCALAPPDATA%\Programs a Program Files; la tarea siguió apuntando a
+ * la carpeta vieja y falló con 0x80070002. Una tarea que lanza un NTX.exe que
+ * ya no existe es «huérfana»: un NTX elevado la vuelve a apuntar a su exe en
+ * vez de crear otra al lado.
  */
 import { execFile } from 'node:child_process'
 import { app } from 'electron'
@@ -44,6 +51,8 @@ export interface AutostartInput {
   elevated: boolean
   /** Las tareas programadas que lanzan este exe ("\carpeta\nombre"). */
   tasks: string[]
+  /** Las que lanzan un NTX.exe que ya no existe (el de antes de mudarse). */
+  stale?: string[]
   /** Lo que quedó guardado la última vez. */
   mode: AutostartMode
 }
@@ -53,6 +62,8 @@ export interface AutostartPlan {
   run: boolean
   /** Crear la tarea de NTX. */
   create: boolean
+  /** Tareas huérfanas a volver a apuntar a este exe. */
+  repoint: string[]
   /** Tareas existentes a poner en regla (batería y tope de 72 h). */
   fix: string[]
   /** Tareas a borrar. */
@@ -64,20 +75,28 @@ export interface AutostartPlan {
 }
 
 /** Qué hacer. Pura: todo lo que mira llega en `input`. */
-export function planAutostart({ enabled, elevated, tasks, mode }: AutostartInput): AutostartPlan {
-  const none = { create: false, fix: [] as string[], remove: [] as string[] }
+export function planAutostart({ enabled, elevated, tasks, stale = [], mode }: AutostartInput): AutostartPlan {
+  const none = { create: false, repoint: [] as string[], fix: [] as string[], remove: [] as string[] }
   if (enabled && elevated) {
-    return tasks.length
-      ? { ...none, run: false, fix: tasks, mode: 'task' }
+    return tasks.length || stale.length
+      ? { ...none, run: false, repoint: stale, fix: [...tasks, ...stale], mode: 'task' }
       : { ...none, run: false, create: true, mode: 'task' }
   }
   if (enabled) {
+    if (stale.length && !tasks.length) {
+      return {
+        ...none,
+        run: false,
+        mode: 'task',
+        warning: `${stale.join(', ')} lanza un NTX que ya no existe; se corrige sola la próxima vez que NTX abra como admin`
+      }
+    }
     return tasks.length || mode === 'task'
       ? { ...none, run: false, mode: 'task' }
       : { ...none, run: true, mode: 'run' }
   }
-  if (elevated) return { ...none, run: false, remove: tasks, mode: 'run' }
-  if (tasks.length || mode === 'task') {
+  if (elevated) return { ...none, run: false, remove: [...tasks, ...stale], mode: 'run' }
+  if (tasks.length || stale.length || mode === 'task') {
     return {
       ...none,
       run: false,
@@ -105,16 +124,34 @@ function powershell(script: string, env: Record<string, string> = {}): Promise<s
 
 /** Los scripts, a la vista para que el test los pueda parsear. */
 export const SCRIPTS = {
+  /* Una línea por tarea: «own|\carpeta\nombre» si lanza este exe, «stale|…»
+     si lanza un exe con el mismo nombre que ya no está en el disco. */
   find: `
 $ErrorActionPreference = 'SilentlyContinue'
 $exe = [IO.Path]::GetFullPath($env:NTX_EXE)
+$leaf = [IO.Path]::GetFileName($exe)
 foreach ($t in Get-ScheduledTask) {
   foreach ($a in @($t.Actions)) {
     if (-not $a.Execute) { continue }
     try { $p = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($a.Execute.Trim('"'))) } catch { continue }
-    if ($p -ieq $exe) { $t.TaskPath + $t.TaskName; break }
+    if ($p -ieq $exe) { 'own|' + $t.TaskPath + $t.TaskName; break }
+    if ([IO.Path]::GetFileName($p) -ieq $leaf -and -not (Test-Path -LiteralPath $p)) { 'stale|' + $t.TaskPath + $t.TaskName; break }
   }
 }`,
+  repoint: `
+$ErrorActionPreference = 'Stop'
+$i = $env:NTX_TASK.LastIndexOf('\\')
+$path = $env:NTX_TASK.Substring(0, $i + 1)
+$name = $env:NTX_TASK.Substring($i + 1)
+$t = Get-ScheduledTask -TaskPath $path -TaskName $name
+$leaf = [IO.Path]::GetFileName($env:NTX_EXE)
+$actions = @($t.Actions)
+foreach ($a in $actions) {
+  if (-not $a.Execute) { continue }
+  $p = [Environment]::ExpandEnvironmentVariables($a.Execute.Trim('"'))
+  if ([IO.Path]::GetFileName($p) -ieq $leaf -and -not (Test-Path -LiteralPath $p)) { $a.Execute = $env:NTX_EXE }
+}
+Set-ScheduledTask -TaskPath $path -TaskName $name -Action $actions | Out-Null`,
   create: `
 $ErrorActionPreference = 'Stop'
 $user = "$env:USERDOMAIN\\$env:USERNAME"
@@ -152,10 +189,12 @@ export function isElevated(): Promise<boolean> {
   })
 }
 
-/** Las tareas que lanzan este exe. */
-export async function findTasks(exe: string): Promise<string[]> {
+/** Las tareas que lanzan este exe, y las huérfanas (un exe igual que ya no está). */
+export async function findTasks(exe: string): Promise<{ tasks: string[]; stale: string[] }> {
   const out = await powershell(SCRIPTS.find, { NTX_EXE: exe }).catch(() => '')
-  return out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  const lines = out.split(/\r?\n/).map((l) => l.trim())
+  const of = (kind: string): string[] => lines.filter((l) => l.startsWith(`${kind}|`)).map((l) => l.slice(kind.length + 1))
+  return { tasks: of('own'), stale: of('stale') }
 }
 
 const LOGIN_ARGS = ['--hidden']
@@ -183,13 +222,14 @@ export function syncAutostart(
     const elevated = await isElevated()
     if (onlyIfElevated && !elevated) return
     const exe = process.execPath
-    const tasks = await findTasks(exe)
-    const plan = planAutostart({ enabled, elevated, tasks, mode: config.host.autostart ?? 'run' })
+    const { tasks, stale } = await findTasks(exe)
+    const plan = planAutostart({ enabled, elevated, tasks, stale, mode: config.host.autostart ?? 'run' })
 
     app.setLoginItemSettings({ openAtLogin: plan.run, args: LOGIN_ARGS })
     const step = (what: string, p: Promise<unknown>): Promise<unknown> =>
       p.catch((err: Error) => console.error(`[autostart] no pude ${what}:`, err.message))
     if (plan.create) await step('crear la tarea', powershell(SCRIPTS.create, { NTX_EXE: exe, NTX_TASK: TASK_NAME }))
+    for (const t of plan.repoint) await step(`volver a apuntar ${t}`, powershell(SCRIPTS.repoint, { NTX_EXE: exe, NTX_TASK: t }))
     for (const t of plan.fix) await step(`poner en regla ${t}`, powershell(SCRIPTS.fix, { NTX_TASK: t }))
     for (const t of plan.remove) await step(`borrar ${t}`, powershell(SCRIPTS.remove, { NTX_TASK: t }))
     if (plan.warning) console.warn(`[autostart] ${plan.warning}`)
@@ -200,7 +240,8 @@ export function syncAutostart(
     }
     console.log(
       `[autostart] ${enabled ? 'compartiendo' : 'sin compartir'}, ${elevated ? 'como admin' : 'sin admin'}: ` +
-        `Run ${plan.run ? 'sí' : 'no'}, tareas ${plan.create ? `nueva (${TASK_NAME})` : tasks.join(', ') || 'ninguna'}` +
+        `Run ${plan.run ? 'sí' : 'no'}, tareas ${plan.create ? `nueva (${TASK_NAME})` : [...tasks, ...stale].join(', ') || 'ninguna'}` +
+        (plan.repoint.length ? `, re-apuntadas ${plan.repoint.join(', ')}` : '') +
         (plan.remove.length ? `, borradas ${plan.remove.join(', ')}` : '')
     )
   }
