@@ -8,6 +8,9 @@ import { existsSync } from 'node:fs'
  */
 const cache = new Map<string, { branch: string | null; at: number }>()
 const TTL_MS = 2_000
+/** Una entrada por carpeta visitada: sin tope, una sesión de días la hace crecer
+ *  sin fin. Al pasarlo se va la más vieja (un Map recuerda el orden). */
+const MAX_ENTRIES = 256
 
 export function branchFor(cwd: string): Promise<string | null> {
   if (!cwd || !existsSync(cwd)) return Promise.resolve(null)
@@ -24,7 +27,9 @@ export function branchFor(cwd: string): Promise<string | null> {
         // Error = no es un repo, o no hay git en el PATH. Las dos son normales:
         // se cachean igual para no reintentar en cada prompt.
         const branch = err ? null : stdout.trim() || null
+        cache.delete(cwd)
         cache.set(cwd, { branch, at: Date.now() })
+        if (cache.size > MAX_ENTRIES) cache.delete(cache.keys().next().value!)
         resolve(branch)
       }
     )
