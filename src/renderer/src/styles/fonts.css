@@ -150,12 +150,18 @@
 /* Roboto Mono no trae ni los bloques ni el box drawing (─ │ ┌ ├), y los de
    JetBrains por el respaldo no llenan su celda, que es más alta: los marcos de
    los TUI saldrían cortados en cada fila. Éstos son los de JetBrains estirados
-   a la celda de Roboto (scripts/make-blocks.py cuenta cómo). Las cuatro caras,
-   igual que ntx-blocks. */
+   a la celda de Roboto (scripts/make-blocks.py cuenta cómo).
+
+   Con el MISMO rango de peso que las de arriba (100 700) y no 400 y 700 como en
+   ntx-blocks. Chromium elige primero la cara que mejor calza con el peso, y
+   recién entre caras con descriptores iguales las combina por unicode-range: con
+   un 400 exacto acá, para el texto normal ganaba ésta sola, y toda letra que no
+   fuera un bloque caía a JetBrains, la siguiente de la pila. Así salió la
+   1.0.12: la negrita y la itálica en Roboto y el texto común en JetBrains. */
 @font-face {
   font-family: 'Roboto Mono';
   src: url('../assets/fonts/ntx-blocks-roboto.ttf') format('truetype');
-  font-weight: 400;
+  font-weight: 100 700;
   font-style: normal;
   font-display: block;
   unicode-range: U+2500-2590, U+2594-259F;
@@ -163,23 +169,7 @@
 @font-face {
   font-family: 'Roboto Mono';
   src: url('../assets/fonts/ntx-blocks-roboto.ttf') format('truetype');
-  font-weight: 400;
-  font-style: italic;
-  font-display: block;
-  unicode-range: U+2500-2590, U+2594-259F;
-}
-@font-face {
-  font-family: 'Roboto Mono';
-  src: url('../assets/fonts/ntx-blocks-roboto.ttf') format('truetype');
-  font-weight: 700;
-  font-style: normal;
-  font-display: block;
-  unicode-range: U+2500-2590, U+2594-259F;
-}
-@font-face {
-  font-family: 'Roboto Mono';
-  src: url('../assets/fonts/ntx-blocks-roboto.ttf') format('truetype');
-  font-weight: 700;
+  font-weight: 100 700;
   font-style: italic;
   font-display: block;
   unicode-range: U+2500-2590, U+2594-259F;
