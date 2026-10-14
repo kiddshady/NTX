@@ -1348,6 +1348,8 @@ button {
     var(--ntx-shadow-lg);
   animation: ntx-palette-in var(--ntx-normal) var(--ntx-ease);
   transition: transform var(--ntx-fast) var(--ntx-ease-both);
+  /* En su capa propia SIEMPRE, no sólo mientras anima (ver .ntx-modal). */
+  will-change: transform;
 }
 .ntx-scrim[data-closing='true'] .ntx-palette {
   transform: translateY(-10px) scale(0.98);
@@ -1602,6 +1604,21 @@ button {
     var(--ntx-shadow-lg);
   animation: ntx-modal-in var(--ntx-normal) var(--ntx-ease);
   transition: transform var(--ntx-fast) var(--ntx-ease-both);
+  /* En su capa propia SIEMPRE, no sólo mientras anima.
+   *
+   * Mientras entra (transform + opacity) Chromium lo sube a una capa del
+   * compositor, y al terminar lo baja a la del scrim. La sombra grande
+   * (--ntx-shadow-lg, 80px de blur) no se pinta igual en una capa que en la
+   * otra: al bajar, el halo se achicaba de un cuadro al otro. Fran lo vio en un
+   * video (14 oct 2026): «la sombra es más expandida y a los milisegundos se
+   * achica un poquis». Medido con las animaciones a 1/20: al terminar la
+   * entrada, ~10.700 px alrededor del modal se aclaraban de golpe; en su capa
+   * fija, ninguno. Lo mismo pasaba al revés al empezar la salida.
+   *
+   * El costo: el texto del modal va en escala de grises y no en ClearType
+   * (una capa con esquinas redondeadas no puede subpíxel). Ya era así durante
+   * la entrada; ahora no cambia al terminar, que era el otro salto. */
+  will-change: transform;
   /* El foco del panel es mecánica (recibe el Escape), no navegación: sin esto
      aparecería el anillo como si el modal entero fuese un control. */
   outline: none;
