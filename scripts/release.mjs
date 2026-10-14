@@ -146,16 +146,20 @@ paso('electron-builder')
 // Sólo NSIS: el portable no se actualiza solo y no se publica.
 const ebArgs = ['electron-builder', '--win', 'nsis', '--publish', 'always']
 if (ensayo) ebArgs.push(`-c.extraMetadata.version=${version}`)
-run('npx', ebArgs, {
-  shell: process.platform === 'win32',
-  env: {
-    ...process.env,
-    GH_TOKEN: token,
-    // En esta red el IPv6 está agujereado (cuelgues de ~63 s): que Node
-    // resuelva primero IPv4 para la subida.
-    NODE_OPTIONS: [process.env.NODE_OPTIONS, '--dns-result-order=ipv4first'].filter(Boolean).join(' ')
-  }
-})
+const ebEnv = {
+  ...process.env,
+  GH_TOKEN: token,
+  // En esta red el IPv6 está agujereado (cuelgues de ~63 s): que Node
+  // resuelva primero IPv4 para la subida.
+  NODE_OPTIONS: [process.env.NODE_OPTIONS, '--dns-result-order=ipv4first'].filter(Boolean).join(' ')
+}
+// electron-builder recompila node-pty antes de empaquetar, y winpty.gyp llama
+// a GetCommitHash.bat por nombre pelado: con esta variable cmd no lo busca en
+// el directorio actual y gyp muere (ver scripts/postinstall.cjs). La exportan
+// Git Bash y también las shells de Claude Code. Apareció al pasar a
+// Electron 44 con electron-builder 26.17.
+delete ebEnv.NoDefaultCurrentDirectoryInExePath
+run('npx', ebArgs, { shell: process.platform === 'win32', env: ebEnv })
 
 // ── 4. Verificar contra dist/ ─────────────────────────────────────────────
 paso('Verificación')
