@@ -15,6 +15,7 @@
     "dist": "npm run build && electron-builder --win",
     "dist:nsis": "npm run build && electron-builder --win nsis",
     "dist:portable": "npm run build && electron-builder --win portable",
+    "release": "node scripts/release.mjs",
     "postinstall": "node scripts/postinstall.cjs",
     "test": "node scripts/test-remote.mjs"
   },
