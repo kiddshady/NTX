@@ -13,8 +13,12 @@ import { useLayoutEffect, useRef, type JSX } from 'react'
  *
  * Se recalcula al cambiar de monitor: el matchMedia de resolución deja de
  * matchear cuando el DPR cambia, avisa una vez, y se rearma contra el nuevo.
+ *
+ * `on` lo maneja App (Ctrl Shift S). Apagado no se desmonta: queda en opacidad
+ * cero para que el fundido de salida se vea y el calce siga hecho al volver.
+ * Es opcional porque NTX Mobile monta este mismo componente sin interruptor.
  */
-export function CrtLayer(): JSX.Element {
+export function CrtLayer({ on = true }: { on?: boolean }): JSX.Element {
   const node = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
@@ -44,5 +48,9 @@ export function CrtLayer(): JSX.Element {
     return () => cleanup?.()
   }, [])
 
-  return <div ref={node} className="ntx-crt" aria-hidden="true" />
+  return (
+    <div ref={node} className="ntx-crt" data-on={on} aria-hidden="true">
+      <div className="ntx-crt__lines" />
+    </div>
+  )
 }

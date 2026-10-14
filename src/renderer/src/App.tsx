@@ -41,6 +41,14 @@ function loadFontSize(): number {
     : FONT_SIZE_DEFAULT
 }
 
+/* El vidrio CRT prendido o apagado (Ctrl Shift S). Prendido es lo de siempre:
+   sólo un '0' guardado lo apaga. */
+const CRT_KEY = 'ntx:crt'
+
+function loadCrt(): boolean {
+  return window.localStorage.getItem(CRT_KEY) !== '0'
+}
+
 export function App(): JSX.Element {
   const [profiles, setProfiles] = useState<ShellProfile[]>([])
   const [panes, setPanes] = useState<PaneState[]>([])
@@ -57,6 +65,7 @@ export function App(): JSX.Element {
   // nunca dos veces por la misma.
   const [dismissedUpdate, setDismissedUpdate] = useState<string | null>(null)
   const [fontSize, setFontSize] = useState(loadFontSize)
+  const [crt, setCrt] = useState(loadCrt)
   // Las otras máquinas: las emparejadas (con sus cpu/mem) y, si ésta comparte,
   // el estado de su host.
   const [machinesOpen, setMachinesOpen] = useState(false)
@@ -124,6 +133,10 @@ export function App(): JSX.Element {
   useEffect(() => {
     window.localStorage.setItem(FONT_SIZE_KEY, String(fontSize))
   }, [fontSize])
+
+  useEffect(() => {
+    window.localStorage.setItem(CRT_KEY, crt ? '1' : '0')
+  }, [crt])
 
   // Ctrl+rueda, como en el navegador. En captura y frenando el evento: si
   // llegara hasta xterm, el gesto además scrollearía el scrollback.
@@ -553,6 +566,10 @@ export function App(): JSX.Element {
           )
           if (remote) void spawn(remote.id)
           else setMachinesOpen(true)
+        } else if (key === 's') {
+          // S de scanlines: prende y apaga el vidrio CRT.
+          event.preventDefault()
+          setCrt((on) => !on)
         }
         return
       }
@@ -707,7 +724,7 @@ export function App(): JSX.Element {
       {/* El vidrio CRT cierra el árbol: scanlines POR DELANTE de todo — scrim,
           paleta, modales y tooltips incluidos. El efecto es del monitor, no de
           la escena; por eso es UNA capa acá y no un ajuste por overlay. */}
-      <CrtLayer />
+      <CrtLayer on={crt} />
     </div>
   )
 }
