@@ -8,7 +8,7 @@ interface UpdateModalProps {
   onLater: () => void
 }
 
-const EXIT_MS = 140
+const EXIT_MS = 130
 
 /**
  * El aviso de que la actualización YA está: bajó sola y solo falta reiniciar.
@@ -55,8 +55,8 @@ export function UpdateModal({ open, version, onInstall, onLater }: UpdateModalPr
         </div>
 
         <p className="ntx-update__body">
-          NTX {version} downloaded itself and applies on restart. Restarting closes the shells you
-          have open — later works too: it installs with the next real quit.
+          NTX {version} is downloaded and installs on restart. Restarting closes the shells you have
+          open; if you choose later, it installs the next time you quit NTX.
         </p>
 
         <div className="ntx-modal__actions">

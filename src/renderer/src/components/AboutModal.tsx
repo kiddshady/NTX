@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { usePresence } from '../hooks/usePresence'
+import { Swap } from './Swap'
 import type { UpdateState } from '../../../shared/types'
 
 interface AboutModalProps {
@@ -9,7 +10,7 @@ interface AboutModalProps {
 }
 
 /** El fade de salida dura lo mismo que --ntx-fast, como la paleta. */
-const EXIT_MS = 140
+const EXIT_MS = 130
 
 interface StatusAction {
   label: string
@@ -33,7 +34,8 @@ function describe(update: UpdateState): { text: string; action?: StatusAction } 
     case 'uptodate':
       return { text: 'You’re up to date.', action: { label: 'Check again', run: check } }
     case 'downloading':
-      return { text: `Downloading ${update.version ?? 'the update'} · ${update.percent ?? 0}%` }
+      // Sin el porcentaje: lo dice la barra, y en el texto cada punto sería un relevo.
+      return { text: `Downloading ${update.version ?? 'the update'}…` }
     case 'ready':
       return {
         text: `${update.version} is ready — it applies on restart.`,
@@ -42,7 +44,7 @@ function describe(update: UpdateState): { text: string; action?: StatusAction } 
     case 'error':
       return { text: update.error ?? 'The update check failed.', action: { label: 'Retry', run: check } }
     default:
-      return { text: 'NTX checks for updates on its own.', action: { label: 'Check now', run: check } }
+      return { text: 'Updates are checked automatically.', action: { label: 'Check now', run: check } }
   }
 }
 
@@ -50,6 +52,7 @@ export function AboutModal({ open, update, onClose }: AboutModalProps): JSX.Elem
   const { mounted, closing } = usePresence(open, EXIT_MS)
   const [version, setVersion] = useState('')
   const panel = useRef<HTMLDivElement>(null)
+  const lastAction = useRef<StatusAction>({ label: 'Check now', run: () => window.ntx.updates.check() })
 
   useEffect(() => {
     void window.ntx.meta.version().then(setVersion)
@@ -64,6 +67,9 @@ export function AboutModal({ open, update, onClose }: AboutModalProps): JSX.Elem
   if (!mounted) return null
 
   const status = describe(update)
+  // La acción se pliega con su último rótulo adentro.
+  if (status.action) lastAction.current = status.action
+  const action = lastAction.current
 
   return (
     <div
@@ -88,7 +94,9 @@ export function AboutModal({ open, update, onClose }: AboutModalProps): JSX.Elem
       >
         <div className="ntx-about__head">
           <span className="ntx-about__brand">NTX</span>
-          <span className="ntx-about__version">{version || '·'}</span>
+          {/* Vacía hasta que llega: un relleno («·») haría del primer dato un
+              cambio, y lo vería relevarse al abrir. */}
+          <span className="ntx-about__version">{version}</span>
         </div>
         <p className="ntx-about__tag">Multi-shell terminal for Windows</p>
 
@@ -100,32 +108,41 @@ export function AboutModal({ open, update, onClose }: AboutModalProps): JSX.Elem
 
         <div className="ntx-about__updates">
           <p className="ntx-about__status" data-phase={update.phase}>
-            {status.text}
+            <Swap value={status.text} />
           </p>
 
-          {update.phase === 'downloading' && (
-            <div
-              className="ntx-progress"
-              role="progressbar"
-              aria-valuenow={update.percent ?? 0}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
-              <div className="ntx-progress__fill" style={{ width: `${update.percent ?? 0}%` }} />
-            </div>
-          )}
-
-          {status.action && (
-            <div className="ntx-about__row">
-              <button
-                className={status.action.accent ? 'ntx-btn ntx-btn--accent' : 'ntx-btn'}
-                disabled={status.action.disabled}
-                onClick={status.action.run}
+          {/* La barra y el botón viven siempre: se despliegan y se pliegan con
+              la fase, y el rótulo del botón se releva en su lugar. */}
+          <div className="ntx-reveal" data-open={update.phase === 'downloading'}>
+            <div className="ntx-reveal__inner">
+              <div
+                className="ntx-progress"
+                role="progressbar"
+                aria-valuenow={update.percent ?? 0}
+                aria-valuemin={0}
+                aria-valuemax={100}
               >
-                {status.action.label}
-              </button>
+                <div
+                  className="ntx-progress__fill"
+                  style={{ transform: `scaleX(${(update.percent ?? 0) / 100})` }}
+                />
+              </div>
             </div>
-          )}
+          </div>
+
+          <div className="ntx-reveal" data-open={status.action !== undefined}>
+            <div className="ntx-reveal__inner">
+              <div className="ntx-about__row">
+                <button
+                  className={action.accent ? 'ntx-btn ntx-btn--accent' : 'ntx-btn'}
+                  disabled={action.disabled || !status.action}
+                  onClick={action.run}
+                >
+                  <Swap value={action.label} />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="ntx-about__foot">

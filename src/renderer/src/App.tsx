@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type JSX } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type JSX } from 'react'
 import { Titlebar } from './components/Titlebar'
 import { TabStrip } from './components/TabStrip'
 import { TerminalPane } from './components/TerminalPane'
@@ -12,12 +12,126 @@ import { MachinesModal } from './components/MachinesModal'
 import { HelpModal } from './components/HelpModal'
 import { MAX_PANES, formatDuration, otherMachinePwsh, paneHome, setHomeDir, shortPath, thisMachineShell, type PaneState } from './lib/panes'
 import { forgetPane } from './lib/ptyBus'
+import { reducedMotion } from './lib/motion'
 import { PALETTE, paneAccent } from './term/themes'
 import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
 import type { HostState, PeerState } from '../../shared/remote'
 
-/** Lo mismo que --ntx-normal: el panel tiene que terminar de irse antes de desmontarse. */
-const PANE_EXIT_MS = 220
+/** La salida del panel (160 ms en base.css) y un respiro: tiene que terminar de
+ *  irse antes de desmontarse. */
+const PANE_EXIT_MS = 180
+
+/** El reacomodo del grid cuando entra o sale una shell (--ntx-slow). */
+const GRID_MS = 280
+const GRID_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
+
+type Box = { left: number; top: number; width: number; height: number }
+
+/**
+ * El grid se reacomoda viajando, no saltando.
+ *
+ * Cuando entra o sale una shell cambia la forma del grid y los paneles que ya
+ * estaban cambian de lugar y de tamaño de un cuadro al otro. Acá se anima ese
+ * cambio con FLIP: se recuerda la caja de cada panel, y cuando cambia se lo
+ * dibuja con un transform que lo deja donde estaba y se lo suelta hacia su
+ * lugar nuevo. El contenido no puede viajar escalado (la letra se estiraría al
+ * doble): se apaga mientras el marco viaja y vuelve ya en su tamaño, que de
+ * paso tapa el re-fit de xterm.
+ *
+ * El que se cierra sale del flujo en el acto, clavado en su caja: los demás
+ * ocupan su lugar MIENTRAS él se funde encima, en vez de esperar a que termine.
+ */
+function useGridFlip(grid: React.RefObject<HTMLElement | null>, panes: PaneState[]): void {
+  const boxes = useRef(new Map<string, Box>())
+
+  const measure = (element: HTMLElement): Box => ({
+    left: element.offsetLeft,
+    top: element.offsetTop,
+    width: element.offsetWidth,
+    height: element.offsetHeight
+  })
+
+  useLayoutEffect(() => {
+    const container = grid.current
+    if (!container) return
+    const seen = new Set<string>()
+    const elements = [...container.querySelectorAll<HTMLElement>(':scope > .ntx-pane')]
+
+    // Primero, los que se van salen del flujo, en la caja que tenían. Tiene que
+    // ser ANTES de medir a los demás: con uno de más en el flujo, el grid de
+    // tres se armaba con una fila de más y los otros se medían en cualquier
+    // lado (y viajaban dos veces, una al cerrar y otra al desmontar).
+    for (const element of elements) {
+      const id = element.dataset.pane
+      if (!id || element.dataset.closing !== 'true') continue
+      seen.add(id)
+      const before = boxes.current.get(id)
+      if (before && element.style.position !== 'absolute') {
+        Object.assign(element.style, {
+          position: 'absolute',
+          left: `${before.left}px`,
+          top: `${before.top}px`,
+          width: `${before.width}px`,
+          height: `${before.height}px`,
+          zIndex: '1'
+        })
+      }
+    }
+
+    for (const element of elements) {
+      const id = element.dataset.pane
+      if (!id || element.dataset.closing === 'true') continue
+      seen.add(id)
+      const before = boxes.current.get(id)
+      const now = measure(element)
+      boxes.current.set(id, now)
+      if (!before) continue
+      const moved =
+        Math.abs(before.left - now.left) > 0.5 ||
+        Math.abs(before.top - now.top) > 0.5 ||
+        Math.abs(before.width - now.width) > 0.5 ||
+        Math.abs(before.height - now.height) > 0.5
+      if (!moved || reducedMotion()) continue
+
+      const scaleX = before.width / now.width
+      const scaleY = before.height / now.height
+      element.animate(
+        [
+          {
+            transformOrigin: '0 0',
+            transform: `translate(${before.left - now.left}px, ${before.top - now.top}px) scale(${scaleX}, ${scaleY})`
+          },
+          { transformOrigin: '0 0', transform: 'none' }
+        ],
+        { duration: GRID_MS, easing: GRID_EASE }
+      )
+      for (const child of element.children) {
+        if (!(child instanceof HTMLElement) || child.classList.contains('ntx-search')) continue
+        child.animate([{ opacity: 0 }, { opacity: 0, offset: 0.45 }, { opacity: 1 }], {
+          duration: GRID_MS,
+          easing: 'linear'
+        })
+      }
+    }
+    for (const id of boxes.current.keys()) if (!seen.has(id)) boxes.current.delete(id)
+  }, [grid, panes])
+
+  // Si la ventana cambia de tamaño las cajas cambian sin que cambien los
+  // paneles: se re-miden sin animar, o el próximo reacomodo saldría de cajas
+  // que ya no existen.
+  useEffect(() => {
+    const container = grid.current
+    if (!container) return
+    const observer = new ResizeObserver(() => {
+      for (const element of container.querySelectorAll<HTMLElement>(':scope > .ntx-pane')) {
+        const id = element.dataset.pane
+        if (id && element.dataset.closing !== 'true') boxes.current.set(id, measure(element))
+      }
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [grid])
+}
 
 /** Un comando que tardó menos que esto no merece aviso: lo viste terminar. */
 const NOTIFY_MIN_MS = 6_000
@@ -95,6 +209,9 @@ export function App(): JSX.Element {
   const [machinesOpen, setMachinesOpen] = useState(false)
   const [peers, setPeers] = useState<PeerState[]>([])
   const [hostState, setHostState] = useState<HostState | null>(null)
+
+  const gridRef = useRef<HTMLElement>(null)
+  useGridFlip(gridRef, panes)
 
   const palette = PALETTE
   const accentOf = useCallback((index: number) => paneAccent(palette, index), [palette])
@@ -767,7 +884,9 @@ export function App(): JSX.Element {
         onNew={() => void spawn(thisMachineShell(profilesRef.current, panesRef.current[focusedRef.current]?.profileId))}
       />
 
-      <main className="ntx-grid" data-count={panes.length}>
+      {/* La forma del grid la dan los que se quedan: el que se cierra ya salió
+          del flujo (ver useGridFlip). */}
+      <main ref={gridRef} className="ntx-grid" data-count={panes.filter((pane) => !pane.closing).length}>
         {panes.map((pane, index) => (
           <TerminalPane
             key={pane.id}

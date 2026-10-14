@@ -6,9 +6,11 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { SearchAddon } from '@xterm/addon-search'
 import { Icon } from './Icon'
 import { SearchBar, type SearchQuery, type SearchResults } from './SearchBar'
+import { Swap } from './Swap'
 import { attachPane } from '../lib/ptyBus'
 import { mixHex, xtermTheme, type Palette } from '../term/themes'
 import { lowerCellBackgrounds } from '../term/cellBackgrounds'
+import { reducedMotion } from '../lib/motion'
 import { paneTitle, pathForShell, type PaneState } from '../lib/panes'
 
 // Tope del base64 de un OSC 52 (~1 MB de texto): un copiado de verdad no llega
@@ -74,6 +76,8 @@ export function TerminalPane({
   const fit = useRef<FitAddon | null>(null)
   const search = useRef<SearchAddon | null>(null)
   const [dead, setDead] = useState<number | null>(null)
+  const lastDead = useRef(0)
+  if (dead !== null) lastDead.current = dead
   const [searchResults, setSearchResults] = useState<SearchResults | null>(null)
   // Un archivo en vuelo sobre el panel: enciende el anillo de "soltá acá".
   const [dropping, setDropping] = useState(false)
@@ -123,7 +127,8 @@ export function TerminalPane({
       // —btop, lazygit, el recuadro de bienvenida de Claude Code— salía cortado.
       lineHeight: 1,
       letterSpacing: 0,
-      cursorBlink: true,
+      // Quieto si Windows pide movimiento reducido.
+      cursorBlink: !reducedMotion(),
       // Bloque, como la maqueta. El glow y el parpadeo los termina de dar el CSS
       // (ver .xterm-cursor-block en base.css): xterm no tiene opción para la
       // aureola, pero con el renderer DOM el cursor es un elemento de verdad y se
@@ -486,6 +491,8 @@ export function TerminalPane({
   return (
     <section
       className="ntx-pane"
+      // El grid lo usa para animar el reacomodo (FLIP, en App).
+      data-pane={pane.id}
       data-focused={focused}
       data-closing={pane.closing}
       data-dropping={dropping}
@@ -499,7 +506,7 @@ export function TerminalPane({
       <header className="ntx-pane__head ntx-chrome">
         <span className="ntx-pane__num">
           <Icon name="caret" size={9} />
-          {String(index + 1).padStart(2, '0')}
+          <Swap value={String(index + 1).padStart(2, '0')} />
         </span>
         {/* La máquina, si no es ésta. Apagada mientras no se la alcanza: el panel
             sigue ahí y tipear se encola, pero tiene que verse que del otro lado
@@ -516,20 +523,22 @@ export function TerminalPane({
             <span className="ntx-pane__host-state">offline</span>
           </span>
         )}
-        <span className="ntx-pane__title">{paneTitle(pane)}</span>
-        <span className="ntx-pane__pid ntx-copyable">
-          {dead === null ? `PID ${pane.pid}` : `exit ${dead}`}
-        </span>
+        <Swap className="ntx-pane__title" value={paneTitle(pane)} />
+        <Swap className="ntx-pane__pid ntx-copyable" value={dead === null ? `PID ${pane.pid}` : `exit ${dead}`} />
       </header>
 
-      {dead !== null && (
-        <div className="ntx-pane__dead">
-          <Icon name="skull" size={15} />
-          <span>
-            The shell exited with code <b>{dead}</b>. Ctrl Shift W closes the pane.
-          </span>
+      {/* Siempre montado: se despliega cuando la shell muere, y la terminal se
+          achica de a poco en vez de saltar hacia abajo. */}
+      <div className="ntx-reveal" data-open={dead !== null} aria-hidden={dead === null}>
+        <div className="ntx-reveal__inner">
+          <div className="ntx-pane__dead">
+            <Icon name="skull" size={15} />
+            <span>
+              The shell exited with code <b>{dead ?? lastDead.current}</b>. Ctrl Shift W closes the pane.
+            </span>
+          </div>
         </div>
-      )}
+      </div>
 
       <div className="ntx-pane__term">
         <div ref={host} className="ntx-pane__screen" />

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { Icon } from './Icon'
+import { Swap } from './Swap'
 import { usePresence } from '../hooks/usePresence'
 
 /** Lo que la barra sabe de la búsqueda en curso. `index` es -1 cuando el addon
@@ -114,7 +115,7 @@ export function SearchBar({
         onKeyDown={onKeyDown}
       />
       <span className="ntx-search__count" data-none={counter === '0/0'}>
-        {counter}
+        <Swap value={counter ?? ''} />
       </span>
       <span className="ntx-search__sep" aria-hidden="true" />
       <button

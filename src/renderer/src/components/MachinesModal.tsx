@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { usePresence } from '../hooks/usePresence'
 import { Icon } from './Icon'
+import { Swap } from './Swap'
 import type { ShellProfile } from '../../../shared/types'
 import type { HostState, PeerState } from '../../../shared/remote'
 
@@ -17,7 +18,7 @@ interface MachinesModalProps {
 }
 
 /** El fade de salida dura lo mismo que --ntx-fast, como el About. */
-const EXIT_MS = 140
+const EXIT_MS = 130
 
 /** Cuánto espera un botón destructivo armado a que lo confirmes. */
 const ARM_MS = 3_000
@@ -47,9 +48,40 @@ function ArmedButton({ label, armed: armedLabel, onConfirm }: { label: string; a
         }
       }}
     >
-      {armed ? armedLabel : label}
+      <Swap value={armed ? armedLabel : label} />
     </button>
   )
+}
+
+/** Cuánto se queda una máquina olvidada en la lista mientras se va. */
+const PEER_EXIT_MS = 180
+
+/**
+ * La lista de máquinas con las que se fueron todavía adentro un momento,
+ * marcadas `leaving`: el CSS las pliega y las apaga antes de que salgan del DOM.
+ */
+function usePeersWithExit(peers: PeerState[]): { peer: PeerState; leaving: boolean }[] {
+  const [gone, setGone] = useState<PeerState[]>([])
+  const previous = useRef(peers)
+
+  useEffect(() => {
+    const ids = new Set(peers.map((peer) => peer.id))
+    const left = previous.current.filter((peer) => !ids.has(peer.id))
+    previous.current = peers
+    if (left.length === 0) return
+    setGone((current) => [...current.filter((peer) => !ids.has(peer.id)), ...left])
+    const timer = window.setTimeout(
+      () => setGone((current) => current.filter((peer) => !left.includes(peer))),
+      PEER_EXIT_MS
+    )
+    return () => window.clearTimeout(timer)
+  }, [peers])
+
+  const live = peers.map((peer) => ({ peer, leaving: false }))
+  const leaving = gone
+    .filter((peer) => !peers.some((p) => p.id === peer.id))
+    .map((peer) => ({ peer, leaving: true }))
+  return [...live, ...leaving]
 }
 
 /** "1:42" hasta que venza el PIN. */
@@ -99,6 +131,12 @@ export function MachinesModal({
   if (result) lastResult.current = result
   const lastPin = useRef('')
   if (host?.pairing) lastPin.current = host.pairing.pin
+  const lastCountdown = useRef('')
+  if (countdown) lastCountdown.current = countdown
+
+  // Las máquinas que se olvidaron se van con su animación: quedan en la lista
+  // un momento más, marcadas, en vez de desaparecer en el mismo cuadro.
+  const shownPeers = usePeersWithExit(peers)
 
   useEffect(() => {
     if (open && mounted) panel.current?.focus()
@@ -219,20 +257,22 @@ export function MachinesModal({
                 <div className="ntx-pin__inner">
                   <span className="ntx-pin__label">Type this PIN on the other machine</span>
                   <span className="ntx-pin__code">{lastPin.current}</span>
-                  <span className="ntx-pin__expiry">Expires in {countdown}</span>
+                  <span className="ntx-pin__expiry">Expires in {lastCountdown.current}</span>
                 </div>
               </div>
 
               <div className="ntx-machines__row">
-                {host?.pairing ? (
-                  <button className="ntx-btn" onClick={() => window.ntx.host?.closePairing()}>
-                    Cancel pairing
-                  </button>
-                ) : (
-                  <button className="ntx-btn ntx-btn--accent" onClick={() => window.ntx.host?.openPairing()}>
-                    Pair a machine
-                  </button>
-                )}
+                {/* Un solo botón que cambia de papel: el rótulo se releva y el
+                    acento se apaga por transición, en vez de cambiar un botón
+                    por otro en seco. */}
+                <button
+                  className={host?.pairing ? 'ntx-btn' : 'ntx-btn ntx-btn--accent'}
+                  onClick={() =>
+                    host?.pairing ? window.ntx.host?.closePairing() : window.ntx.host?.openPairing()
+                  }
+                >
+                  <Swap value={host?.pairing ? 'Cancel pairing' : 'Pair a machine'} />
+                </button>
                 <ArmedButton
                   label="Unpair all"
                   armed="Click again to unpair all"
@@ -247,14 +287,18 @@ export function MachinesModal({
         <section className="ntx-machines__block">
           <div className="ntx-machines__label">Paired machines</div>
 
-          {peers.length === 0 ? (
-            <p className="ntx-machines__empty">None yet. Turn sharing on in the other machine and pair it here.</p>
-          ) : (
+          <div className="ntx-reveal" data-open={shownPeers.length === 0}>
+            <div className="ntx-reveal__inner">
+              <p className="ntx-machines__empty">None yet. Turn sharing on in the other machine and pair it here.</p>
+            </div>
+          </div>
+          <div className="ntx-reveal" data-open={shownPeers.length > 0}>
+            <div className="ntx-reveal__inner">
             <ul className="ntx-peers">
-              {peers.map((peer) => {
+              {shownPeers.map(({ peer, leaving }) => {
                 const first = profiles.find((p) => p.id.startsWith(`@${peer.id}/`))
                 return (
-                  <li key={peer.id} className="ntx-peer" data-phase={peer.phase}>
+                  <li key={peer.id} className="ntx-peer" data-phase={peer.phase} data-leaving={leaving}>
                     <span className="ntx-peer__dot" />
                     <span className="ntx-peer__main">
                       <span className="ntx-peer__name">
@@ -262,8 +306,9 @@ export function MachinesModal({
                         <span className="ntx-peer__address">{peer.address}</span>
                       </span>
                       <span className="ntx-peer__status">
-                        {PHASE_LABEL[peer.phase]}
-                        {peer.message && peer.phase !== 'online' ? ` · ${peer.message}` : ''}
+                        <Swap
+                          value={`${PHASE_LABEL[peer.phase]}${peer.message && peer.phase !== 'online' ? ` · ${peer.message}` : ''}`}
+                        />
                       </span>
                     </span>
                     <span className="ntx-peer__actions">
@@ -289,7 +334,8 @@ export function MachinesModal({
                 )
               })}
             </ul>
-          )}
+            </div>
+          </div>
 
           <form
             className="ntx-pair"
@@ -319,7 +365,7 @@ export function MachinesModal({
               type="submit"
               disabled={pairing || !address.trim() || pin.length !== 6}
             >
-              {pairing ? 'Pairing…' : 'Pair'}
+              <Swap value={pairing ? 'Pairing…' : 'Pair'} />
             </button>
           </form>
 

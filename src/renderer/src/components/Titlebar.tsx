@@ -46,7 +46,17 @@ export function Titlebar({ onOpenPalette }: TitlebarProps): JSX.Element {
           aria-label={maximized ? 'Restore' : 'Maximize'}
           onClick={() => window.ntx.window.toggleMaximize()}
         >
-          <Icon name={maximized ? 'restore' : 'maximize'} size={13} strokeWidth={1.6} />
+          {/* Los dos íconos montados en la misma celda: el que no toca se funde
+              a transparente, así el cambio maximizar ↔ restaurar es un relevo y
+              no un salto de dibujo. */}
+          <span className="ntx-winbtn__stack">
+            <span className="ntx-winbtn__glyph" data-on={!maximized}>
+              <Icon name="maximize" size={13} strokeWidth={1.6} />
+            </span>
+            <span className="ntx-winbtn__glyph" data-on={maximized}>
+              <Icon name="restore" size={13} strokeWidth={1.6} />
+            </span>
+          </span>
         </button>
 
         {/* El único destructivo del trío, y el único que se tiñe: en hover toma el

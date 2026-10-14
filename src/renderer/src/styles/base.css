@@ -22,11 +22,33 @@
   --ntx-font-mono: 'JetBrains Mono', 'Noto Sans Symbols 2', monospace;
 
   /* Curvas. Nada aparece ni desaparece de golpe, así que estas se usan en todos
-     lados y conviene tenerlas nombradas. */
+     lados y conviene tenerlas nombradas.
+
+     - ease: las ENTRADAS. Llega rápido y se asienta.
+     - ease-both: lo que se va mientras otra cosa lo espera (un modal que se
+       cierra sobre la terminal, el panel que se funde sobre los que ocupan su
+       lugar) y lo que va y vuelve. Con ease la opacidad caía de golpe al final,
+       justo cuando lo de abajo ya se estaba viendo.
+     - ease-soft: lo chico — hover, color, el anillo de foco.
+
+     Duraciones (14 oct 2026, auditoría): la escala de la casa, 110 · 180 · 280
+     · 420. Eran 140 · 220 · 340: todo un poco lento, y la salida del panel
+     duraba lo mismo que su entrada. Lo que se va dura menos que lo que llega. */
   --ntx-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --ntx-fast: 0.14s;
-  --ntx-normal: 0.22s;
-  --ntx-slow: 0.34s;
+  --ntx-ease-both: cubic-bezier(0.65, 0, 0.35, 1);
+  --ntx-ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+  --ntx-fast: 0.11s;
+  --ntx-normal: 0.18s;
+  --ntx-slow: 0.28s;
+  --ntx-slower: 0.42s;
+  /* La salida de lo que otro espera. */
+  --ntx-exit: 0.16s;
+
+  /* El anillo de foco de teclado. Variable para que los controles que ya tienen
+     su propio box-shadow (los botones con hairline) lo SUMEN en vez de pisarlo. */
+  --ntx-ring:
+    0 0 0 1px var(--ntx-base),
+    0 0 0 3px color-mix(in srgb, var(--ntx-accent) 65%, transparent);
 
   /* Acá vivía `--ntx-blur`. NTX no tiene más vidrio: el 20 ago 2026 se fue de la
      interfaz permanente y el 21 se fue de los overlays, que eran el último
@@ -99,7 +121,8 @@ body {
   border-radius: 99px;
   border: 2px solid transparent;
   background-clip: content-box;
-  transition: background var(--ntx-normal) var(--ntx-ease);
+  /* Sin transición: Chromium no anima los pseudo-elementos de la scrollbar, y
+     una transition acá prometía algo que no pasaba. */
 }
 :hover::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--ntx-fg) 16%, transparent);
@@ -119,9 +142,7 @@ body {
 }
 :focus-visible {
   outline: none;
-  box-shadow:
-    0 0 0 1px var(--ntx-base),
-    0 0 0 3px color-mix(in srgb, var(--ntx-accent) 65%, transparent);
+  box-shadow: var(--ntx-ring);
   border-radius: var(--ntx-radius-sm);
 }
 
@@ -354,8 +375,23 @@ button {
      en plena zona de arrastre y sin esto los clicks moverían la ventana. */
   -webkit-app-region: no-drag;
   transition:
-    color var(--ntx-fast) var(--ntx-ease),
-    background var(--ntx-fast) var(--ntx-ease);
+    color var(--ntx-fast) var(--ntx-ease-soft),
+    background var(--ntx-fast) var(--ntx-ease-soft),
+    box-shadow var(--ntx-fast) var(--ntx-ease-soft);
+}
+/* Maximizar ↔ restaurar: los dos íconos en la misma celda, y el que no toca se
+   funde a transparente. Por color y no por opacidad, como todo lo que está por
+   encima del grid (ver el porqué en la marca de la tab). */
+.ntx-winbtn__stack {
+  display: inline-grid;
+}
+.ntx-winbtn__glyph {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  transition: color var(--ntx-normal) var(--ntx-ease-both);
+}
+.ntx-winbtn__glyph[data-on='false'] {
+  color: transparent;
 }
 .ntx-winbtn:hover {
   color: var(--ntx-fg);
@@ -386,20 +422,56 @@ button {
   min-width: 0;
 }
 
+/* Una tab nueva se despliega desde ancho cero y la de un panel que se cierra se
+   pliega con él. Ancho, aire y color: nada de opacidad acá arriba (ClearType,
+   ver la marca). El overflow recorta lo de adentro mientras la tab es angosta. */
+@keyframes ntx-tab-in {
+  from {
+    max-width: 0;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    color: transparent;
+  }
+}
 .ntx-tab {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 0 12px;
   max-width: 220px;
+  overflow: hidden;
   border-radius: var(--ntx-radius-sm) var(--ntx-radius-sm) 0 0;
   font-size: 11.5px;
   color: var(--ntx-faint);
   background: transparent;
+  animation: ntx-tab-in var(--ntx-slow) var(--ntx-ease);
   transition:
-    color var(--ntx-normal) var(--ntx-ease),
-    background var(--ntx-normal) var(--ntx-ease),
-    box-shadow var(--ntx-normal) var(--ntx-ease);
+    color var(--ntx-fast) var(--ntx-ease-soft),
+    background var(--ntx-fast) var(--ntx-ease-soft),
+    box-shadow var(--ntx-fast) var(--ntx-ease-soft),
+    max-width var(--ntx-exit) var(--ntx-ease-both),
+    min-width var(--ntx-exit) var(--ntx-ease-both),
+    padding var(--ntx-exit) var(--ntx-ease-both),
+    margin var(--ntx-exit) var(--ntx-ease-both);
+}
+.ntx-tab[data-closing='true'] {
+  max-width: 0;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  /* Se come el gap de la fila: plegada no deja un hueco de 2px. */
+  margin-right: -2px;
+  color: transparent;
+  pointer-events: none;
+}
+.ntx-tab[data-closing='true'] .ntx-tab__mark {
+  animation: none;
+  background: transparent;
+  box-shadow: 0 0 6px transparent;
+}
+.ntx-tab[data-closing='true'] .ntx-tab__close {
+  color: transparent;
 }
 .ntx-tab:hover {
   color: var(--ntx-muted);
@@ -422,6 +494,12 @@ button {
   color: var(--ntx-fg);
   background: color-mix(in srgb, var(--ntx-fg) 4.5%, transparent);
   box-shadow: inset 0 0 0 1px var(--ntx-hairline);
+}
+/* La activa tiene su propio box-shadow y le ganaba al anillo global: con el
+   teclado no se veía cuál estaba enfocada. */
+.ntx-tab:focus-visible,
+.ntx-tab[data-active='true']:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline), var(--ntx-ring);
 }
 .ntx-tab__label {
   overflow: hidden;
@@ -541,8 +619,9 @@ button {
   color: var(--ntx-faint);
   border-radius: var(--ntx-radius-sm) var(--ntx-radius-sm) 0 0;
   transition:
-    color var(--ntx-fast) var(--ntx-ease),
-    background var(--ntx-fast) var(--ntx-ease);
+    color var(--ntx-fast) var(--ntx-ease-soft),
+    background var(--ntx-fast) var(--ntx-ease-soft),
+    box-shadow var(--ntx-fast) var(--ntx-ease-soft);
 }
 /* Neutro como el hover de las tabs. Estuvo en warn un tiempo, pero el amarillo
    acá era decoración: abrir una shell no es una alerta, y el botón se prendía
@@ -573,6 +652,9 @@ button {
 
 /* --- Grid de paneles ------------------------------------------------------- */
 .ntx-grid {
+  /* Posicionado: el panel que se cierra sale del flujo clavado en su caja
+     (useGridFlip en App), y las cajas se miden contra este contenedor. */
+  position: relative;
   display: grid;
   gap: var(--ntx-gap);
   padding: var(--ntx-gap) 10px;
@@ -591,7 +673,8 @@ button {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
 }
-.ntx-grid[data-count='3'] > .ntx-pane:nth-child(3) {
+/* El tercero de los que QUEDAN: el que se está cerrando ya no cuenta. */
+.ntx-grid[data-count='3'] > .ntx-pane:nth-child(3 of :not([data-closing='true'])) {
   grid-column: span 2;
 }
 
@@ -666,6 +749,17 @@ button {
   opacity: 0;
   transform: scale(0.97);
   pointer-events: none;
+  /* Más corta que la entrada, y pareja: los de al lado ya están ocupando su
+     lugar por debajo. */
+  transition:
+    background var(--ntx-slow) var(--ntx-ease),
+    box-shadow var(--ntx-slow) var(--ntx-ease),
+    opacity var(--ntx-exit) var(--ntx-ease-both),
+    transform var(--ntx-exit) var(--ntx-ease-both);
+}
+/* El cartel de shell muerta se despliega (ver TerminalPane). */
+.ntx-pane > .ntx-reveal {
+  flex-shrink: 0;
 }
 
 /* Un archivo en vuelo sobre el panel: el anillo se enciende en el acento y una
@@ -1016,8 +1110,8 @@ button {
     0 8px 20px -8px rgb(0 0 0 / 0.8);
   animation: ntx-search-in var(--ntx-normal) var(--ntx-ease);
   transition:
-    opacity var(--ntx-fast) var(--ntx-ease),
-    transform var(--ntx-fast) var(--ntx-ease);
+    opacity var(--ntx-fast) var(--ntx-ease-both),
+    transform var(--ntx-fast) var(--ntx-ease-both);
 }
 .ntx-search[data-closing='true'] {
   opacity: 0;
@@ -1053,6 +1147,14 @@ button {
   white-space: nowrap;
   transition: color var(--ntx-fast) var(--ntx-ease);
 }
+/* El contador va contra la derecha: el que entra y el que se va también. */
+.ntx-search__count .ntx-swap {
+  justify-items: end;
+}
+.ntx-search__count .ntx-swap__item[data-state='out'] {
+  left: auto;
+  right: 0;
+}
 /* Cero resultados habla en magenta: es el "acá no está" de la búsqueda. */
 .ntx-search__count[data-none='true'] {
   color: var(--ntx-alt);
@@ -1075,8 +1177,9 @@ button {
   border-radius: var(--ntx-radius-sm);
   color: var(--ntx-dim);
   transition:
-    color var(--ntx-fast) var(--ntx-ease),
-    background var(--ntx-fast) var(--ntx-ease);
+    color var(--ntx-fast) var(--ntx-ease-soft),
+    background var(--ntx-fast) var(--ntx-ease-soft),
+    box-shadow var(--ntx-fast) var(--ntx-ease-soft);
 }
 .ntx-search__btn:hover {
   color: var(--ntx-fg);
@@ -1137,12 +1240,6 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* El contador del comando corriendo entra esfumado, no de golpe. La salida es
-   seca como la de branch y path: los items de la barra viven y mueren con su
-   estado, y acá manda la consistencia de la fila. */
-.ntx-status__run {
-  animation: ntx-fade-in var(--ntx-normal) var(--ntx-ease);
-}
 
 .ntx-status__right {
   margin-left: auto;
@@ -1163,8 +1260,9 @@ button {
   border-radius: var(--ntx-radius-sm);
   color: var(--ntx-ghost);
   transition:
-    color var(--ntx-fast) var(--ntx-ease),
-    background var(--ntx-fast) var(--ntx-ease);
+    color var(--ntx-fast) var(--ntx-ease-soft),
+    background var(--ntx-fast) var(--ntx-ease-soft),
+    box-shadow var(--ntx-fast) var(--ntx-ease-soft);
 }
 .ntx-status__btn:hover {
   color: var(--ntx-fg);
@@ -1211,7 +1309,7 @@ button {
   background: rgb(4 4 9 / 0.55);
   backdrop-filter: blur(3px);
   animation: ntx-fade-in var(--ntx-normal) var(--ntx-ease);
-  transition: opacity var(--ntx-fast) var(--ntx-ease);
+  transition: opacity var(--ntx-fast) var(--ntx-ease-both);
 }
 .ntx-scrim[data-closing='true'] {
   opacity: 0;
@@ -1249,7 +1347,7 @@ button {
     inset 0 0 0 1px var(--ntx-hairline),
     var(--ntx-shadow-lg);
   animation: ntx-palette-in var(--ntx-normal) var(--ntx-ease);
-  transition: transform var(--ntx-fast) var(--ntx-ease);
+  transition: transform var(--ntx-fast) var(--ntx-ease-both);
 }
 .ntx-scrim[data-closing='true'] .ntx-palette {
   transform: translateY(-10px) scale(0.98);
@@ -1293,6 +1391,8 @@ button {
   overflow-y: auto;
   padding: 7px;
   min-height: 0;
+  /* Los calcos de los comandos que el filtro saca se posan acá (CommandPalette). */
+  position: relative;
 }
 .ntx-palette__empty {
   padding: 22px 15px;
@@ -1334,29 +1434,31 @@ button {
   border-radius: var(--ntx-radius-sm);
   text-align: left;
   transition:
-    background var(--ntx-fast) var(--ntx-ease),
-    color var(--ntx-fast) var(--ntx-ease);
+    background var(--ntx-fast) var(--ntx-ease-soft),
+    color var(--ntx-fast) var(--ntx-ease-soft),
+    box-shadow var(--ntx-fast) var(--ntx-ease-soft);
 }
 .ntx-command[data-selected='true'] {
   background: color-mix(in srgb, var(--ntx-accent) 13%, transparent);
 }
 
 /* La marca del seleccionado CRECE desde el centro en vez de encenderse de
-   golpe. Es la misma idea que la línea bajo la tab activa. */
+   golpe. Es la misma idea que la línea bajo la tab activa. Crece por escala y
+   no por alto: se mueve con cada flecha, y animar el alto remaquetaba. */
 .ntx-command::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 50%;
+  top: 20%;
   width: 2px;
-  height: 0;
+  height: 60%;
   border-radius: 2px;
   background: var(--ntx-accent);
-  transform: translateY(-50%);
-  transition: height var(--ntx-normal) var(--ntx-ease);
+  transform: scaleY(0);
+  transition: transform var(--ntx-normal) var(--ntx-ease);
 }
 .ntx-command[data-selected='true']::before {
-  height: 60%;
+  transform: scaleY(1);
 }
 
 /* El ícono va apagado y se enciende con la selección. Antes tomaba un color por
@@ -1499,7 +1601,7 @@ button {
     inset 0 0 0 1px var(--ntx-hairline),
     var(--ntx-shadow-lg);
   animation: ntx-modal-in var(--ntx-normal) var(--ntx-ease);
-  transition: transform var(--ntx-fast) var(--ntx-ease);
+  transition: transform var(--ntx-fast) var(--ntx-ease-both);
   /* El foco del panel es mecánica (recibe el Escape), no navegación: sin esto
      aparecería el anillo como si el modal entero fuese un control. */
   outline: none;
@@ -1550,6 +1652,15 @@ button {
   background: color-mix(in srgb, var(--ntx-accent) 18%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ntx-accent) 70%, transparent);
 }
+/* El anillo de teclado SUMADO al contorno propio del botón: el box-shadow de
+   .ntx-btn pisaba al global, y moviéndose con Tab por un modal no se veía cuál
+   estaba enfocado. */
+.ntx-btn:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline), var(--ntx-ring);
+}
+.ntx-btn--accent:focus-visible {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ntx-accent) 45%, transparent), var(--ntx-ring);
+}
 
 /* --- About ------------------------------------------------------------------ */
 .ntx-about__head {
@@ -1585,10 +1696,14 @@ button {
   user-select: text;
 }
 
+/* Sin gap: la barra de descarga y la fila del botón se pliegan (ntx-reveal), y
+   plegadas seguirían cobrando su gap. El aire va adentro de lo que se pliega. */
+.ntx-about__updates > .ntx-reveal > .ntx-reveal__inner > * {
+  margin-top: 10px;
+}
 .ntx-about__updates {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   margin-top: 18px;
   padding: 12px 14px;
   border-radius: var(--ntx-radius-sm);
@@ -1620,7 +1735,9 @@ button {
 .ntx-link {
   font-size: 11px;
   color: var(--ntx-faint);
-  transition: color var(--ntx-fast) var(--ntx-ease);
+  transition:
+    color var(--ntx-fast) var(--ntx-ease-soft),
+    box-shadow var(--ntx-fast) var(--ntx-ease-soft);
 }
 .ntx-link:hover {
   color: var(--ntx-accent);
@@ -1707,12 +1824,15 @@ button {
   background: color-mix(in srgb, var(--ntx-fg) 8%, transparent);
   overflow: hidden;
 }
+/* Avanza por escala y no por ancho: el ancho remaqueta en cada dato que llega. */
 .ntx-progress__fill {
+  width: 100%;
   height: 100%;
   border-radius: inherit;
   background: var(--ntx-accent);
   box-shadow: 0 0 8px color-mix(in srgb, var(--ntx-accent) 60%, transparent);
-  transition: width var(--ntx-normal) var(--ntx-ease);
+  transform-origin: left;
+  transition: transform var(--ntx-normal) var(--ntx-ease);
 }
 
 /* --- Aviso de update -------------------------------------------------------- */
@@ -1822,6 +1942,33 @@ button {
   overflow: hidden;
 }
 
+/* La rama, la ruta y el contador del comando, igual que el chip de máquina:
+   siempre montados y plegables, para que aparecer y desaparecer corra a los de
+   al lado en vez de hacerlos saltar. `minmax(0, …)` para que la ruta pueda
+   achicarse con su elipsis. */
+.ntx-status__fold {
+  display: inline-grid;
+  grid-template-columns: minmax(0, 0fr);
+  margin-right: -16px;
+  opacity: 0;
+  transition:
+    grid-template-columns var(--ntx-normal) var(--ntx-ease),
+    margin-right var(--ntx-normal) var(--ntx-ease),
+    opacity var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-status__fold[data-show='true'] {
+  grid-template-columns: minmax(0, 1fr);
+  margin-right: 0;
+  opacity: 1;
+}
+.ntx-status__fold-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
 /* El botón de Machines, con su punto de "esta máquina está compartida". */
 .ntx-status__machines {
   position: relative;
@@ -1898,7 +2045,9 @@ button {
   padding: 10px 12px;
   border-radius: var(--ntx-radius);
   text-align: left;
-  transition: background var(--ntx-fast) var(--ntx-ease);
+  transition:
+    background var(--ntx-fast) var(--ntx-ease-soft),
+    box-shadow var(--ntx-fast) var(--ntx-ease-soft);
 }
 .ntx-switch:hover:not(:disabled) {
   background: color-mix(in srgb, var(--ntx-fg) 4%, transparent);
@@ -2069,10 +2218,14 @@ button {
   background: color-mix(in srgb, var(--ntx-accent) 6%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ntx-accent) 30%, transparent);
 }
+/* El fondo y el borde de acento también viajan: si no, al cerrar el
+   emparejamiento se apagaban de golpe con el PIN todavía a la vista. */
 .ntx-pin__inner {
   transition:
     margin var(--ntx-normal) var(--ntx-ease),
-    padding var(--ntx-normal) var(--ntx-ease);
+    padding var(--ntx-normal) var(--ntx-ease),
+    background var(--ntx-normal) var(--ntx-ease),
+    box-shadow var(--ntx-normal) var(--ntx-ease);
 }
 .ntx-pin__label {
   font-size: 11px;
@@ -2112,6 +2265,24 @@ button {
   border-radius: var(--ntx-radius-sm);
   box-shadow: inset 0 0 0 1px var(--ntx-hairline-soft);
   animation: ntx-fade-in var(--ntx-normal) var(--ntx-ease);
+}
+/* Una máquina olvidada se pliega y se apaga antes de salir de la lista. */
+@keyframes ntx-peer-out {
+  from {
+    max-height: 64px;
+  }
+  to {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: -4px;
+    opacity: 0;
+  }
+}
+.ntx-peer[data-leaving='true'] {
+  overflow: hidden;
+  pointer-events: none;
+  animation: ntx-peer-out var(--ntx-normal) var(--ntx-ease-both) forwards;
 }
 .ntx-peer__dot {
   flex-shrink: 0;
@@ -2217,4 +2388,92 @@ button {
   color: var(--ntx-ghost);
   background: none;
   box-shadow: inset 0 0 0 1px var(--ntx-hairline);
+}
+
+/* ===========================================================================
+   Relevo de textos (components/Swap.tsx).
+   El viejo se va y el nuevo entra en la misma celda; el que se va sale del
+   flujo para que la caja ya mida lo nuevo (y su ancho viaje, desde Swap). Por
+   COLOR y no por opacidad: así vale también por encima del grid, donde una
+   opacidad animada le apaga el ClearType a las terminales.
+   =========================================================================== */
+@keyframes ntx-swap-in {
+  from {
+    color: transparent;
+  }
+}
+@keyframes ntx-swap-out {
+  to {
+    color: transparent;
+  }
+}
+.ntx-swap {
+  position: relative;
+  display: inline-grid;
+}
+.ntx-swap__item {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+/* Los que pueden achicarse con su elipsis: los textos de largo libre. El resto
+   (contadores, PIDs, rótulos de botón) no se achica nunca: un «2/4» cortado en
+   «2…» no dice nada (pasaba en las tabs del celu). La elipsis va en el ítem y
+   no en la caja, porque el texto que desborda es el del ítem. */
+.ntx-pane__title.ntx-swap,
+.ntx-tab__label.ntx-swap,
+.ntx-status__value.ntx-swap {
+  min-width: 0;
+  max-width: 100%;
+}
+.ntx-pane__title > .ntx-swap__item,
+.ntx-tab__label > .ntx-swap__item,
+.ntx-status__value > .ntx-swap__item {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ntx-swap__item[data-state='in'] {
+  animation: ntx-swap-in var(--ntx-normal) var(--ntx-ease) backwards;
+}
+/* Si releva a otro, espera a que el viejo vaya por la mitad. */
+.ntx-swap__item[data-state='in'][data-after='true'] {
+  animation-delay: 80ms;
+}
+.ntx-swap__item[data-state='out'] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  animation: ntx-swap-out var(--ntx-exit) var(--ntx-ease-both) forwards;
+}
+
+/* ===========================================================================
+   Movimiento reducido (la preferencia de Windows: Configuración → Accesibilidad
+   → Efectos visuales → Efectos de animación). Se paran los latidos y el
+   parpadeo, y lo que entra lo hace sólo por opacidad, sin viajar. El cursor
+   deja de parpadear desde TerminalPane, y el reacomodo del grid y de la paleta
+   no viaja (App, CommandPalette, Swap).
+   =========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .ntx-crt__lines,
+  .ntx-tab__mark[data-busy='true'],
+  .ntx-tab__mark[data-notify='true'],
+  .ntx-status__live,
+  .ntx-update__pulse,
+  .ntx-status__share[data-live='true'],
+  .ntx-tab {
+    animation: none;
+  }
+  .ntx-pane,
+  .ntx-palette,
+  .ntx-modal,
+  .ntx-search {
+    animation-name: ntx-fade-in;
+  }
+  .ntx-pane[data-closing='true'],
+  .ntx-search[data-closing='true'],
+  .ntx-scrim[data-closing='true'] .ntx-palette,
+  .ntx-scrim[data-closing='true'] .ntx-modal {
+    transform: none;
+  }
 }

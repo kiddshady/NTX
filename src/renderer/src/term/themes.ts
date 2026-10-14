@@ -180,16 +180,19 @@ export const PALETTE: Palette = {
    * medidos contra `base`, `faint` daba 2,3:1 y `ghost` 1,4:1, cuando el mínimo
    * de WCAG AA para texto chico es 4,5:1.
    *
-   * Ahora, contra `base`: muted 9,7:1 · dim 6,6:1 · faint 5,1:1 · ghost 4,0:1.
-   * `ghost` es el único que no llega a AA y es a propósito — sólo lo usan cosas
-   * de las que uno no necesita enterarse (PIDs, contadores, atajos ya sabidos).
+   * Ahora, contra `base`: muted 9,7:1 · dim 6,6:1 · faint 5,1:1 · ghost 4,8:1.
+   * `ghost` estuvo a propósito por debajo de AA (#6e6e7a, 4,0:1) hasta el 14
+   * oct 2026: «sólo lo usan cosas de las que uno no necesita enterarse». Pero
+   * son los PIDs, el contador de tabs, los atajos de la paleta y los
+   * placeholders, y la regla de la casa es 4,5:1 para todo texto. Subió a
+   * #7a7a86: 4,7:1 sobre `surface`, y sigue un escalón por debajo de faint.
    *
    * Esos números son los REALES desde el 21 ago 2026. Antes acá había un caveat
    * —"el número real es peor todavía, porque este texto no se apoya sobre `base`
    * pelado sino sobre el vidrio, que aclara el fondo"— que murió con el vidrio.
    * Hoy el peor fondo posible para este texto es `surface`/`elevated` (#0a0a0c),
    * apenas por encima de `base`, y ahí la escalera baja una décima: faint 5,0:1
-   * y ghost 3,9:1. Ese peor caso es además el caso NORMAL desde la tarde del 21
+   * y ghost 4,7:1. Ese peor caso es además el caso NORMAL desde la tarde del 21
    * ago: con la búsqueda y el tooltip mudados a `elevated`, ya no queda texto de
    * chrome apoyado sobre `base` pelado. Tomá la línea de arriba como el techo y
    * estas dos cifras como lo que se mide en pantalla.
@@ -201,7 +204,7 @@ export const PALETTE: Palette = {
   muted: '#b4b4be',
   dim: '#93939e',
   faint: '#7f7f8a',
-  ghost: '#6e6e7a',
+  ghost: '#7a7a86',
 
   accent: '#00e5ff',
   alt: '#ff2e88',
@@ -233,10 +236,12 @@ export const PALETTE: Palette = {
   ansi: [
     // El 0 y el 8 también subieron por legibilidad. El 8 (brightBlack) es el que
     // más se nota: es con el que casi toda CLI pinta comentarios, hashes cortos
-    // y archivos ocultos, así que a 2,3:1 media salida quedaba ilegible.
+    // y archivos ocultos, así que a 2,3:1 media salida quedaba ilegible. El 14
+    // oct 2026 subió otra vez, de #70707c (4,1:1) a #7a7a86 (4,7:1 sobre el
+    // panel): todavía quedaba por debajo del 4,5 de la casa.
     '#3d3d46', '#ff4d6a', '#2ff2a6', '#ffe14d',
     '#5569ff', '#ff2e88', '#00e5ff', '#c8c8cf',
-    '#70707c', '#ff7d90', '#6ff7c2', '#ffec8f',
+    '#7a7a86', '#ff7d90', '#6ff7c2', '#ffec8f',
     '#6d7dff', '#ff6cad', '#7ff2ff', '#ececef'
   ]
 }
