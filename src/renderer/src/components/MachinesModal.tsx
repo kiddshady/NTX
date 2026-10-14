@@ -348,7 +348,7 @@ export function MachinesModal({
               className="ntx-field ntx-pair__address"
               value={address}
               onChange={(event) => setAddress(event.target.value)}
-              placeholder="Name or IP · UCK1, 192.168.1.5"
+              placeholder="Name or IP"
               spellCheck={false}
               aria-label="Address of the other machine"
             />
