@@ -30,9 +30,13 @@ export class PtyManager {
     accent?: string
   ): Pane {
     const id = randomUUID()
-    const startDir = cwd && existsSync(cwd) ? cwd : homedir()
+    // Una carpeta de WSL fuera de /mnt (/home/fran) no existe para Windows: la
+    // shell arranca en el home de Windows y es wsl.exe quien entra ahí.
+    const linuxDir = profile.kind === 'wsl' && cwd?.startsWith('/') ? cwd : undefined
+    const startDir = cwd && !linuxDir && existsSync(cwd) ? cwd : homedir()
+    const args = linuxDir ? ['--cd', linuxDir, ...profile.args] : profile.args
 
-    const proc = pty.spawn(profile.exec, profile.args, {
+    const proc = pty.spawn(profile.exec, args, {
       name: 'xterm-256color',
       cols,
       rows,
@@ -56,7 +60,7 @@ export class PtyManager {
       useConpty: true
     })
 
-    const pane: Pane = { id, profile, proc, cwd: startDir }
+    const pane: Pane = { id, profile, proc, cwd: linuxDir ?? startDir }
     this.panes.set(id, pane)
 
     proc.onData((data) => this.events.onData(id, data))

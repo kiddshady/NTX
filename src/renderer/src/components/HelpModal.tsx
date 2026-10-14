@@ -41,6 +41,7 @@ const GROUPS: { title: string; items: Shortcut[] }[] = [
     items: [
       { label: 'Copy the selection', combos: [['Ctrl', 'C'], ['Ctrl', 'Shift', 'C']] },
       { label: 'Paste', combos: [['Ctrl', 'V'], ['Ctrl', 'Shift', 'V']] },
+      { label: 'Open a link in the browser', combos: [['Ctrl', 'Click']] },
       { label: 'Find in scrollback', combos: [['Ctrl', 'Shift', 'F']] },
       { label: 'Next · previous match', combos: [['Enter'], ['Shift', 'Enter']] }
     ]

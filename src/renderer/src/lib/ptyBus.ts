@@ -19,8 +19,13 @@ const handlers = new Map<string, DataHandler>()
 const pending = new Map<string, string[]>()
 const exitHandlers = new Map<string, ExitHandler>()
 const exited = new Map<string, number>()
+/** Los paneles ya cerrados. Lo que llegue de ellos después (la salida del
+ *  proceso que se está muriendo, su exit) no tiene a quién ir, y guardarlo en
+ *  `pending` lo dejaría ahí para siempre. Son ids aleatorios: nunca vuelven. */
+const forgotten = new Set<string>()
 
 window.ntx.onData((paneId, data) => {
+  if (forgotten.has(paneId)) return
   const handler = handlers.get(paneId)
   if (handler) {
     handler(data)
@@ -32,6 +37,7 @@ window.ntx.onData((paneId, data) => {
 })
 
 window.ntx.onExit((paneId, code) => {
+  if (forgotten.has(paneId)) return
   const handler = exitHandlers.get(paneId)
   if (handler) handler(code)
   else exited.set(paneId, code)
@@ -66,6 +72,7 @@ export function attachPane(paneId: string, onData: DataHandler, onExit: ExitHand
 
 /** Limpia lo que hubiera quedado colgado de un panel ya cerrado. */
 export function forgetPane(paneId: string): void {
+  forgotten.add(paneId)
   handlers.delete(paneId)
   exitHandlers.delete(paneId)
   pending.delete(paneId)

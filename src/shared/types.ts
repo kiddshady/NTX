@@ -142,7 +142,19 @@ export interface NtxApi {
     version: string
     electron: string
     home: string
+    /** El build de Windows (26200, …). xterm lo necesita para saber cómo
+     *  reacomoda ConPTY la pantalla cuando cambia de tamaño. Opcional porque
+     *  NTX Mobile no lo sabe: sin él se asume un Windows 11. */
+    windowsBuild?: number
   }
+
+  /** Abre un link de la terminal en el navegador del sistema. Opcional: sin él,
+   *  el click hace lo que haga el navegador que aloja la app (NTX Mobile). */
+  openLink?(url: string): void
+  /** Escribe en el portapapeles aunque la ventana no tenga el foco: la copia
+   *  por OSC 52 llega cuando quiere, y navigator.clipboard la rechaza si NTX
+   *  está detrás de otra ventana. Opcional por lo mismo que openLink. */
+  copyText?(text: string): void
 
   // --- Otras máquinas ---------------------------------------------------------
   //

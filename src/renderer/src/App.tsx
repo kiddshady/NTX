@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type JSX } from 'react'
 import { Titlebar } from './components/Titlebar'
 import { TabStrip } from './components/TabStrip'
 import { TerminalPane } from './components/TerminalPane'
@@ -49,6 +49,31 @@ function loadCrt(): boolean {
   return window.localStorage.getItem(CRT_KEY) !== '0'
 }
 
+/**
+ * La status bar con sus números vivos. cpu y mem llegan una vez por segundo (y
+ * otra por cada máquina emparejada): suscriptos acá, ese tic re-renderiza la
+ * barra y no la app entera con sus cuatro terminales.
+ */
+function LiveStatusBar({
+  peer,
+  ...props
+}: Omit<ComponentProps<typeof StatusBar>, 'stats'> & {
+  /** Si el panel activo es de otra máquina, cuál: cpu y mem son los de ella. */
+  peer?: string
+}): JSX.Element {
+  const [stats, setStats] = useState<SystemStats>({ cpu: 0, mem: 0 })
+  const [peerStats, setPeerStats] = useState<Record<string, SystemStats>>({})
+  useEffect(() => window.ntx.onStats(setStats), [])
+  useEffect(
+    () =>
+      window.ntx.remote?.onStats((peerId, next) =>
+        setPeerStats((previous) => ({ ...previous, [peerId]: next }))
+      ),
+    []
+  )
+  return <StatusBar {...props} stats={peer ? (peerStats[peer] ?? { cpu: 0, mem: 0 }) : stats} />
+}
+
 export function App(): JSX.Element {
   const [profiles, setProfiles] = useState<ShellProfile[]>([])
   const [panes, setPanes] = useState<PaneState[]>([])
@@ -59,7 +84,6 @@ export function App(): JSX.Element {
   const [search, setSearch] = useState<{ paneId: string; nonce: number } | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
-  const [stats, setStats] = useState<SystemStats>({ cpu: 0, mem: 0 })
   const [update, setUpdate] = useState<UpdateState>({ phase: 'idle' })
   // La versión cuyo aviso ya se descartó: el modal insiste por versión nueva,
   // nunca dos veces por la misma.
@@ -70,19 +94,22 @@ export function App(): JSX.Element {
   // el estado de su host.
   const [machinesOpen, setMachinesOpen] = useState(false)
   const [peers, setPeers] = useState<PeerState[]>([])
-  const [peerStats, setPeerStats] = useState<Record<string, SystemStats>>({})
   const [hostState, setHostState] = useState<HostState | null>(null)
 
   const palette = PALETTE
   const accentOf = useCallback((index: number) => paneAccent(palette, index), [palette])
 
   // El aviso salta solo cuando la descarga terminó, y se calla si el About ya
-  // está mostrando lo mismo.
+  // está mostrando lo mismo. Con otro modal o la paleta abiertos espera a que
+  // se cierren: encima serían dos scrims y dos preguntas a la vez.
   const updatePromptOpen =
     update.phase === 'ready' &&
     update.version != null &&
     update.version !== dismissedUpdate &&
-    !aboutOpen
+    !aboutOpen &&
+    !machinesOpen &&
+    !helpOpen &&
+    !paletteOpen
 
   // Espejos para los handlers de teclado, que se registran una sola vez y no
   // pueden depender del estado sin volver a suscribirse en cada tecla.
@@ -185,6 +212,15 @@ export function App(): JSX.Element {
 
   const closeSearch = useCallback((): void => setSearch(null), [])
 
+  // La barra es del panel donde se abrió. Si el foco se va a otro (Ctrl 1–4,
+  // Ctrl+Tab, un click), se cierra: abierta allá, con sus resaltados, mientras
+  // el teclado ya está en otra shell, Escape le llegaba a la shell nueva.
+  useEffect(() => {
+    setSearch((previous) =>
+      previous && panes[focused]?.id !== previous.paneId ? null : previous
+    )
+  }, [focused, panes])
+
   // --- Paneles --------------------------------------------------------------
 
   /** El salto circular entre shells: del último vuelve al primero y al revés.
@@ -201,9 +237,19 @@ export function App(): JSX.Element {
     setFocused(index)
   }, [])
 
-  const spawn = useCallback(async (profileId?: string, cwd?: string): Promise<void> => {
+  // Los lugares del grid ocupados: los paneles que hay más los que vienen en
+  // camino. El acento de un panel sale de su lugar, y `panesRef` recién se
+  // entera de uno nuevo cuando React lo dibuja: al restaurar una escena los
+  // spawns van uno atrás del otro sin un render en el medio, y todos nacían
+  // creyéndose el primero (el prompt de los cuatro, con el cian del 1).
+  const slots = useRef(0)
+  // El panel que tiene que quedarse con el foco apenas aparezca.
+  const focusOnArrival = useRef<string | null>(null)
+
+  const spawn = useCallback(async (profileId?: string, cwd?: string, focus = true): Promise<void> => {
     const current = panesRef.current
-    if (current.length >= MAX_PANES) return
+    if (slots.current >= MAX_PANES) return
+    const slot = slots.current++
 
     const targetProfile = profileId ?? current[focusedRef.current]?.profileId
     // La carpeta del panel activo se hereda sólo si es de la MISMA máquina: una
@@ -215,21 +261,22 @@ export function App(): JSX.Element {
       focusedPane && machineOf(focusedPane.profileId) === machineOf(targetProfile) ? focusedPane.cwd : undefined
     // El tamaño real lo pone el primer fit del panel; con esto el shell arranca
     // con algo razonable en vez de 0×0, que tira ConPTY abajo.
-    const snapshot = await window.ntx.spawn({
-      profileId: targetProfile ?? '',
-      cwd: cwd ?? inherited,
-      cols: 80,
-      rows: 24,
-      accent: paneAccent(PALETTE, current.length)
-    })
+    let snapshot: Awaited<ReturnType<typeof window.ntx.spawn>>
+    try {
+      snapshot = await window.ntx.spawn({
+        profileId: targetProfile ?? '',
+        cwd: cwd ?? inherited,
+        cols: 80,
+        rows: 24,
+        accent: paneAccent(PALETTE, slot)
+      })
+    } catch (error) {
+      slots.current--
+      throw error
+    }
 
-    setPanes((previous) => {
-      if (previous.length >= MAX_PANES) {
-        window.ntx.kill(snapshot.id)
-        return previous
-      }
-      setFocused(previous.length)
-      return [
+    if (focus) focusOnArrival.current = snapshot.id
+    setPanes((previous) => [
         ...previous,
         {
           id: snapshot.id,
@@ -243,9 +290,19 @@ export function App(): JSX.Element {
           busySince: null,
           remote: snapshot.remote
         }
-      ]
-    })
+      ])
   }, [])
+
+  // El foco va al panel nuevo cuando ya existe, no adentro del actualizador de
+  // setPanes: React puede correr ese actualizador dos veces.
+  useEffect(() => {
+    const id = focusOnArrival.current
+    if (!id) return
+    const index = panes.findIndex((pane) => pane.id === id)
+    if (index === -1) return
+    focusOnArrival.current = null
+    setFocused(index)
+  }, [panes])
 
   const closePane = useCallback((paneId: string): void => {
     // Matamos el shell ya, pero el panel se va con su animación: sacarlo del DOM
@@ -260,13 +317,33 @@ export function App(): JSX.Element {
       previous.map((pane) => (pane.id === paneId ? { ...pane, closing: true } : pane))
     )
 
+    // Si se cierra la que estás mirando, el foco (y el teclado) pasan YA a la
+    // vecina: la de la derecha, o la de la izquierda si era la última. Hasta la
+    // 1.0.7 se quedaba 220 ms en el panel que se iba, y lo tipeado en ese rato
+    // se perdía; Ctrl+Shift+W dos veces seguidas cerraba una sola.
+    const current = panesRef.current
+    const index = current.findIndex((pane) => pane.id === paneId)
+    if (index !== -1 && index === focusedRef.current) {
+      const alive = (i: number): boolean => i !== index && current[i] !== undefined && !current[i]!.closing
+      let next = -1
+      for (let i = index + 1; i < current.length && next === -1; i++) if (alive(i)) next = i
+      for (let i = index - 1; i >= 0 && next === -1; i--) if (alive(i)) next = i
+      if (next !== -1) setFocused(next)
+    }
+
     window.setTimeout(() => {
       forgetPane(paneId)
-      setPanes((previous) => {
-        const next = previous.filter((pane) => pane.id !== paneId)
-        setFocused((current) => Math.max(0, Math.min(current, next.length - 1)))
-        return next
-      })
+      const removed = panesRef.current.findIndex((pane) => pane.id === paneId)
+      if (removed === -1) return
+      slots.current--
+      const remaining = panesRef.current.length - 1
+      setPanes((previous) => previous.filter((pane) => pane.id !== paneId))
+      // El foco sigue a SU shell: si la que se fue estaba antes, todas se corren
+      // un lugar. Hasta la 1.0.7 sólo se acotaba al largo, y cerrar la 1ª de
+      // cuatro escribiendo en la 3ª te mandaba el teclado a la 4ª.
+      setFocused((focusedNow) =>
+        Math.max(0, Math.min(focusedNow > removed ? focusedNow - 1 : focusedNow, remaining - 1))
+      )
     }, PANE_EXIT_MS)
   }, [clearBusy])
 
@@ -307,12 +384,8 @@ export function App(): JSX.Element {
         } else {
           // En serie a propósito: el acento y el número de cada panel salen de
           // su posición, y spawns en paralelo llegarían en cualquier orden.
-          for (const pane of scene) await spawn(pane.profileId, pane.cwd)
-          // Un tick de respiro antes de aplicar el foco guardado: cada spawn
-          // enfoca su panel DESDE ADENTRO del updater de setPanes, así que ese
-          // setFocused se encola después de cualquiera hecho acá en línea — y
-          // el del último spawn pisaría a éste.
-          await new Promise((resolve) => setTimeout(resolve, 0))
+          // Sin foco cada uno: el que corresponde es el guardado, y va al final.
+          for (const pane of scene) await spawn(pane.profileId, pane.cwd, false)
           setFocused(Math.max(0, Math.min(saved?.focused ?? 0, scene.length - 1)))
         }
         restored.current = true
@@ -337,8 +410,6 @@ export function App(): JSX.Element {
 
   // --- Eventos del main ------------------------------------------------------
 
-  useEffect(() => window.ntx.onStats(setStats), [])
-
   // --- Otras máquinas ----------------------------------------------------------
 
   useEffect(() => {
@@ -348,7 +419,6 @@ export function App(): JSX.Element {
     void host?.state().then(setHostState)
     const off = [
       remote?.onPeers(setPeers),
-      remote?.onStats((peerId, next) => setPeerStats((previous) => ({ ...previous, [peerId]: next }))),
       host?.onState(setHostState),
       // Apareció una máquina o se olvidó una: la paleta ofrece sus shells.
       window.ntx.onProfiles?.(setProfiles),
@@ -589,6 +659,60 @@ export function App(): JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [spawn, closePane, zoom, openSearch, cycleFocus])
 
+  // Tab adentro de un modal da la vuelta adentro del modal. Sin esto se salía
+  // al textarea de la terminal de atrás, y lo que tipeabas iba a la shell con
+  // el modal abierto.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Tab' || event.ctrlKey || event.altKey) return
+      const dialogs = document.querySelectorAll<HTMLElement>(
+        '.ntx-scrim:not([data-closing="true"]) [role="dialog"]'
+      )
+      const dialog = dialogs[dialogs.length - 1]
+      if (!dialog) return
+      const stops = [
+        ...dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ].filter((element) => element.getClientRects().length > 0)
+      const first = stops[0]
+      const last = stops[stops.length - 1]
+      const active = document.activeElement
+      if (!first || !last) {
+        event.preventDefault()
+        return
+      }
+      if (!dialog.contains(active)) {
+        event.preventDefault()
+        first.focus()
+      } else if (event.shiftKey && (active === first || active === dialog)) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [])
+
+  // Un click en un botón del chrome (la tab activa, maximizar, la cruz de otra
+  // tab) no se lleva el teclado: sin esto el foco quedaba en el botón, o en
+  // ningún lado si el botón se desmontaba, y lo que tipeabas después no iba a
+  // ninguna shell. Los botones de los overlays (modales, búsqueda) sí lo toman:
+  // ahí el teclado es de ellos.
+  useEffect(() => {
+    const onMouseDown = (event: MouseEvent): void => {
+      const target = event.target instanceof Element ? event.target : null
+      if (!target?.closest('.ntx-chrome button')) return
+      if (target.closest('.ntx-scrim, .ntx-search')) return
+      event.preventDefault()
+    }
+    window.addEventListener('mousedown', onMouseDown, true)
+    return () => window.removeEventListener('mousedown', onMouseDown, true)
+  }, [])
+
   // --- Comandos --------------------------------------------------------------
 
   const commands = useMemo<Command[]>(() => {
@@ -675,14 +799,10 @@ export function App(): JSX.Element {
         ))}
       </main>
 
-      <StatusBar
+      <LiveStatusBar
         // cpu y mem son de la máquina donde corre el panel activo: mirando una
         // shell de la UCK1, lo que importa es cómo está la UCK1.
-        stats={
-          panes[focused]?.remote
-            ? (peerStats[panes[focused]!.remote!.peer] ?? { cpu: 0, mem: 0 })
-            : stats
-        }
+        peer={panes[focused]?.remote?.peer}
         active={panes[focused]}
         accent={accentOf(focused)}
         palette={palette}

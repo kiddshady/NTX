@@ -71,6 +71,14 @@ export function setHomeDir(dir: string): void {
 export function shortPath(fullPath: string, maxSegments = 3, home = homeDir): string {
   if (!fullPath) return ''
 
+  // Una ruta Linux (WSL fuera de /mnt) se queda con sus barras, y sin el home
+  // de Windows: no tienen nada que ver.
+  if (fullPath.startsWith('/')) {
+    const segments = fullPath.split('/').filter(Boolean)
+    if (segments.length <= maxSegments) return fullPath
+    return `…/${segments.slice(-maxSegments).join('/')}`
+  }
+
   let path = fullPath.replace(/\//g, '\\')
   const base = home.replace(/[\\/]+$/, '')
   if (base && path.toLowerCase().startsWith(base.toLowerCase())) {
@@ -108,7 +116,7 @@ export function paneTabLabel(pane: PaneState): string {
   // de usuario, que no le sirve a nadie.
   const where = shortPath(pane.cwd, 1, paneHome(pane))
   return where
-    ? `${hostPrefix(pane)}${shell} · ${where.replace(/^…\\/, '')}`
+    ? `${hostPrefix(pane)}${shell} · ${where.replace(/^…[\\/]/, '')}`
     : `${hostPrefix(pane)}${pane.profileLabel}`
 }
 

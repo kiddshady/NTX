@@ -15,6 +15,19 @@ import { paneTitle, pathForShell, type PaneState } from '../lib/panes'
 // ni cerca, y un programa desbocado no nos llena el portapapeles.
 const OSC52_MAX = 1_400_000
 
+/** El build de Windows que se le declara a xterm si la plataforma no lo dice
+ *  (NTX Mobile): un Windows 11, que es donde corren todas las shells. */
+const WINDOWS_BUILD_FALLBACK = 22631
+
+/** Cuánto espera el fit a que el tamaño se quede quieto. Arrastrando el borde de
+ *  la ventana el observer dispara en cada cuadro, y cada fit es un resize del
+ *  pty (por la red, en los paneles de otra máquina) y un repintado de ConPTY. */
+const FIT_SETTLE_MS = 90
+
+/** Las shells que pegan solas con Ctrl+V leyendo el portapapeles (PSReadLine).
+ *  En las demás (cmd, bash, WSL) el ^V crudo no pega nada. */
+const PASTES_ITSELF = new Set(['pwsh', 'powershell'])
+
 interface TerminalPaneProps {
   pane: PaneState
   index: number
@@ -85,6 +98,12 @@ export function TerminalPane({
   // montar la terminal.
   const remoteRef = useRef(pane.remote !== undefined)
   remoteRef.current = pane.remote !== undefined
+  const profileRef = useRef(pane.profileId)
+  profileRef.current = pane.profileId
+  // Un panel que se está yendo no muestra el cartel de shell muerta: la muerte
+  // la pidió el cierre, y el cartel aparecería encima del fundido.
+  const closingRef = useRef(pane.closing)
+  closingRef.current = pane.closing
 
   useEffect(() => {
     const element = host.current
@@ -117,12 +136,36 @@ export function TerminalPane({
       theme: xtermTheme(palette, accent),
       // El shell arranca con este tamaño y el primer fit lo corrige enseguida.
       cols: 80,
-      rows: 24
+      rows: 24,
+      // Todas las shells son ConPTY, y xterm tiene que saberlo. Sin esto, al
+      // CRECER (maximizar, pasar de tres paneles a dos, achicar la letra) baja
+      // líneas del scrollback para llenar las filas nuevas, ConPTY repinta su
+      // pantalla encima, y esas líneas se pierden: medido en la 1.0.7, dos
+      // vueltas de achicar y agrandar la ventana borraron 14 líneas para siempre.
+      // Con esto, ninguna en tres vueltas.
+      windowsPty: {
+        backend: 'conpty',
+        buildNumber: window.ntx.platform.windowsBuild ?? WINDOWS_BUILD_FALLBACK
+      }
     })
 
     const fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
-    terminal.loadAddon(new WebLinksAddon())
+    // Los links se abren con Ctrl+click, como en Windows Terminal: un click
+    // pelado es para enfocar o seleccionar, y no puede abrir el navegador porque
+    // justo caíste sobre una URL. Por defecto el addon hacía window.open() SIN
+    // la URL (para asignarla después), y la ventana lo rechazaba: hasta la 1.0.7
+    // los links no abrían nunca.
+    const openLink = window.ntx.openLink
+    terminal.loadAddon(
+      new WebLinksAddon(
+        openLink
+          ? (event, uri) => {
+              if (event.ctrlKey) openLink(uri)
+            }
+          : undefined
+      )
+    )
 
     // La búsqueda del scrollback. El addon emite el contador (n/total) sólo
     // cuando las búsquedas piden decoraciones — y las nuestras siempre lo hacen.
@@ -143,11 +186,19 @@ export function TerminalPane({
 
     // OSC 7: el shell nos dice en qué directorio está parado en cada prompt.
     // Llega como file:///C:/Users/... y con los espacios en %20.
+    //
+    // Lo de WSL fuera de /mnt (file:////home/fran, ver ntx-init.sh) queda como
+    // ruta Linux. Antes salía \home\fran: la barra mostraba eso y Ctrl+Shift+T
+    // heredaba una carpeta que no existe. Y un UNC (file://///servidor/x, que
+    // puede salir en cualquier `cat`) se ignora: el main busca el .git de la
+    // carpeta, y en una ruta de red eso se queda esperando a otra máquina.
     terminal.parser.registerOscHandler(7, (payload) => {
-      const match = /^file:\/\/[^/]*\/?(.*)$/.exec(payload)
+      const match = /^file:\/\/[^/]*\/(.*)$/.exec(payload)
       if (match?.[1]) {
         try {
-          callbacks.current.onCwd(decodeURIComponent(match[1]).replace(/\//g, '\\'))
+          const path = decodeURIComponent(match[1])
+          if (/^[A-Za-z]:(\/|$)/.test(path)) callbacks.current.onCwd(path.replace(/\//g, '\\'))
+          else if (!path.startsWith('//')) callbacks.current.onCwd(path.startsWith('/') ? path : `/${path}`)
         } catch {
           // Un payload mal escapado no puede tumbar el parser de la terminal.
         }
@@ -168,7 +219,13 @@ export function TerminalPane({
       try {
         const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0))
         const text = new TextDecoder().decode(bytes)
-        if (text) void navigator.clipboard.writeText(text)
+        // Por el main si se puede: el navegador rechaza escribir el
+        // portapapeles con la ventana sin foco, y la copia de un Claude Code
+        // remoto llega cuando llega, también con NTX detrás de otra ventana.
+        if (text) {
+          if (window.ntx.copyText) window.ntx.copyText(text)
+          else void navigator.clipboard.writeText(text)
+        }
       } catch {
         // Base64 roto: se descarta sin tumbar el parser.
       }
@@ -195,6 +252,11 @@ export function TerminalPane({
     // Terminal: Ctrl+C copia SÓLO si hay algo seleccionado, y si no, sigue siendo
     // la interrupción de toda la vida.
     terminal.attachCustomKeyEventHandler((event) => {
+      // Una tecla que la app ya usó (Ctrl 1–4, el zoom) no es para la shell.
+      // App la frena en captura con preventDefault, pero xterm no lo mira: hasta
+      // la 1.0.7, Ctrl+3 le mandaba un Esc a la shell que dejabas (interrumpía a
+      // Claude Code, borraba la línea en pwsh) y Ctrl+4 un ^\.
+      if (event.defaultPrevented) return false
       if (event.type !== 'keydown' || !event.ctrlKey) return true
       const key = event.key.toLowerCase()
 
@@ -220,13 +282,19 @@ export function TerminalPane({
       // es el tuyo; en una de otra máquina es el de ella, donde no copiaste
       // nada, y el pegado salía vacío (en cmd, un "^V" literal).
       //
-      // En los paneles remotos la tecla se le saca a xterm y nada más: sin su
+      // En los paneles remotos —y en las shells que no pegan solas, cmd, bash y
+      // WSL, donde ^V no pega nada— la tecla se le saca a xterm y nada más: sin su
       // preventDefault, Chromium dispara su `paste` nativo con el portapapeles
       // de ESTA máquina, y xterm lo pega por su camino de siempre (bracketed
       // paste incluido). Pegar a mano además lo duplicaba — medido. El costo es
       // que ahí ^V ya no llega crudo (el bloque visual de vim, por ejemplo): lo
       // mismo que hace Windows Terminal.
-      if (!event.shiftKey && !event.altKey && key === 'v' && remoteRef.current) {
+      if (
+        !event.shiftKey &&
+        !event.altKey &&
+        key === 'v' &&
+        (remoteRef.current || !PASTES_ITSELF.has(profileRef.current))
+      ) {
         return false
       }
       if (!event.shiftKey && key === 'c' && terminal.hasSelection()) {
@@ -258,7 +326,7 @@ export function TerminalPane({
       paneId,
       (data) => terminal.write(data),
       (code) => {
-        setDead(code)
+        if (!closingRef.current) setDead(code)
         callbacks.current.onExit(code)
       }
     )
@@ -277,17 +345,23 @@ export function TerminalPane({
       }
     })
 
+    // El fit espera a que el tamaño se quede quieto (ver FIT_SETTLE_MS).
+    let settle = 0
     const observer = new ResizeObserver(() => {
-      try {
-        fitAddon.fit()
-      } catch {
-        // Pasa mientras el panel se está cerrando; el próximo tick no existe.
-      }
+      window.clearTimeout(settle)
+      settle = window.setTimeout(() => {
+        try {
+          fitAddon.fit()
+        } catch {
+          // Pasa mientras el panel se está cerrando; el próximo tick no existe.
+        }
+      }, FIT_SETTLE_MS)
     })
     observer.observe(element)
 
     return () => {
       cancelAnimationFrame(first)
+      window.clearTimeout(settle)
       observer.disconnect()
       stopCellBackgrounds()
       detach()

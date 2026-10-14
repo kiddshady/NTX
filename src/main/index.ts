@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, globalShortcut, ipcMain, session, shell, Tray } from 'electron'
+import { app, BrowserWindow, clipboard, globalShortcut, ipcMain, session, shell, Tray } from 'electron'
 import { createMainWindow } from './window.js'
 import { detectProfiles } from './profiles.js'
 import { PtyManager } from './pty.js'
@@ -327,6 +327,17 @@ function registerIpc(): void {
   ipcMain.on('updates:install', () => updater?.install())
   ipcMain.handle('meta:version', () => app.getVersion())
   ipcMain.on('meta:open-repo', () => void shell.openExternal(REPO_URL))
+
+  // Los links de la terminal: sólo web. Un file:// o un esquema raro que una
+  // salida cualquiera escriba no se abre con un click.
+  ipcMain.on('link:open', (_e, url: unknown) => {
+    if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
+  })
+  // La copia de OSC 52 (ver TerminalPane): por acá llega aunque la ventana no
+  // tenga el foco. El tope es el mismo del renderer.
+  ipcMain.on('clipboard:write', (_e, text: unknown) => {
+    if (typeof text === 'string' && text.length <= 1_100_000) clipboard.writeText(text)
+  })
 
   // El click de una notificación: mostrar y enfocar aunque viva en el tray.
   ipcMain.on('window:attention', () => {

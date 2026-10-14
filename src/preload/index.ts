@@ -1,4 +1,4 @@
-import { homedir } from 'node:os'
+import { homedir, release } from 'node:os'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import type {
@@ -70,6 +70,9 @@ const api: NtxApi = {
     openRepo: () => ipcRenderer.send('meta:open-repo')
   },
 
+  openLink: (url) => ipcRenderer.send('link:open', url),
+  copyText: (text) => ipcRenderer.send('clipboard:write', text),
+
   onProfiles: (handler) => subscribe<[ShellProfile[]]>('profiles:changed', handler),
   onPaneRemote: (handler) => subscribe<[string, RemotePaneInfo]>('pane:remote', handler),
 
@@ -94,7 +97,9 @@ const api: NtxApi = {
     version: process.versions.chrome,
     electron: process.versions.electron,
     // Para poder acortar rutas contra `~` sin que el renderer toque node.
-    home: homedir()
+    home: homedir(),
+    // "10.0.26200" → 26200.
+    windowsBuild: Number(release().split('.')[2]) || undefined
   }
 }
 
