@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { PALETTE, applyPalette } from './term/themes'
+import { TERMINAL_FAMILIES } from './term/fonts'
 import './styles/base.css'
 
 // La paleta se aplica ANTES del primer render, de forma síncrona. Si esperáramos
@@ -22,11 +23,12 @@ if (!root) throw new Error('Falta #root en index.html')
 // Sólo en el panel que lo mostraba primero, y el zoom lo arreglaba porque limpia
 // esa caché. Lo mismo valía para el emoji, los bloques y las itálicas: por eso
 // van todas las caras y no un carácter de muestra. Son archivos locales: tarda
-// milisegundos.
-const TERMINAL_FONTS = new Set(['JetBrains Mono', 'Noto Sans Symbols 2'])
+// milisegundos. Las dos letras de la terminal, también la que no está elegida:
+// cambiar con Ctrl+Shift+L no tiene que medir nada a medio cargar.
+const families = new Set(TERMINAL_FAMILIES)
 const fontsReady = Promise.all(
   [...document.fonts]
-    .filter((face) => TERMINAL_FONTS.has(face.family.replace(/["']/g, '')))
+    .filter((face) => families.has(face.family.replace(/["']/g, '')))
     // Una cara que falte (Segoe UI Emoji en el celu) no frena a las demás.
     .map((face) => face.load().catch(() => {}))
 )

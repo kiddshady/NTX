@@ -43,7 +43,8 @@ const GROUPS: { title: string; items: Shortcut[] }[] = [
       { label: 'Paste', combos: [['Ctrl', 'V'], ['Ctrl', 'Shift', 'V']] },
       { label: 'Open a link in the browser', combos: [['Ctrl', 'Click']] },
       { label: 'Find in scrollback', combos: [['Ctrl', 'Shift', 'F']] },
-      { label: 'Next · previous match', combos: [['Enter'], ['Shift', 'Enter']] }
+      { label: 'Next · previous match', combos: [['Enter'], ['Shift', 'Enter']] },
+      { label: 'Font: JetBrains Mono · Roboto Mono', combos: [['Ctrl', 'Shift', 'L']] }
     ]
   },
   {

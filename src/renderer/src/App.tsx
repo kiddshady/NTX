@@ -14,6 +14,7 @@ import { MAX_PANES, formatDuration, otherMachinePwsh, paneHome, setHomeDir, shor
 import { forgetPane } from './lib/ptyBus'
 import { reducedMotion } from './lib/motion'
 import { PALETTE, paneAccent } from './term/themes'
+import { loadTerminalFont, saveTerminalFont } from './term/fonts'
 import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
 import type { HostState, PeerState } from '../../shared/remote'
 
@@ -204,6 +205,7 @@ export function App(): JSX.Element {
   const [dismissedUpdate, setDismissedUpdate] = useState<string | null>(null)
   const [fontSize, setFontSize] = useState(loadFontSize)
   const [crt, setCrt] = useState(loadCrt)
+  const [terminalFont, setTerminalFont] = useState(loadTerminalFont)
   // Las otras máquinas: las emparejadas (con sus cpu/mem) y, si ésta comparte,
   // el estado de su host.
   const [machinesOpen, setMachinesOpen] = useState(false)
@@ -281,6 +283,8 @@ export function App(): JSX.Element {
   useEffect(() => {
     window.localStorage.setItem(CRT_KEY, crt ? '1' : '0')
   }, [crt])
+
+  useEffect(() => saveTerminalFont(terminalFont), [terminalFont])
 
   // Ctrl+rueda, como en el navegador. En captura y frenando el evento: si
   // llegara hasta xterm, el gesto además scrollearía el scrollback.
@@ -757,6 +761,11 @@ export function App(): JSX.Element {
           // S de scanlines: prende y apaga el vidrio CRT.
           event.preventDefault()
           setCrt((on) => !on)
+        } else if (key === 'l') {
+          // L de letra: la terminal pasa de JetBrains Mono a Roboto Mono y
+          // vuelve. Sólo la terminal; la interfaz no cambia.
+          event.preventDefault()
+          setTerminalFont((current) => (current === 'jetbrains' ? 'roboto' : 'jetbrains'))
         }
         return
       }
@@ -895,6 +904,7 @@ export function App(): JSX.Element {
             accent={accentOf(index)}
             palette={palette}
             fontSize={fontSize}
+            font={terminalFont}
             focused={index === focused}
             // La búsqueda abierta también apaga el teclado de la terminal: el
             // que tipea ahí es el input de la barra. Cerrarla lo devuelve.

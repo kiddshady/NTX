@@ -1,6 +1,6 @@
 /* Fuentes vendoreadas, nunca de una CDN: la app tiene que arrancar igual sin red,
    y un `@import` remoto además obligaría a abrirle la CSP a un tercero.
-   Las tres son SIL Open Font License 1.1 — las licencias viajan al lado de los
+   Las cuatro son SIL Open Font License 1.1 — las licencias viajan al lado de los
    archivos, en assets/fonts/OFL-*.txt. */
 
 /* --- UI ------------------------------------------------------------------ */
@@ -124,6 +124,65 @@
   font-style: normal;
   size-adjust: 87.4%;
   unicode-range: U+231A-231B,U+23E9-23EC,U+23F0,U+23F3,U+25FD-25FE,U+2614-2615,U+2648-2653,U+267F,U+2693,U+26A1,U+26AA-26AB,U+26BD-26BE,U+26C4-26C5,U+26CE,U+26D4,U+26EA,U+26F2-26F3,U+26F5,U+26FA,U+26FD,U+2705,U+270A-270B,U+2728,U+274C,U+274E,U+2753-2755,U+2757,U+2795-2797,U+27B0,U+27BF,U+2B1B-2B1C,U+2B50,U+2B55,U+1F004,U+1F0CF,U+1F18E,U+1F191-1F19A,U+1F200-1F2FF,U+1F300-1F64F,U+1F680-1F6FF,U+1F7E0-1F7EB,U+1F90C-1F9FF,U+1FA70-1FAFF;
+}
+
+/* Roboto Mono, la otra letra de la terminal (Ctrl+Shift+L): la de las
+   terminales de Prism. Va el archivo completo de Google Fonts y no los woff2
+   subseteados de Prism, por lo mismo que JetBrains. Es variable: un archivo
+   cubre del 100 al 700, así que la negrita de xterm (700) es de verdad y no
+   sintetizada. Lo que no trae (flechas, geometría, powerline, emojis, tramas)
+   lo pone JetBrains Mono, que va segunda en su familia (term/fonts.ts). */
+@font-face {
+  font-family: 'Roboto Mono';
+  src: url('../assets/fonts/roboto-mono.ttf') format('truetype');
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Roboto Mono';
+  src: url('../assets/fonts/roboto-mono-italic.ttf') format('truetype');
+  font-weight: 100 700;
+  font-style: italic;
+  font-display: block;
+}
+
+/* Roboto Mono no trae ni los bloques ni el box drawing (─ │ ┌ ├), y los de
+   JetBrains por el respaldo no llenan su celda, que es más alta: los marcos de
+   los TUI saldrían cortados en cada fila. Éstos son los de JetBrains estirados
+   a la celda de Roboto (scripts/make-blocks.py cuenta cómo). Las cuatro caras,
+   igual que ntx-blocks. */
+@font-face {
+  font-family: 'Roboto Mono';
+  src: url('../assets/fonts/ntx-blocks-roboto.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  unicode-range: U+2500-2590, U+2594-259F;
+}
+@font-face {
+  font-family: 'Roboto Mono';
+  src: url('../assets/fonts/ntx-blocks-roboto.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: block;
+  unicode-range: U+2500-2590, U+2594-259F;
+}
+@font-face {
+  font-family: 'Roboto Mono';
+  src: url('../assets/fonts/ntx-blocks-roboto.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+  unicode-range: U+2500-2590, U+2594-259F;
+}
+@font-face {
+  font-family: 'Roboto Mono';
+  src: url('../assets/fonts/ntx-blocks-roboto.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: block;
+  unicode-range: U+2500-2590, U+2594-259F;
 }
 
 /* El fallback del mono: los spinners braille (⠋⠙⠹) que usa medio ecosistema de

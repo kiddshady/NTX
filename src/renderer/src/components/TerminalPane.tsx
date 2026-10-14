@@ -10,6 +10,7 @@ import { Swap } from './Swap'
 import { attachPane } from '../lib/ptyBus'
 import { mixHex, xtermTheme, type Palette } from '../term/themes'
 import { lowerCellBackgrounds } from '../term/cellBackgrounds'
+import { TERMINAL_FONTS, type TerminalFont } from '../term/fonts'
 import { reducedMotion } from '../lib/motion'
 import { paneTitle, pathForShell, type PaneState } from '../lib/panes'
 
@@ -30,6 +31,11 @@ const FIT_SETTLE_MS = 90
  *  En las demás (cmd, bash, WSL) el ^V crudo no pega nada. */
 const PASTES_ITSELF = new Set(['pwsh', 'powershell'])
 
+/** Las curvas de base.css (--ntx-ease, --ntx-ease-both), para el fundido del
+ *  cambio de letra, que va por WAAPI. */
+const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
+const EASE_BOTH = 'cubic-bezier(0.65, 0, 0.35, 1)'
+
 interface TerminalPaneProps {
   pane: PaneState
   index: number
@@ -37,6 +43,9 @@ interface TerminalPaneProps {
   palette: Palette
   /** El tamaño de letra del momento: lo gobierna App, es uno solo para todas. */
   fontSize: number
+  /** La letra (Ctrl+Shift+L), también una sola para todas. Opcional porque NTX
+   *  Mobile monta el panel sin ella: ahí es JetBrains. */
+  font?: TerminalFont
   /** Manda el anillo de acento: el panel activo se sigue viendo activo. */
   focused: boolean
   /** Si además tiene que quedarse el teclado. Es false mientras hay un overlay
@@ -61,6 +70,7 @@ export function TerminalPane({
   accent,
   palette,
   fontSize,
+  font = 'jetbrains',
   focused,
   keyboardFocus,
   searchOpen,
@@ -95,6 +105,8 @@ export function TerminalPane({
   // aplica su propio efecto más abajo, sin recrear nada.
   const fontSizeRef = useRef(fontSize)
   fontSizeRef.current = fontSize
+  const fontRef = useRef(font)
+  fontRef.current = font
 
   const paneId = pane.id
 
@@ -115,7 +127,7 @@ export function TerminalPane({
 
     const terminal = new Terminal({
       allowProposedApi: true,
-      fontFamily: "'JetBrains Mono', 'Noto Sans Symbols 2', monospace",
+      fontFamily: TERMINAL_FONTS[fontRef.current],
       fontSize: fontSizeRef.current,
       // Interlineado 1, y no se toca.
       //
@@ -397,6 +409,52 @@ export function TerminalPane({
       // Panel a mitad de cierre: no hay nada que ajustar.
     }
   }, [fontSize])
+
+  // Cambio de letra en caliente, con un fundido de la pantalla para que no
+  // salte de una a otra: se va (110), cambia sin que se vea y vuelve (180). La
+  // que se aplica es la del momento de cambiar, así que dos Ctrl+Shift+L
+  // seguidos no dejan una letra vieja. El fit va a mano como en el zoom: las
+  // dos celdas miden casi lo mismo, pero no idéntico. Las animaciones no
+  // dejan nada puesto al terminar, así que el tono del panel sin máquina
+  // (opacity en base.css) sigue mandando.
+  useEffect(() => {
+    const terminal = term.current
+    const element = host.current
+    if (!terminal || !element || terminal.options.fontFamily === TERMINAL_FONTS[font]) return
+    const apply = (): void => {
+      const target = term.current
+      if (!target) return
+      target.options.fontFamily = TERMINAL_FONTS[fontRef.current]
+      try {
+        fit.current?.fit()
+      } catch {
+        // Panel a mitad de cierre: no hay nada que ajustar.
+      }
+    }
+    if (reducedMotion()) {
+      apply()
+      return
+    }
+    // Si venía de otro cambio a medio fundido, sigue desde donde estaba.
+    const from = getComputedStyle(element).opacity
+    element.getAnimations().forEach((animation) => animation.cancel())
+    const out = element.animate([{ opacity: from }, { opacity: 0 }], {
+      duration: 110,
+      easing: EASE_BOTH,
+      fill: 'forwards'
+    })
+    out.finished
+      .then(() => {
+        apply()
+        // Sin la salida puesta, lo que queda es el tono que manda el CSS.
+        out.cancel()
+        const to = getComputedStyle(element).opacity
+        return element.animate([{ opacity: 0 }, { opacity: to }], { duration: 180, easing: EASE }).finished
+      })
+      .catch(() => {
+        // Cancelada por un cambio más nuevo: ése se encarga.
+      })
+  }, [font])
 
   // Enfocar el panel enfoca su terminal, para que tipear vaya al shell correcto.
   // Y al cerrarse un overlay, keyboardFocus vuelve a true y el teclado regresa
