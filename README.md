@@ -177,11 +177,19 @@ box drawing y block elements, y sin esos glifos cualquier TUI —btop, lazygit,
 fzf— se dibuja con los marcos rotos. Va junto a Noto Sans Symbols 2, que aporta
 los spinners braille.
 
-**Electron pineado en 40.10.2.** Al restaurar la ventana, el compositor de
-Windows pinta un frame fantasma. Electron 33 y anteriores lo pintan blanco y no
-hay CSS que lo tape; Electron 40 lo tiñe con el `backgroundColor` de la ventana.
-De ahí también que ese color, el del `<style>` inline de `index.html` y
-`--ntx-base` tengan que ser el mismo `#050507`.
+**Electron pineado, y nunca por debajo de la 40.** Al restaurar la ventana, el
+compositor de Windows pinta un frame fantasma. Electron 33 y anteriores lo
+pintan blanco y no hay CSS que lo tape; desde la 40 lo tiñe con el
+`backgroundColor` de la ventana. De ahí también que ese color, el del `<style>`
+inline de `index.html` y `--ntx-base` tengan que ser el mismo `#050507`.
+
+Pineado no quiere decir quieto: Electron le da parches de seguridad solo a las
+tres últimas mayores, y la 40 quedó afuera el 30 de junio de 2026. Hoy es la
+**44.5.1** (Chromium 152), la misma que Opal y su familia. Para volver a subir:
+`npm view electron dist-tags`, `npm i -D electron@X --save-exact` y después
+`npm run postinstall` (instalar un paquete suelto no corre el postinstall, y
+node-pty tiene que recompilarse contra la versión nueva). Desde la 44 el
+portapapeles del main es asíncrono.
 
 ## Licencia
 

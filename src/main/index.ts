@@ -334,9 +334,13 @@ function registerIpc(): void {
     if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
   })
   // La copia de OSC 52 (ver TerminalPane): por acá llega aunque la ventana no
-  // tenga el foco. El tope es el mismo del renderer.
+  // tenga el foco. El tope es el mismo del renderer. Desde Electron 44 el
+  // portapapeles del main es asíncrono: sin el catch, un rechazo terminaría
+  // en unhandledRejection.
   ipcMain.on('clipboard:write', (_e, text: unknown) => {
-    if (typeof text === 'string' && text.length <= 1_100_000) clipboard.writeText(text)
+    if (typeof text === 'string' && text.length <= 1_100_000) {
+      clipboard.writeText(text).catch((err: Error) => console.warn('[clipboard]', err.message))
+    }
   })
 
   // El click de una notificación: mostrar y enfocar aunque viva en el tray.
