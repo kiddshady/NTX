@@ -76,7 +76,12 @@ export function createUpdater(send: (state: UpdateState) => void): Updater {
     check: scan,
     // quitAndInstall dispara before-quit, que es quien levanta la bandera
     // `quitting`: el handler de close deja pasar el cierre en vez de esconder.
-    install: () => autoUpdater.quitAndInstall(),
+    //
+    // (true, true): instalador en silencio y NTX de vuelta al terminar. Sin
+    // argumentos aparecía el asistente del NSIS con su barra de progreso, una
+    // ventana que no pide nada (14 oct 2026, pedido de Fran). El cierre real
+    // (autoInstallOnAppQuit) ya instalaba en silencio.
+    install: () => autoUpdater.quitAndInstall(true, true),
     dispose: () => {
       clearTimeout(firstScan)
       clearInterval(rescan)
