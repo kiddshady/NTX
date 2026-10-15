@@ -11,7 +11,10 @@
     guión      M566,665 L761,665            trazo 92
     degradé    #00e5ff → #ff2e88 en diagonal, compartido por las dos formas
     fondo      vertical #13131e → #08080e (uniforme en horizontal: no es radial)
-    scanlines  bandas de 10px cada 20, ~2% de delta
+
+  Hasta el 15 oct 2026 la baldosa llevaba scanlines (bandas de 9px cada 26 que
+  restaban luz), haciendo juego con el vidrio CRT de la app. Fran lo quiso liso,
+  como un ícono estándar: mismo glow, colores y baldosa, sin las bandas.
 
   Los tres bordes del bounding box del chevron dan el mismo grosor de trazo
   (66), así que la forma calca y no aproxima.
@@ -32,16 +35,6 @@
     <stop offset="1" stop-color="#ff2e88"/>
   </linearGradient>
 
-  <!-- Scanlines. Medidas rasterizando el PNG a 1024 y leyendo una columna de
-       fondo puro: el período es 26 (17 de fondo + 9 de línea) y la línea RESTA
-       luz, no la suma — el nivel dominante del PNG es el del degradé y las
-       bandas caen por debajo. Empiezan en y≡4 (mod 26).
-       `patternUnits="userSpaceOnUse"` ancla el patrón al origen del lienzo y
-       no al rect que lo usa, así que la fase se controla desde acá. -->
-  <pattern id="ntx-scan" width="26" height="26" patternUnits="userSpaceOnUse">
-    <rect y="4" width="26" height="9" fill="#000000" opacity=".24"/>
-  </pattern>
-
   <filter id="ntx-glow" x="-35%" y="-35%" width="170%" height="170%">
     <feGaussianBlur stdDeviation="30"/>
   </filter>
@@ -49,9 +42,6 @@
     <feGaussianBlur stdDeviation="58"/>
   </filter>
 
-  <clipPath id="ntx-clip">
-    <rect x="31" y="31" width="962" height="962" rx="205" ry="205"/>
-  </clipPath>
 </defs>
 
 <!--
@@ -69,7 +59,6 @@
 <g transform="translate(512 512) scale(1.064449) translate(-511.5 -511.5)">
 
 <rect x="31" y="31" width="962" height="962" rx="205" ry="205" fill="url(#ntx-tile)"/>
-<rect x="31" y="31" width="962" height="962" fill="url(#ntx-scan)" clip-path="url(#ntx-clip)"/>
 
 <g fill="none" stroke="url(#ntx-ink)" stroke-linecap="round" stroke-linejoin="round">
   <!-- El halo primero, y la forma nítida encima: así el glow no lava el trazo.

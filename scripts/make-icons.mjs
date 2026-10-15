@@ -6,7 +6,7 @@
  *
  * ── Por qué un server y no una librería ────────────────────────────────────
  *
- * El master tiene degradés, un patrón de scanlines y dos capas de blur. Rasterizar
+ * El master tiene degradés y dos capas de blur. Rasterizar
  * eso a mano sería reescribir medio motor de SVG, y meter una dependencia de
  * render sólo para tocar el ícono cada tanto no se paga. Chromium ya sabe hacerlo
  * y está acá al lado: la página dibuja el SVG en un canvas de cada tamaño y
