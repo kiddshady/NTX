@@ -48,11 +48,14 @@ const PATHS: Record<IconName, JSX.Element> = {
       <rect x="14" y="14" width="7" height="7" rx="1.2" />
     </>
   ),
-  // Una ventana con su pestaña arriba a la izquierda: el modo de a una shell.
+  // Una ventana con su fila de pestañas arriba: el modo de a una shell. La
+  // pestaña de la izquierda es la abierta (sin línea debajo); la versión con
+  // una lengüeta sola se leía como una carpeta.
   tabs: (
     <>
-      <rect x="3" y="8" width="18" height="12" rx="2" />
-      <path d="M3 10V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M10 4v5h11M10 9H3" />
+      <path d="M15.5 4v5" />
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
