@@ -297,6 +297,7 @@ export function MachinesModal({
             <ul className="ntx-peers">
               {shownPeers.map(({ peer, leaving }) => {
                 const first = profiles.find((p) => p.id.startsWith(`@${peer.id}/`))
+                const status = `${PHASE_LABEL[peer.phase]}${peer.message && peer.phase !== 'online' ? ` · ${peer.message}` : ''}`
                 return (
                   <li key={peer.id} className="ntx-peer" data-phase={peer.phase} data-leaving={leaving}>
                     <span className="ntx-peer__dot" />
@@ -306,9 +307,7 @@ export function MachinesModal({
                         <span className="ntx-peer__address">{peer.address}</span>
                       </span>
                       <span className="ntx-peer__status">
-                        <Swap
-                          value={`${PHASE_LABEL[peer.phase]}${peer.message && peer.phase !== 'online' ? ` · ${peer.message}` : ''}`}
-                        />
+                        <Swap className="ntx-peer__status-text" tip={status} value={status} />
                       </span>
                     </span>
                     <span className="ntx-peer__actions">

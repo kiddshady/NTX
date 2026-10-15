@@ -2438,13 +2438,15 @@ button {
    no en la caja, porque el texto que desborda es el del ítem. */
 .ntx-pane__title.ntx-swap,
 .ntx-tab__label.ntx-swap,
-.ntx-status__value.ntx-swap {
+.ntx-status__value.ntx-swap,
+.ntx-peer__status-text.ntx-swap {
   min-width: 0;
   max-width: 100%;
 }
 .ntx-pane__title > .ntx-swap__item,
 .ntx-tab__label > .ntx-swap__item,
-.ntx-status__value > .ntx-swap__item {
+.ntx-status__value > .ntx-swap__item,
+.ntx-peer__status-text > .ntx-swap__item {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
