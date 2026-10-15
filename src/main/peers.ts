@@ -523,7 +523,7 @@ class PeerLink {
       } else if (!this.offlineTimer && this.online) {
         this.offlineTimer = setTimeout(() => {
           this.offlineTimer = null
-          if (!this.isReady()) this.setPhase('offline', why || `Lost ${this.config.name}. Reconnecting…`)
+          if (!this.isReady()) this.setPhase('offline', why || `Lost ${this.config.name}.`)
         }, OFFLINE_GRACE_MS)
       }
 
