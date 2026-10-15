@@ -1,14 +1,16 @@
 # NTX
 
-Terminal multi-shell para Windows, con grid adaptativo y estética acromática
+Terminal multi-shell para Windows, con pestañas o grid adaptativo y estética acromática
 mate, oscura y plana, mirada a través de un vidrio CRT de scanlines rectas.
 Electron + xterm.js + node-pty.
 
 ## Qué hace
 
-- **Hasta cuatro shells a la vez, en un grid que se acomoda solo.** Una ocupa
-  toda la ventana; dos van lado a lado; con tres, la última toma el ancho
-  completo abajo; cuatro caen en 2×2. Nunca queda un hueco vacío.
+- **Hasta cuatro shells, en pestañas o en un grid** (`Ctrl Shift G` alterna, y
+  se recuerda). En pestañas se ve una por vez, a ventana completa, y cambiar es
+  un fundido. En el grid se ven todas y se acomoda solo: una ocupa toda la
+  ventana; dos van lado a lado; con tres, la última toma el ancho completo
+  abajo; cuatro caen en 2×2. Nunca queda un hueco vacío.
 - **Un perfil por panel.** Detecta lo que hay instalado en la máquina —
   PowerShell 7, Windows PowerShell, cmd, Git Bash y WSL — y ofrece sólo eso: un
   perfil cuyo ejecutable no existe es peor que no ofrecerlo.
@@ -109,6 +111,7 @@ lista vive en `HelpModal.tsx`; un atajo nuevo se anota ahí y acá.
 | `Ctrl Tab` / `Ctrl Shift Tab` | Salta a la shell siguiente / anterior |
 | `Ctrl Shift T` | Nueva shell |
 | `Ctrl Shift W` | Cierra la shell activa |
+| `Ctrl Shift G` | Pestañas o grid |
 | `Ctrl Shift F` | Busca en el scrollback de la shell activa |
 | `Ctrl Shift C` / `Ctrl Shift V` | Copiar y pegar |
 | `Ctrl C` | Copia si hay selección; si no, sigue siendo la interrupción |

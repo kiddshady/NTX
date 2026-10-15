@@ -42,7 +42,7 @@ type Box = { left: number; top: number; width: number; height: number }
  * El que se cierra sale del flujo en el acto, clavado en su caja: los demás
  * ocupan su lugar MIENTRAS él se funde encima, en vez de esperar a que termine.
  */
-function useGridFlip(grid: React.RefObject<HTMLElement | null>, panes: PaneState[]): void {
+function useGridFlip(grid: React.RefObject<HTMLElement | null>, panes: PaneState[], layout: Layout): void {
   const boxes = useRef(new Map<string, Box>())
 
   const measure = (element: HTMLElement): Box => ({
@@ -115,7 +115,7 @@ function useGridFlip(grid: React.RefObject<HTMLElement | null>, panes: PaneState
       }
     }
     for (const id of boxes.current.keys()) if (!seen.has(id)) boxes.current.delete(id)
-  }, [grid, panes])
+  }, [grid, panes, layout])
 
   // Si la ventana cambia de tamaño las cajas cambian sin que cambien los
   // paneles: se re-miden sin animar, o el próximo reacomodo saldría de cajas
@@ -164,6 +164,16 @@ function loadCrt(): boolean {
   return window.localStorage.getItem(CRT_KEY) !== '0'
 }
 
+/* Cómo se muestran las shells (Ctrl Shift G): de a una, en pestañas, o todas a
+   la vista en el grid. Pestañas es lo de siempre desde la 1.1.0: sólo un
+   'grid' guardado arranca en grid. */
+type Layout = 'tabs' | 'grid'
+const LAYOUT_KEY = 'ntx:layout'
+
+function loadLayout(): Layout {
+  return window.localStorage.getItem(LAYOUT_KEY) === 'grid' ? 'grid' : 'tabs'
+}
+
 /**
  * La status bar con sus números vivos. cpu y mem llegan una vez por segundo (y
  * otra por cada máquina emparejada): suscriptos acá, ese tic re-renderiza la
@@ -205,6 +215,7 @@ export function App(): JSX.Element {
   const [dismissedUpdate, setDismissedUpdate] = useState<string | null>(null)
   const [fontSize, setFontSize] = useState(loadFontSize)
   const [crt, setCrt] = useState(loadCrt)
+  const [layout, setLayout] = useState(loadLayout)
   const [terminalFont, setTerminalFont] = useState(loadTerminalFont)
   // Las otras máquinas: las emparejadas (con sus cpu/mem) y, si ésta comparte,
   // el estado de su host.
@@ -213,7 +224,7 @@ export function App(): JSX.Element {
   const [hostState, setHostState] = useState<HostState | null>(null)
 
   const gridRef = useRef<HTMLElement>(null)
-  useGridFlip(gridRef, panes)
+  useGridFlip(gridRef, panes, layout)
 
   const palette = PALETTE
   const accentOf = useCallback((index: number) => paneAccent(palette, index), [palette])
@@ -285,6 +296,10 @@ export function App(): JSX.Element {
   }, [crt])
 
   useEffect(() => saveTerminalFont(terminalFont), [terminalFont])
+
+  useEffect(() => {
+    window.localStorage.setItem(LAYOUT_KEY, layout)
+  }, [layout])
 
   // Ctrl+rueda, como en el navegador. En captura y frenando el evento: si
   // llegara hasta xterm, el gesto además scrollearía el scrollback.
@@ -766,6 +781,10 @@ export function App(): JSX.Element {
           // vuelve. Sólo la terminal; la interfaz no cambia.
           event.preventDefault()
           setTerminalFont((current) => (current === 'jetbrains' ? 'roboto' : 'jetbrains'))
+        } else if (key === 'g') {
+          // G de grid: de pestañas a todas a la vista, y vuelta.
+          event.preventDefault()
+          setLayout((current) => (current === 'tabs' ? 'grid' : 'tabs'))
         }
         return
       }
@@ -855,7 +874,7 @@ export function App(): JSX.Element {
         // nombre, y un ícono distinto para una sola sugiere una diferencia de
         // categoría que no existe — abrir WSL es abrir una shell, como el resto.
         icon: 'shell',
-        desc: full ? `The grid already holds ${MAX_PANES} shells` : `Opens a pane running ${profile.label}`,
+        desc: full ? `${MAX_PANES} shells are already open` : `Opens a shell running ${profile.label}`,
         hint: full ? 'Full' : undefined,
         run: () => {
           if (!full) void spawn(profile.id)
@@ -891,11 +910,19 @@ export function App(): JSX.Element {
         onFocus={setFocused}
         onClose={closePane}
         onNew={() => void spawn(thisMachineShell(profilesRef.current, panesRef.current[focusedRef.current]?.profileId))}
+        layout={layout}
+        onLayout={setLayout}
       />
 
       {/* La forma del grid la dan los que se quedan: el que se cierra ya salió
-          del flujo (ver useGridFlip). */}
-      <main ref={gridRef} className="ntx-grid" data-count={panes.filter((pane) => !pane.closing).length}>
+          del flujo (ver useGridFlip). En pestañas la forma es siempre una celda,
+          con todas las shells apiladas adentro y la activa a la vista. */}
+      <main
+        ref={gridRef}
+        className="ntx-grid"
+        data-layout={layout}
+        data-count={layout === 'tabs' ? 1 : panes.filter((pane) => !pane.closing).length}
+      >
         {panes.map((pane, index) => (
           <TerminalPane
             key={pane.id}

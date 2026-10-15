@@ -649,6 +649,37 @@ button {
   font-size: 10.5px;
   color: var(--ntx-ghost);
 }
+/* Pestañas o grid (Ctrl Shift G): dos botones de ícono, y el modo en uso se
+   prende por color. Nada se mueve ni cambia de forma: sólo el color. */
+.ntx-layout {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  align-self: center;
+  margin: 0 0 4px 12px;
+}
+.ntx-layout__btn {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ntx-radius-sm);
+  background: transparent;
+  color: var(--ntx-ghost);
+  transition:
+    color var(--ntx-fast) var(--ntx-ease-soft),
+    background var(--ntx-fast) var(--ntx-ease-soft);
+}
+.ntx-layout__btn:hover {
+  color: var(--ntx-muted);
+  background: color-mix(in srgb, var(--ntx-fg) 4%, transparent);
+}
+.ntx-layout__btn[data-active='true'] {
+  color: var(--ntx-fg);
+  background: color-mix(in srgb, var(--ntx-fg) 7%, transparent);
+}
 
 /* --- Grid de paneles ------------------------------------------------------- */
 .ntx-grid {
@@ -676,6 +707,35 @@ button {
 /* El tercero de los que QUEDAN: el que se está cerrando ya no cuenta. */
 .ntx-grid[data-count='3'] > .ntx-pane:nth-child(3 of :not([data-closing='true'])) {
   grid-column: span 2;
+}
+
+/* Pestañas: todas las shells en la misma celda, apiladas, y a la vista sólo
+   la activa. Las otras siguen montadas y del tamaño completo (xterm sigue
+   recibiendo y midiendo), sólo que transparentes y sin eventos. */
+.ntx-grid[data-layout='tabs'] > .ntx-pane {
+  grid-area: 1 / 1;
+  z-index: 0;
+}
+/* Cambiar de pestaña es un fundido de superficie entera: la nueva está entera
+   y quieta debajo desde el primer cuadro, y la que se va se esfuma ENCIMA, en
+   in-out. La pantalla no queda destapada en ningún momento. El visibility
+   llega cuando terminó de irse. */
+.ntx-grid[data-layout='tabs'] > .ntx-pane[data-focused='false'] {
+  z-index: 1;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    background var(--ntx-slow) var(--ntx-ease),
+    box-shadow var(--ntx-slow) var(--ntx-ease),
+    opacity var(--ntx-normal) var(--ntx-ease-both),
+    transform var(--ntx-normal) var(--ntx-ease-both),
+    visibility 0s linear var(--ntx-normal);
+}
+.ntx-grid[data-layout='tabs'] > .ntx-pane[data-focused='true']:not([data-closing='true']) {
+  transition:
+    background var(--ntx-slow) var(--ntx-ease),
+    box-shadow var(--ntx-slow) var(--ntx-ease);
 }
 
 /* --- Panel ----------------------------------------------------------------- */

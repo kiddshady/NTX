@@ -314,7 +314,7 @@ export function MachinesModal({
                       <button
                         className="ntx-btn"
                         disabled={!first || full}
-                        data-tip={full ? 'The grid already holds four shells' : first ? `Opens ${first.label} on ${peer.name}` : undefined}
+                        data-tip={full ? 'Four shells are already open' : first ? `Opens ${first.label} on ${peer.name}` : undefined}
                         onClick={() => {
                           if (!first) return
                           onSpawn(first.id)

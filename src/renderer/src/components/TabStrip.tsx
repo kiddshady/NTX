@@ -10,6 +10,10 @@ interface TabStripProps {
   onFocus: (index: number) => void
   onClose: (paneId: string) => void
   onNew: () => void
+  /** De a una shell o todas a la vista. Opcional: NTX Mobile no lo tiene, y sin
+   *  él la tira muestra la ayuda de siempre. */
+  layout?: 'tabs' | 'grid'
+  onLayout?: (layout: 'tabs' | 'grid') => void
 }
 
 export function TabStrip({
@@ -18,7 +22,9 @@ export function TabStrip({
   accentOf,
   onFocus,
   onClose,
-  onNew
+  onNew,
+  layout,
+  onLayout
 }: TabStripProps): JSX.Element {
   const full = panes.length >= MAX_PANES
 
@@ -105,7 +111,7 @@ export function TabStrip({
         className="ntx-tabs__new"
         onClick={onNew}
         disabled={full}
-        data-tip={full ? 'The grid holds up to four shells' : 'New shell · Ctrl Shift T'}
+        data-tip={full ? 'NTX holds up to four shells' : 'New shell · Ctrl Shift T'}
         aria-label="New shell"
       >
         <Icon name="plus" size={11} strokeWidth={2} />
@@ -113,9 +119,34 @@ export function TabStrip({
       </button>
 
       <span className="ntx-tabs__hint">
-        <Icon name="grid" size={10} />
+        {!layout && <Icon name="grid" size={10} />}
         Ctrl 1–4 switches shell
       </span>
+
+      {layout && onLayout && (
+        <span className="ntx-layout" role="group" aria-label="Layout">
+          <button
+            className="ntx-layout__btn"
+            data-active={layout === 'tabs'}
+            aria-pressed={layout === 'tabs'}
+            aria-label="Tabs"
+            data-tip="One shell at a time · Ctrl Shift G"
+            onClick={() => onLayout('tabs')}
+          >
+            <Icon name="tabs" size={12} strokeWidth={1.7} />
+          </button>
+          <button
+            className="ntx-layout__btn"
+            data-active={layout === 'grid'}
+            aria-pressed={layout === 'grid'}
+            aria-label="Grid"
+            data-tip="All shells in view · Ctrl Shift G"
+            onClick={() => onLayout('grid')}
+          >
+            <Icon name="grid" size={11} strokeWidth={1.7} />
+          </button>
+        </span>
+      )}
     </nav>
   )
 }

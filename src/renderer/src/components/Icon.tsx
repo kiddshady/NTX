@@ -14,6 +14,7 @@ import type { JSX } from 'react'
 
 export type IconName =
   | 'grid'
+  | 'tabs'
   | 'plus'
   | 'close'
   | 'minimize'
@@ -45,6 +46,13 @@ const PATHS: Record<IconName, JSX.Element> = {
       <rect x="14" y="3" width="7" height="7" rx="1.2" />
       <rect x="3" y="14" width="7" height="7" rx="1.2" />
       <rect x="14" y="14" width="7" height="7" rx="1.2" />
+    </>
+  ),
+  // Una ventana con su pestaña arriba a la izquierda: el modo de a una shell.
+  tabs: (
+    <>
+      <rect x="3" y="8" width="18" height="12" rx="2" />
+      <path d="M3 10V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
