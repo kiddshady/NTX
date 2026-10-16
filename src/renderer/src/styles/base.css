@@ -690,10 +690,10 @@ button {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 /* La salida existe porque un panel que desaparece de un frame al otro se siente
-   como un crash, no como un cierre. */
+   como un crash, no como un cierre. Es un fundido en el lugar, sin achicarse
+   (pedido de Fran, 16 oct 2026): el panel no se mueve mientras se va. */
 .ntx-pane[data-closing='true'] {
   opacity: 0;
-  transform: scale(0.97);
   pointer-events: none;
   /* Más corta que la entrada, y pareja: los de al lado ya están ocupando su
      lugar por debajo. */

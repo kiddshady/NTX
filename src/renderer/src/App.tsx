@@ -67,7 +67,13 @@ function useGridFlip(grid: React.RefObject<HTMLElement | null>, panes: PaneState
       seen.add(id)
       const before = boxes.current.get(id)
       if (before && element.style.position !== 'absolute') {
+        // gridArea auto: en pestañas el panel vive en la celda 1/1, y un absoluto
+        // con celda asignada se posiciona contra la CELDA, no contra el borde del
+        // grid. La caja medida ya trae el padding del grid, así que se sumaba dos
+        // veces y el panel saltaba 10 px a la derecha y 8 abajo al empezar a irse
+        // (hasta la 1.2.1, se veía como un viaje en diagonal).
         Object.assign(element.style, {
+          gridArea: 'auto',
           position: 'absolute',
           left: `${before.left}px`,
           top: `${before.top}px`,
