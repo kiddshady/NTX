@@ -7,7 +7,6 @@ import { CommandPalette, type Command } from './components/CommandPalette'
 import { AboutModal } from './components/AboutModal'
 import { UpdateModal } from './components/UpdateModal'
 import { TooltipLayer } from './components/TooltipLayer'
-import { CrtLayer } from './components/CrtLayer'
 import { MachinesModal } from './components/MachinesModal'
 import { HelpModal } from './components/HelpModal'
 import { MAX_PANES, formatDuration, otherMachinePwsh, paneHome, setHomeDir, shortPath, thisMachineShell, type PaneState } from './lib/panes'
@@ -156,14 +155,6 @@ function loadFontSize(): number {
     : FONT_SIZE_DEFAULT
 }
 
-/* El vidrio CRT prendido o apagado (Ctrl Shift S). Prendido es lo de siempre:
-   sólo un '0' guardado lo apaga. */
-const CRT_KEY = 'ntx:crt'
-
-function loadCrt(): boolean {
-  return window.localStorage.getItem(CRT_KEY) !== '0'
-}
-
 /* Cómo se muestran las shells (Ctrl Shift G): de a una, en pestañas, o todas a
    la vista en el grid. Pestañas es lo de siempre desde la 1.1.0: sólo un
    'grid' guardado arranca en grid. */
@@ -214,7 +205,6 @@ export function App(): JSX.Element {
   // nunca dos veces por la misma.
   const [dismissedUpdate, setDismissedUpdate] = useState<string | null>(null)
   const [fontSize, setFontSize] = useState(loadFontSize)
-  const [crt, setCrt] = useState(loadCrt)
   const [layout, setLayout] = useState(loadLayout)
   const [terminalFont, setTerminalFont] = useState(loadTerminalFont)
   // Las otras máquinas: las emparejadas (con sus cpu/mem) y, si ésta comparte,
@@ -290,10 +280,6 @@ export function App(): JSX.Element {
   useEffect(() => {
     window.localStorage.setItem(FONT_SIZE_KEY, String(fontSize))
   }, [fontSize])
-
-  useEffect(() => {
-    window.localStorage.setItem(CRT_KEY, crt ? '1' : '0')
-  }, [crt])
 
   useEffect(() => saveTerminalFont(terminalFont), [terminalFont])
 
@@ -772,10 +758,6 @@ export function App(): JSX.Element {
           )
           if (remote) void spawn(remote.id)
           else setMachinesOpen(true)
-        } else if (key === 's') {
-          // S de scanlines: prende y apaga el vidrio CRT.
-          event.preventDefault()
-          setCrt((on) => !on)
         } else if (key === 'l') {
           // L de letra: la terminal pasa de JetBrains Mono a Roboto Mono y
           // vuelve. Sólo la terminal; la interfaz no cambia.
@@ -895,10 +877,8 @@ export function App(): JSX.Element {
   return (
     <div className="ntx-app">
       {/* El sustrato: grano y cuadrícula. Va primero y no recibe eventos — es el
-          fondo mismo, no una capa de efecto. La capa de efecto existe pero vive
-          en la otra punta del árbol: el vidrio CRT, que mira todo desde
-          adelante. Desde que las superficies son opacas el sustrato sólo asoma
-          por los gaps del grid. */}
+          fondo mismo, no una capa de efecto. Desde que las superficies son
+          opacas sólo asoma por los gaps del grid. */}
       <div className="ntx-bg" aria-hidden="true" />
 
       <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
@@ -996,11 +976,6 @@ export function App(): JSX.Element {
       />
 
       <TooltipLayer />
-
-      {/* El vidrio CRT cierra el árbol: scanlines POR DELANTE de todo — scrim,
-          paleta, modales y tooltips incluidos. El efecto es del monitor, no de
-          la escena; por eso es UNA capa acá y no un ajuste por overlay. */}
-      <CrtLayer on={crt} />
     </div>
   )
 }

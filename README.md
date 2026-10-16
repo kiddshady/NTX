@@ -1,7 +1,7 @@
 # NTX
 
 Terminal multi-shell para Windows, con pestañas o grid adaptativo y estética acromática
-mate, oscura y plana, mirada a través de un vidrio CRT de scanlines rectas.
+mate, oscura y plana.
 Electron + xterm.js + node-pty.
 
 ## Qué hace

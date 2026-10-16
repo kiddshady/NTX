@@ -51,8 +51,7 @@ const GROUPS: { title: string; items: Shortcut[] }[] = [
   {
     title: 'Window',
     items: [
-      { label: 'Show or hide NTX, from anywhere', combos: [['Ctrl', 'Alt', 'X']] },
-      { label: 'Scanlines on · off', combos: [['Ctrl', 'Shift', 'S']] }
+      { label: 'Show or hide NTX, from anywhere', combos: [['Ctrl', 'Alt', 'X']] }
     ]
   },
   {
