@@ -641,7 +641,7 @@ button {
   border-radius: var(--ntx-radius);
   /* Sin foco el panel se apoya un peldaño más abajo en la escalera de
      superficies. Es la mitad de la señal de foco; la otra mitad es el contorno
-     de ::after. */
+     de ::after, apenas más claro en el enfocado. */
   background: var(--ntx-sunk);
   overflow: hidden;
   /* Acá queda sólo la sombra de afuera: el contorno se dibuja en ::after. */
@@ -653,11 +653,11 @@ button {
     opacity var(--ntx-normal) var(--ntx-ease),
     transform var(--ntx-normal) var(--ntx-ease);
 }
+/* Sin el brillo del acento alrededor (1.3.2, pedido de Fran: «se me están
+   friendo los ojos»). Queda la sombra neutra, que lo despega igual. */
 .ntx-pane[data-focused='true'] {
   background: var(--ntx-surface);
-  box-shadow:
-    0 0 26px -4px color-mix(in srgb, var(--accent) 24%, transparent),
-    var(--ntx-shadow-lg);
+  box-shadow: var(--ntx-shadow-lg);
 }
 
 /* El contorno del panel, como capa de ARRIBA de todo.
@@ -686,8 +686,16 @@ button {
   box-shadow: inset 0 0 0 1px var(--ntx-hairline);
   transition: box-shadow var(--ntx-slow) var(--ntx-ease);
 }
+/* Hasta la 1.3.1 el contorno del enfocado se encendía en el acento del panel,
+   con el brillo de arriba. Ahora es un hairline neutro, un poco más claro que el
+   de los otros: en el grid alcanza para encontrar el foco sin color que canse.
+   En pestañas hay una sola a la vista y no hace falta marcarla: el de siempre.
+   El acento sigue en el número de la cabecera, la pestaña y el cursor. */
 .ntx-pane[data-focused='true']::after {
-  box-shadow: inset 0 0 0 1px var(--accent);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.11);
+}
+.ntx-grid[data-layout='tabs'] > .ntx-pane[data-focused='true']::after {
+  box-shadow: inset 0 0 0 1px var(--ntx-hairline);
 }
 /* La salida existe porque un panel que desaparece de un frame al otro se siente
    como un crash, no como un cierre. Es un fundido en el lugar, sin achicarse
