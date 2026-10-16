@@ -14,6 +14,7 @@ import { forgetPane } from './lib/ptyBus'
 import { reducedMotion } from './lib/motion'
 import { PALETTE, paneAccent } from './term/themes'
 import { loadTerminalFont, saveTerminalFont } from './term/fonts'
+import { switchUiFont } from './term/uiFont'
 import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
 import type { HostState, PeerState } from '../../shared/remote'
 
@@ -288,6 +289,15 @@ export function App(): JSX.Element {
   }, [fontSize])
 
   useEffect(() => saveTerminalFont(terminalFont), [terminalFont])
+  // La interfaz sigue a la terminal. La primera letra la puso main.tsx antes de
+  // pintar: acá sólo los cambios (comparando con la anterior, no con «es el
+  // primer render», porque StrictMode corre los efectos dos veces).
+  const uiFont = useRef(terminalFont)
+  useEffect(() => {
+    if (uiFont.current === terminalFont) return
+    uiFont.current = terminalFont
+    switchUiFont(terminalFont)
+  }, [terminalFont])
 
   useEffect(() => {
     window.localStorage.setItem(LAYOUT_KEY, layout)
@@ -765,8 +775,8 @@ export function App(): JSX.Element {
           if (remote) void spawn(remote.id)
           else setMachinesOpen(true)
         } else if (key === 'l') {
-          // L de letra: la terminal pasa de JetBrains Mono a Roboto Mono y
-          // vuelve. Sólo la terminal; la interfaz no cambia.
+          // L de letra: la terminal y la mono de la interfaz pasan de
+          // JetBrains Mono a Roboto Mono y vuelven. La sans (Inter) no cambia.
           event.preventDefault()
           setTerminalFont((current) => (current === 'jetbrains' ? 'roboto' : 'jetbrains'))
         } else if (key === 'g') {

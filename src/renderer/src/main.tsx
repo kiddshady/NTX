@@ -2,13 +2,17 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { PALETTE, applyPalette } from './term/themes'
-import { TERMINAL_FAMILIES } from './term/fonts'
+import { TERMINAL_FAMILIES, loadTerminalFont } from './term/fonts'
+import { initUiFont } from './term/uiFont'
 import './styles/base.css'
 
 // La paleta se aplica ANTES del primer render, de forma síncrona. Si esperáramos
 // al efecto de App, habría un frame pintado con las variables CSS vacías — o sea
 // un destello de chrome sin color justo en el arranque.
 applyPalette(PALETTE)
+// Y la letra mono de la interfaz, por lo mismo: con Roboto elegida, el
+// primer cuadro no puede salir en JetBrains (ver term/uiFont.ts).
+initUiFont(loadTerminalFont())
 
 const root = document.getElementById('root')
 if (!root) throw new Error('Falta #root en index.html')

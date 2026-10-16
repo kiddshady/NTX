@@ -1,5 +1,5 @@
-/** Las dos letras de la terminal, que se alternan con Ctrl+Shift+L. Sólo la
- *  terminal: la interfaz sigue con --ntx-font-mono (JetBrains) en las dos. */
+/** Las dos letras mono, que se alternan con Ctrl+Shift+L. Las usa la terminal
+ *  y, desde la 1.3.0, también la interfaz (--ntx-font-mono, ver uiFont.ts). */
 export type TerminalFont = 'jetbrains' | 'roboto'
 
 /** La pila de cada una para xterm. Roboto Mono lleva a JetBrains de segunda:
