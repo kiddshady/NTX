@@ -1,8 +1,9 @@
 /**
  * Arma y corre los tests de test/: remote.test.ts (host y cliente por LAN),
  * autostart.test.ts (el arranque con Windows al compartir), ventana.test.ts
- * (que la ventana entre en el área útil) y otra-maquina.test.ts (qué shell abren
- * Ctrl+Shift+M y Ctrl+Shift+T).
+ * (que la ventana entre en el área útil), otra-maquina.test.ts (qué shell abren
+ * Ctrl+Shift+M y Ctrl+Shift+T) y mouse-link.test.ts (el Ctrl+click que no
+ * abre dos veces).
  *
  *   npm test
  *
@@ -23,7 +24,7 @@ mkdirSync(OUT, { recursive: true })
 const electron = createRequire(import.meta.url)('electron')
 
 let failed = false
-for (const name of ['remote', 'autostart', 'ventana', 'otra-maquina']) {
+for (const name of ['remote', 'autostart', 'ventana', 'otra-maquina', 'mouse-link']) {
   await build({
     entryPoints: [join(ROOT, 'test', `${name}.test.ts`)],
     outfile: join(OUT, `${name}.test.mjs`),

@@ -12,6 +12,7 @@ import { mixHex, xtermTheme, type Palette } from '../term/themes'
 import { lowerCellBackgrounds } from '../term/cellBackgrounds'
 import { TERMINAL_FONTS, type TerminalFont } from '../term/fonts'
 import { reducedMotion } from '../lib/motion'
+import { withoutCtrlClick } from '../lib/mouseLink'
 import { paneTitle, pathForShell, type PaneState } from '../lib/panes'
 
 // Tope del base64 de un OSC 52 (~1 MB de texto): un copiado de verdad no llega
@@ -173,16 +174,28 @@ export function TerminalPane({
     // justo caíste sobre una URL. Por defecto el addon hacía window.open() SIN
     // la URL (para asignarla después), y la ventana lo rechazaba: hasta la 1.0.7
     // los links no abrían nunca.
+    // Los links con OSC 8 (texto que apunta a una URL) van por el mismo camino:
+    // sin linkHandler, xterm pedía confirmación con un confirm() y después no
+    // podía abrir la ventana.
     const openLink = window.ntx.openLink
-    terminal.loadAddon(
-      new WebLinksAddon(
-        openLink
-          ? (event, uri) => {
-              if (event.ctrlKey) openLink(uri)
-            }
-          : undefined
-      )
-    )
+    let overLink = false
+    if (openLink) {
+      const handler = {
+        activate: (event: MouseEvent, uri: string) => {
+          if (event.ctrlKey) openLink(uri)
+        },
+        hover: () => {
+          overLink = true
+        },
+        leave: () => {
+          overLink = false
+        }
+      }
+      terminal.loadAddon(new WebLinksAddon(handler.activate, { hover: handler.hover, leave: handler.leave }))
+      terminal.options.linkHandler = handler
+    } else {
+      terminal.loadAddon(new WebLinksAddon())
+    }
 
     // La búsqueda del scrollback. El addon emite el contador (n/total) sólo
     // cuando las búsquedas piden decoraciones — y las nuestras siempre lo hacen.
@@ -335,6 +348,8 @@ export function TerminalPane({
         data = data.slice(0, -1)
         if (!data) return
       }
+      // Ver lib/mouseLink: el Ctrl+click sobre un link ya lo abre NTX.
+      if (overLink) data = withoutCtrlClick(data)
       window.ntx.write(paneId, data)
     })
     terminal.onResize(({ cols, rows }) => window.ntx.resize(paneId, cols, rows))
