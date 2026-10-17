@@ -287,6 +287,19 @@ export function TerminalPane({
       // la 1.0.7, Ctrl+3 le mandaba un Esc a la shell que dejabas (interrumpía a
       // Claude Code, borraba la línea en pwsh) y Ctrl+4 un ^\.
       if (event.defaultPrevented) return false
+      // Shift+Enter y Ctrl+Enter: salto de línea sin mandar. xterm los manda
+      // como un Enter pelado (el modificador se pierde) y Claude Code enviaba
+      // el mensaje. Salen como ESC CR (Alt+Enter), que CC toma como salto de
+      // línea y que ConPTY entrega entero: lo mismo que hace NTX Mobile con su
+      // Shift armado. Se frenan también el keypress y el keyup, o xterm
+      // mandaría además su Enter.
+      if (event.key === 'Enter' && (event.shiftKey || event.ctrlKey) && !event.altKey && !event.metaKey) {
+        if (event.type === 'keydown') {
+          event.preventDefault()
+          terminal.input('\x1b\r', true)
+        }
+        return false
+      }
       if (event.type !== 'keydown' || !event.ctrlKey) return true
       const key = event.key.toLowerCase()
 
