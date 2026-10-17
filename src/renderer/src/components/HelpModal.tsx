@@ -33,7 +33,7 @@ const GROUPS: { title: string; items: Shortcut[] }[] = [
       { label: 'Close the active shell', combos: [['Ctrl', 'Shift', 'W']] },
       { label: 'Next shell', combos: [['Ctrl', 'Tab']] },
       { label: 'Previous shell', combos: [['Ctrl', 'Shift', 'Tab']] },
-      { label: 'Jump to a shell', combos: [['Ctrl', '1–4']] },
+      { label: 'Jump to a shell', combos: [['Ctrl', '1–3']] },
       { label: 'Tabs · grid', combos: [['Ctrl', 'Shift', 'G']] }
     ]
   },

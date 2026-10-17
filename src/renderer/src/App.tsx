@@ -350,7 +350,7 @@ export function App(): JSX.Element {
 
   const closeSearch = useCallback((): void => setSearch(null), [])
 
-  // La barra es del panel donde se abrió. Si el foco se va a otro (Ctrl 1–4,
+  // La barra es del panel donde se abrió. Si el foco se va a otro (Ctrl 1–3,
   // Ctrl+Tab, un click), se cierra: abierta allá, con sus resaltados, mientras
   // el teclado ya está en otra shell, Escape le llegaba a la shell nueva.
   useEffect(() => {
@@ -787,7 +787,7 @@ export function App(): JSX.Element {
         return
       }
 
-      if (key >= '1' && key <= '4') {
+      if (key >= '1' && key <= String(MAX_PANES)) {
         const index = Number(key) - 1
         if (index < panesRef.current.length) {
           event.preventDefault()

@@ -25,8 +25,10 @@ export interface PaneState {
   remote?: RemotePaneInfo
 }
 
-/** Cuántas shells entran en el grid. Más de cuatro dejan de leerse. */
-export const MAX_PANES = 4
+/** Cuántas shells entran en el grid. Tres, una por color de acento (cian,
+ *  magenta, amarillo) sin que ninguno se repita; antes eran cuatro y la cuarta
+ *  no se usaba (decisión de Fran, 17 oct 2026). */
+export const MAX_PANES = 3
 
 /** El PowerShell 7 de otra máquina que abre Ctrl+Shift+M. Si el panel activo
  *  ya es de otra máquina, de ésa: con dos emparejadas, seguís en la que estás.

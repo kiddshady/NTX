@@ -11,7 +11,7 @@ interface MachinesModalProps {
   peers: PeerState[]
   /** Todos los perfiles: de acá salen los de cada máquina para "New shell". */
   profiles: ShellProfile[]
-  /** Si el grid ya tiene sus cuatro paneles: "New shell" no tiene dónde caer. */
+  /** Si el grid ya tiene sus tres paneles: "New shell" no tiene dónde caer. */
   full: boolean
   onSpawn: (profileId: string) => void
   onClose: () => void

@@ -282,7 +282,7 @@ export function TerminalPane({
     // Terminal: Ctrl+C copia SÓLO si hay algo seleccionado, y si no, sigue siendo
     // la interrupción de toda la vida.
     terminal.attachCustomKeyEventHandler((event) => {
-      // Una tecla que la app ya usó (Ctrl 1–4, el zoom) no es para la shell.
+      // Una tecla que la app ya usó (Ctrl 1–3, el zoom) no es para la shell.
       // App la frena en captura con preventDefault, pero xterm no lo mira: hasta
       // la 1.0.7, Ctrl+3 le mandaba un Esc a la shell que dejabas (interrumpía a
       // Claude Code, borraba la línea en pwsh) y Ctrl+4 un ^\.

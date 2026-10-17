@@ -579,14 +579,13 @@ button {
   grid-template-columns: 1fr;
   grid-template-rows: 1fr;
 }
-/* El grid se acomoda a cuántas shells hay: una sola ocupa todo, dos van lado a
-   lado, y con tres la última toma el ancho completo abajo — un hueco vacío en el
-   2×2 se lee como que algo se rompió. */
+/* El grid se acomoda a cuántas shells hay (tres como mucho): una sola ocupa
+   todo, dos van lado a lado, y con tres la última toma el ancho completo abajo
+   — un hueco vacío en el 2×2 se lee como que algo se rompió. */
 .ntx-grid[data-count='2'] {
   grid-template-columns: 1fr 1fr;
 }
-.ntx-grid[data-count='3'],
-.ntx-grid[data-count='4'] {
+.ntx-grid[data-count='3'] {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
 }

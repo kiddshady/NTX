@@ -6,11 +6,12 @@ Electron + xterm.js + node-pty.
 
 ## Qué hace
 
-- **Hasta cuatro shells, en pestañas o en un grid** (`Ctrl Shift G` alterna, y
+- **Hasta tres shells, en pestañas o en un grid** (`Ctrl Shift G` alterna, y
   se recuerda). En pestañas se ve una por vez, a ventana completa, y cambiar es
   un fundido. En el grid se ven todas y se acomoda solo: una ocupa toda la
   ventana; dos van lado a lado; con tres, la última toma el ancho completo
-  abajo; cuatro caen en 2×2. Nunca queda un hueco vacío.
+  abajo. Nunca queda un hueco vacío. Tres y no más: una por color de acento
+  (cian, magenta, amarillo), sin que ninguno se repita.
 - **Un perfil por panel.** Detecta lo que hay instalado en la máquina —
   PowerShell 7, Windows PowerShell, cmd, Git Bash y WSL — y ofrece sólo eso: un
   perfil cuyo ejecutable no existe es peor que no ofrecerlo.

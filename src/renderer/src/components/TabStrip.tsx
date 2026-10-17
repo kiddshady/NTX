@@ -111,7 +111,7 @@ export function TabStrip({
         className="ntx-tabs__new"
         onClick={onNew}
         disabled={full}
-        data-tip={full ? 'NTX holds up to four shells' : 'New shell · Ctrl Shift T'}
+        data-tip={full ? 'NTX holds up to three shells' : 'New shell · Ctrl Shift T'}
         aria-label="New shell"
       >
         <Icon name="plus" size={11} strokeWidth={2} />
@@ -120,7 +120,7 @@ export function TabStrip({
 
       <span className="ntx-tabs__hint">
         {!layout && <Icon name="grid" size={10} />}
-        Ctrl 1–4 switches shell
+        Ctrl 1–3 switches shell
       </span>
 
       {layout && onLayout && (
