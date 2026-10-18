@@ -15,7 +15,10 @@ Electron + xterm.js + node-pty.
   perfil cuyo ejecutable no existe es peor que no ofrecerlo.
 - **Tres acentos con rol fijo** —cian, magenta, amarillo— sobre grises de
   verdad. Cada panel tiene el suyo y lo enciende únicamente cuando tiene el
-  foco: nunca hay dos colores prendidos a la vez.
+  foco: nunca hay dos colores prendidos a la vez. El color es de la shell
+  desde que nace hasta que se cierra (le toca el que esté libre), porque el
+  prompt lo recibe al arrancar en `NTX_ACCENT`: cerrar una pestaña no le
+  cambia el color a las otras.
 - **Paleta de comandos** (el botón de la lista, arriba a la izquierda) con
   filtro por subsecuencia: `nsp` encuentra «New shell · PowerShell». Es para
   elegir qué shell abrir, de esta máquina o de otra; lo demás tiene su tecla o

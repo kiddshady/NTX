@@ -28,6 +28,9 @@ export interface PaneSnapshot {
   cwd: string
   branch: string | null
   pid: number
+  /** El acento con el que nació. Lo devuelve el host al retomar una sesión,
+   *  para que el panel vuelva con el color de su prompt. */
+  accent?: string
   /** Sólo en los paneles de otra máquina: de cuál, y si hoy se la alcanza. */
   remote?: RemotePaneInfo
 }

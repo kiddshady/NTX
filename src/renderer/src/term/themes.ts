@@ -391,10 +391,22 @@ function applyInk(palette: Palette): void {
  * sólo enciende el suyo cuando tiene el foco, así que nunca hay más de uno
  * prendido. De paso responde "¿en cuál estaba escribiendo?" sin leer nada.
  *
- * Con cuatro paneles, el primero y el cuarto comparten el cian. Es a propósito:
- * son tres colores para cuatro lugares, y sumar un cuarto acento para tapar eso
- * rompería justamente la regla que hace que el sistema funcione.
+ * Hoy sólo decide el color de una shell que llega sin uno propio (la sesión de
+ * un agente viejo que no lo recuerda): las que nacen acá usan `freeAccent`.
  */
 export function paneAccent(palette: Palette, index: number): string {
   return [palette.accent, palette.alt, palette.warn][index % 3]!
+}
+
+/**
+ * El acento de una shell que nace: el primero de la terna que nadie tiene.
+ *
+ * El color es de la shell, no del lugar, porque el prompt lo recibe en
+ * `NTX_ACCENT` al arrancar y no se puede cambiar después. Hasta la 1.6.1 salía
+ * de la posición: cerrar la del medio corría la de la derecha un lugar, su
+ * pestaña se volvía magenta y su prompt seguía amarillo.
+ */
+export function freeAccent(palette: Palette, taken: readonly string[]): string {
+  const terna = [palette.accent, palette.alt, palette.warn]
+  return terna.find((color) => !taken.includes(color)) ?? terna[taken.length % 3]!
 }

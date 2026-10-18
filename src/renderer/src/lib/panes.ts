@@ -11,6 +11,8 @@ export interface PaneState {
   cwd: string
   branch: string | null
   pid: number
+  /** Su acento, de por vida: el mismo que recibió el prompt en `NTX_ACCENT`. */
+  accent: string
   /** Está corriendo su animación de salida: sigue en el DOM pero ya se va. */
   closing: boolean
   /** Un comando largo terminó acá mientras nadie miraba: la tab late con su

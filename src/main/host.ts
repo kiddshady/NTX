@@ -65,6 +65,7 @@ interface PaneRec {
   branch: string | null
   ring: OutputRing
   exited: number | null
+  accent: string | undefined
   /** Si el socket actual pidió su salida en vivo (ver `attach` en el protocolo). */
   attached: boolean
   session: Session
@@ -242,6 +243,7 @@ export class Host {
       cwd: rec.cwd,
       branch: rec.branch,
       pid: rec.proc.pid,
+      accent: rec.accent,
       seq: rec.ring.end,
       exited: rec.exited
     }
@@ -319,6 +321,7 @@ export class Host {
       branch: null,
       ring: new OutputRing(RING_CAP),
       exited: null,
+      accent,
       attached: false,
       session
     }

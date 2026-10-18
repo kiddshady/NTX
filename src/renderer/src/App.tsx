@@ -12,7 +12,7 @@ import { HelpModal } from './components/HelpModal'
 import { MAX_PANES, formatDuration, otherMachinePwsh, paneHome, setHomeDir, shortPath, thisMachineShell, type PaneState } from './lib/panes'
 import { forgetPane } from './lib/ptyBus'
 import { reducedMotion } from './lib/motion'
-import { PALETTE, paneAccent } from './term/themes'
+import { PALETTE, freeAccent, paneAccent } from './term/themes'
 import { loadTerminalFont, saveTerminalFont } from './term/fonts'
 import { switchUiFont } from './term/uiFont'
 import type { ShellProfile, SystemStats, UpdateState } from '../../shared/types'
@@ -213,7 +213,12 @@ export function App(): JSX.Element {
   useGridFlip(gridRef, panes)
 
   const palette = PALETTE
-  const accentOf = useCallback((index: number) => paneAccent(palette, index), [palette])
+  // Cada shell trae su acento desde que nace (ver freeAccent); la posición sólo
+  // es el último recurso.
+  const accentOf = useCallback(
+    (index: number) => panes[index]?.accent ?? paneAccent(palette, index),
+    [palette, panes]
+  )
 
   // El aviso salta solo cuando la descarga terminó, y se calla si el About ya
   // está mostrando lo mismo. Con otro modal o la paleta abiertos espera a que
@@ -360,19 +365,20 @@ export function App(): JSX.Element {
     setFocused(index)
   }, [])
 
-  // Los lugares del grid ocupados: los paneles que hay más los que vienen en
-  // camino. El acento de un panel sale de su lugar, y `panesRef` recién se
-  // entera de uno nuevo cuando React lo dibuja: al restaurar una escena los
-  // spawns van uno atrás del otro sin un render en el medio, y todos nacían
-  // creyéndose el primero (el prompt de los cuatro, con el cian del 1).
-  const slots = useRef(0)
+  // Los acentos tomados: los de los paneles que hay más los que vienen en
+  // camino. `panesRef` recién se entera de uno nuevo cuando React lo dibuja: al
+  // restaurar una escena los spawns van uno atrás del otro sin un render en el
+  // medio, y todos nacían creyéndose el primero (el prompt de los cuatro, con
+  // el cian del 1). Un panel que se está yendo conserva el suyo hasta salir.
+  const accents = useRef<string[]>([])
   // El panel que tiene que quedarse con el foco apenas aparezca.
   const focusOnArrival = useRef<string | null>(null)
 
   const spawn = useCallback(async (profileId?: string, cwd?: string, focus = true): Promise<void> => {
     const current = panesRef.current
-    if (slots.current >= MAX_PANES) return
-    const slot = slots.current++
+    if (accents.current.length >= MAX_PANES) return
+    const accent = freeAccent(PALETTE, accents.current)
+    accents.current.push(accent)
 
     const targetProfile = profileId ?? current[focusedRef.current]?.profileId
     // La carpeta del panel activo se hereda sólo si es de la MISMA máquina: una
@@ -391,10 +397,10 @@ export function App(): JSX.Element {
         cwd: cwd ?? inherited,
         cols: 80,
         rows: 24,
-        accent: paneAccent(PALETTE, slot)
+        accent
       })
     } catch (error) {
-      slots.current--
+      accents.current.splice(accents.current.indexOf(accent), 1)
       throw error
     }
 
@@ -408,6 +414,7 @@ export function App(): JSX.Element {
           cwd: snapshot.cwd,
           branch: snapshot.branch,
           pid: snapshot.pid,
+          accent,
           closing: false,
           notify: false,
           busySince: null,
@@ -458,7 +465,8 @@ export function App(): JSX.Element {
       forgetPane(paneId)
       const removed = panesRef.current.findIndex((pane) => pane.id === paneId)
       if (removed === -1) return
-      slots.current--
+      const freed = accents.current.indexOf(panesRef.current[removed]!.accent)
+      if (freed !== -1) accents.current.splice(freed, 1)
       const remaining = panesRef.current.length - 1
       setPanes((previous) => previous.filter((pane) => pane.id !== paneId))
       // El foco sigue a SU shell: si la que se fue estaba antes, todas se corren
