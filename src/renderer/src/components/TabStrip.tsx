@@ -10,10 +10,6 @@ interface TabStripProps {
   onFocus: (index: number) => void
   onClose: (paneId: string) => void
   onNew: () => void
-  /** De a una shell o todas a la vista. Opcional: NTX Mobile no lo tiene, y sin
-   *  él la tira muestra la ayuda de siempre. */
-  layout?: 'tabs' | 'grid'
-  onLayout?: (layout: 'tabs' | 'grid') => void
 }
 
 export function TabStrip({
@@ -22,9 +18,7 @@ export function TabStrip({
   accentOf,
   onFocus,
   onClose,
-  onNew,
-  layout,
-  onLayout
+  onNew
 }: TabStripProps): JSX.Element {
   const full = panes.length >= MAX_PANES
 
@@ -118,35 +112,7 @@ export function TabStrip({
         <Swap className="ntx-tabs__count" value={`${live}/${MAX_PANES}`} />
       </button>
 
-      <span className="ntx-tabs__hint">
-        {!layout && <Icon name="grid" size={10} />}
-        Ctrl 1–3 switches shell
-      </span>
-
-      {layout && onLayout && (
-        <span className="ntx-layout" role="group" aria-label="Layout">
-          <button
-            className="ntx-layout__btn"
-            data-active={layout === 'tabs'}
-            aria-pressed={layout === 'tabs'}
-            aria-label="Tabs"
-            data-tip="One shell at a time · Ctrl Shift G"
-            onClick={() => onLayout('tabs')}
-          >
-            <Icon name="tabs" size={12} strokeWidth={1.7} />
-          </button>
-          <button
-            className="ntx-layout__btn"
-            data-active={layout === 'grid'}
-            aria-pressed={layout === 'grid'}
-            aria-label="Grid"
-            data-tip="All shells in view · Ctrl Shift G"
-            onClick={() => onLayout('grid')}
-          >
-            <Icon name="grid" size={11} strokeWidth={1.7} />
-          </button>
-        </span>
-      )}
+      <span className="ntx-tabs__hint">Ctrl 1–3 switches shell</span>
     </nav>
   )
 }

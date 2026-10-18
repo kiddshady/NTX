@@ -42,7 +42,7 @@ type Box = { left: number; top: number; width: number; height: number }
  * El que se cierra sale del flujo en el acto, clavado en su caja: los demás
  * ocupan su lugar MIENTRAS él se funde encima, en vez de esperar a que termine.
  */
-function useGridFlip(grid: React.RefObject<HTMLElement | null>, panes: PaneState[], layout: Layout): void {
+function useGridFlip(grid: React.RefObject<HTMLElement | null>, panes: PaneState[]): void {
   const boxes = useRef(new Map<string, Box>())
 
   const measure = (element: HTMLElement): Box => ({
@@ -121,7 +121,7 @@ function useGridFlip(grid: React.RefObject<HTMLElement | null>, panes: PaneState
       }
     }
     for (const id of boxes.current.keys()) if (!seen.has(id)) boxes.current.delete(id)
-  }, [grid, panes, layout])
+  }, [grid, panes])
 
   // Si la ventana cambia de tamaño las cajas cambian sin que cambien los
   // paneles: se re-miden sin animar, o el próximo reacomodo saldría de cajas
@@ -160,16 +160,6 @@ function loadFontSize(): number {
   return Number.isFinite(stored) && stored >= FONT_SIZE_MIN && stored <= FONT_SIZE_MAX
     ? stored
     : FONT_SIZE_DEFAULT
-}
-
-/* Cómo se muestran las shells (Ctrl Shift G): de a una, en pestañas, o todas a
-   la vista en el grid. Pestañas es lo de siempre desde la 1.1.0: sólo un
-   'grid' guardado arranca en grid. */
-type Layout = 'tabs' | 'grid'
-const LAYOUT_KEY = 'ntx:layout'
-
-function loadLayout(): Layout {
-  return window.localStorage.getItem(LAYOUT_KEY) === 'grid' ? 'grid' : 'tabs'
 }
 
 /**
@@ -212,7 +202,6 @@ export function App(): JSX.Element {
   // nunca dos veces por la misma.
   const [dismissedUpdate, setDismissedUpdate] = useState<string | null>(null)
   const [fontSize, setFontSize] = useState(loadFontSize)
-  const [layout, setLayout] = useState(loadLayout)
   const [terminalFont, setTerminalFont] = useState(loadTerminalFont)
   // Las otras máquinas: las emparejadas (con sus cpu/mem) y, si ésta comparte,
   // el estado de su host.
@@ -221,7 +210,7 @@ export function App(): JSX.Element {
   const [hostState, setHostState] = useState<HostState | null>(null)
 
   const gridRef = useRef<HTMLElement>(null)
-  useGridFlip(gridRef, panes, layout)
+  useGridFlip(gridRef, panes)
 
   const palette = PALETTE
   const accentOf = useCallback((index: number) => paneAccent(palette, index), [palette])
@@ -298,10 +287,6 @@ export function App(): JSX.Element {
     uiFont.current = terminalFont
     switchUiFont(terminalFont)
   }, [terminalFont])
-
-  useEffect(() => {
-    window.localStorage.setItem(LAYOUT_KEY, layout)
-  }, [layout])
 
   // Ctrl+rueda, como en el navegador. En captura y frenando el evento: si
   // llegara hasta xterm, el gesto además scrollearía el scrollback.
@@ -779,10 +764,6 @@ export function App(): JSX.Element {
           // JetBrains Mono a Roboto Mono y vuelven. La sans (Inter) no cambia.
           event.preventDefault()
           setTerminalFont((current) => (current === 'jetbrains' ? 'roboto' : 'jetbrains'))
-        } else if (key === 'g') {
-          // G de grid: de pestañas a todas a la vista, y vuelta.
-          event.preventDefault()
-          setLayout((current) => (current === 'tabs' ? 'grid' : 'tabs'))
         }
         return
       }
@@ -906,19 +887,13 @@ export function App(): JSX.Element {
         onFocus={setFocused}
         onClose={closePane}
         onNew={() => void spawn(thisMachineShell(profilesRef.current, panesRef.current[focusedRef.current]?.profileId))}
-        layout={layout}
-        onLayout={setLayout}
       />
 
-      {/* La forma del grid la dan los que se quedan: el que se cierra ya salió
-          del flujo (ver useGridFlip). En pestañas la forma es siempre una celda,
-          con todas las shells apiladas adentro y la activa a la vista. */}
-      <main
-        ref={gridRef}
-        className="ntx-grid"
-        data-layout={layout}
-        data-count={layout === 'tabs' ? 1 : panes.filter((pane) => !pane.closing).length}
-      >
+      {/* Siempre en pestañas: una celda, con todas las shells apiladas adentro y
+          la activa a la vista. El grid de todas a la vista se fue en la 1.6.0
+          (pedido de Fran: «es muy incómodo»); sus reglas de data-count quedan
+          en base.css porque las usa NTX Mobile en pantalla ancha. */}
+      <main ref={gridRef} className="ntx-grid" data-layout="tabs">
         {panes.map((pane, index) => (
           <TerminalPane
             key={pane.id}

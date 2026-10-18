@@ -535,38 +535,6 @@ button {
   font-size: 10.5px;
   color: var(--ntx-ghost);
 }
-/* Pestañas o grid (Ctrl Shift G): dos botones de ícono, y el modo en uso se
-   prende por color. Nada se mueve ni cambia de forma: sólo el color. */
-.ntx-layout {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  align-self: center;
-  margin: 0 0 4px 12px;
-}
-.ntx-layout__btn {
-  display: inline-grid;
-  place-items: center;
-  width: 24px;
-  height: 22px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--ntx-radius-sm);
-  background: transparent;
-  color: var(--ntx-ghost);
-  transition:
-    color var(--ntx-fast) var(--ntx-ease-soft),
-    background var(--ntx-fast) var(--ntx-ease-soft);
-}
-.ntx-layout__btn:hover {
-  color: var(--ntx-muted);
-  background: color-mix(in srgb, var(--ntx-fg) 4%, transparent);
-}
-.ntx-layout__btn[data-active='true'] {
-  color: var(--ntx-fg);
-  background: color-mix(in srgb, var(--ntx-fg) 7%, transparent);
-}
-
 /* --- Grid de paneles ------------------------------------------------------- */
 .ntx-grid {
   /* Posicionado: el panel que se cierra sale del flujo clavado en su caja

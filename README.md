@@ -1,17 +1,15 @@
 # NTX
 
-Terminal multi-shell para Windows, con pestañas o grid adaptativo y estética acromática
+Terminal multi-shell para Windows, con pestañas y estética acromática
 mate, oscura y plana.
 Electron + xterm.js + node-pty.
 
 ## Qué hace
 
-- **Hasta tres shells, en pestañas o en un grid** (`Ctrl Shift G` alterna, y
-  se recuerda). En pestañas se ve una por vez, a ventana completa, y cambiar es
-  un fundido. En el grid se ven todas y se acomoda solo: una ocupa toda la
-  ventana; dos van lado a lado; con tres, la última toma el ancho completo
-  abajo. Nunca queda un hueco vacío. Tres y no más: una por color de acento
-  (cian, magenta, amarillo), sin que ninguno se repita.
+- **Hasta tres shells, en pestañas.** Se ve una por vez, a ventana completa, y
+  cambiar es un fundido. El grid con todas a la vista se fue en la 1.6.0: era
+  incómodo. Tres y no más: una por color de acento (cian, magenta, amarillo),
+  sin que ninguno se repita.
 - **Un perfil por panel.** Detecta lo que hay instalado en la máquina —
   PowerShell 7, Windows PowerShell, cmd, Git Bash y WSL — y ofrece sólo eso: un
   perfil cuyo ejecutable no existe es peor que no ofrecerlo.
@@ -108,11 +106,10 @@ lista vive en `HelpModal.tsx`; un atajo nuevo se anota ahí y acá.
 
 | Atajo | Qué hace |
 |---|---|
-| `Ctrl 1`–`Ctrl 4` | Enfoca esa shell |
+| `Ctrl 1`–`Ctrl 3` | Enfoca esa shell |
 | `Ctrl Tab` / `Ctrl Shift Tab` | Salta a la shell siguiente / anterior |
 | `Ctrl Shift T` | Nueva shell |
 | `Ctrl Shift W` | Cierra la shell activa |
-| `Ctrl Shift G` | Pestañas o grid |
 | `Ctrl Shift F` | Busca en el scrollback de la shell activa |
 | `Ctrl Shift C` / `Ctrl Shift V` | Copiar y pegar |
 | `Ctrl C` | Copia si hay selección; si no, sigue siendo la interrupción |
