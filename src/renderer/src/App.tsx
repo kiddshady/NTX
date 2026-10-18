@@ -12,6 +12,7 @@ import { HelpModal } from './components/HelpModal'
 import { MAX_PANES, formatDuration, otherMachinePwsh, paneHome, setHomeDir, shortPath, thisMachineShell, type PaneState } from './lib/panes'
 import { forgetPane } from './lib/ptyBus'
 import { reducedMotion } from './lib/motion'
+import { useStableOrder } from './hooks/useStableOrder'
 import { PALETTE, freeAccent, paneAccent } from './term/themes'
 import { loadTerminalFont, saveTerminalFont } from './term/fonts'
 import { switchUiFont } from './term/uiFont'
@@ -478,6 +479,26 @@ export function App(): JSX.Element {
     }, PANE_EXIT_MS)
   }, [clearBusy])
 
+  // Arrastrar una tab: la shell cambia de lugar (y de Ctrl+número), y el foco
+  // sigue a la que estabas mirando, no a la posición.
+  const movePane = useCallback((paneId: string, toIndex: number): void => {
+    const current = panesRef.current
+    const from = current.findIndex((pane) => pane.id === paneId)
+    if (from === -1) return
+    const to = Math.max(0, Math.min(toIndex, current.length - 1))
+    if (to === from) return
+    const next = [...current]
+    next.splice(to, 0, next.splice(from, 1)[0]!)
+    const focusedId = current[focusedRef.current]?.id
+    setPanes(next)
+    setFocused(Math.max(0, next.findIndex((pane) => pane.id === focusedId)))
+  }, [])
+
+  // Las terminales se renderizan en el orden en que nacieron, así reordenar no
+  // mueve sus nodos (a un xterm movido se le resetea el scroll). Apiladas en
+  // pestañas, el orden del DOM no se ve.
+  const stablePanes = useStableOrder(panes)
+
   // Arranque: detectamos shells y remontamos la escena del arranque anterior —
   // mismos paneles, mismos perfiles, mismas carpetas. El contenido no vuelve
   // (esos procesos ya no existen), pero el grid sí. Sin escena guardada se abre
@@ -895,6 +916,7 @@ export function App(): JSX.Element {
         onFocus={setFocused}
         onClose={closePane}
         onNew={() => void spawn(thisMachineShell(profilesRef.current, panesRef.current[focusedRef.current]?.profileId))}
+        onReorder={movePane}
       />
 
       {/* Siempre en pestañas: una celda, con todas las shells apiladas adentro y
@@ -902,36 +924,39 @@ export function App(): JSX.Element {
           (pedido de Fran: «es muy incómodo»); sus reglas de data-count quedan
           en base.css porque las usa NTX Mobile en pantalla ancha. */}
       <main ref={gridRef} className="ntx-grid" data-layout="tabs">
-        {panes.map((pane, index) => (
-          <TerminalPane
-            key={pane.id}
-            pane={pane}
-            index={index}
-            accent={accentOf(index)}
-            palette={palette}
-            fontSize={fontSize}
-            font={terminalFont}
-            focused={index === focused}
-            // La búsqueda abierta también apaga el teclado de la terminal: el
-            // que tipea ahí es el input de la barra. Cerrarla lo devuelve.
-            keyboardFocus={
-              index === focused &&
-              !paletteOpen &&
-              !aboutOpen &&
-              !updatePromptOpen &&
-              !machinesOpen &&
-              !helpOpen &&
-              search?.paneId !== pane.id
-            }
-            searchOpen={search?.paneId === pane.id}
-            searchNonce={search?.nonce ?? 0}
-            onSearchClose={closeSearch}
-            onFocus={() => setFocused(index)}
-            onExit={(code) => onPaneExit(pane.id, code)}
-            onCwd={(cwd) => onPaneCwd(pane.id, cwd)}
-            onCommand={(running, exitCode) => onPaneCommand(pane.id, running, exitCode)}
-          />
-        ))}
+        {stablePanes.map((pane) => {
+          const index = panes.indexOf(pane)
+          return (
+            <TerminalPane
+              key={pane.id}
+              pane={pane}
+              index={index}
+              accent={accentOf(index)}
+              palette={palette}
+              fontSize={fontSize}
+              font={terminalFont}
+              focused={index === focused}
+              // La búsqueda abierta también apaga el teclado de la terminal: el
+              // que tipea ahí es el input de la barra. Cerrarla lo devuelve.
+              keyboardFocus={
+                index === focused &&
+                !paletteOpen &&
+                !aboutOpen &&
+                !updatePromptOpen &&
+                !machinesOpen &&
+                !helpOpen &&
+                search?.paneId !== pane.id
+              }
+              searchOpen={search?.paneId === pane.id}
+              searchNonce={search?.nonce ?? 0}
+              onSearchClose={closeSearch}
+              onFocus={() => setFocused(index)}
+              onExit={(code) => onPaneExit(pane.id, code)}
+              onCwd={(cwd) => onPaneCwd(pane.id, cwd)}
+              onCommand={(running, exitCode) => onPaneCommand(pane.id, running, exitCode)}
+            />
+          )
+        })}
       </main>
 
       <LiveStatusBar

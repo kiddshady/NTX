@@ -1,7 +1,9 @@
-import { useLayoutEffect, useRef, type JSX } from 'react'
+import { useLayoutEffect, useRef, type JSX, type PointerEvent } from 'react'
 import { Icon } from './Icon'
 import { Swap } from './Swap'
 import { MAX_PANES, paneTabLabel, type PaneState } from '../lib/panes'
+import { useStableOrder } from '../hooks/useStableOrder'
+import { reducedMotion } from '../lib/motion'
 
 interface TabStripProps {
   panes: PaneState[]
@@ -10,6 +12,22 @@ interface TabStripProps {
   onFocus: (index: number) => void
   onClose: (paneId: string) => void
   onNew: () => void
+  /** Arrastrar una tab la lleva a otro lugar. Opcional: NTX Mobile no arrastra. */
+  onReorder?: (paneId: string, toIndex: number) => void
+}
+
+/** Lo que hay que moverse para que un click pase a ser un arrastre. */
+const DRAG_THRESHOLD = 4
+
+interface Drag {
+  id: string
+  pointerId: number
+  startX: number
+  active: boolean
+  /** Lo medido al arrancar (layout, sin transforms), en el orden de las tabs. */
+  slots: { id: string; left: number; width: number }[]
+  from: number
+  to: number
 }
 
 export function TabStrip({
@@ -18,9 +36,155 @@ export function TabStrip({
   accentOf,
   onFocus,
   onClose,
-  onNew
+  onNew,
+  onReorder
 }: TabStripProps): JSX.Element {
   const full = panes.length >= MAX_PANES
+
+  // --- Arrastrar para reordenar ------------------------------------------------
+  //
+  // Puntero a mano, no drag & drop de HTML: ése arrastra una foto nativa
+  // semitransparente de Chromium. La tab que agarrás sigue al mouse (transform,
+  // nada de layout), las otras se corren a hacerle lugar, y al soltar cada una
+  // viaja desde donde se veía hasta su lugar nuevo (FLIP).
+  //
+  // Las tabs se renderizan en el orden en que nacieron y el orden que se ve lo
+  // pone `order`: mover el nodo le reiniciaría la animación de entrada.
+  const stable = useStableOrder(panes)
+  const indexOf = new Map(panes.map((pane, index) => [pane.id, index]))
+  const strip = useRef<HTMLElement>(null)
+  const tabs = useRef(new Map<string, HTMLButtonElement>())
+  const drag = useRef<Drag | null>(null)
+  // El click que llega al soltar un arrastre no es un click.
+  const swallowClick = useRef(false)
+  // Dónde se veía cada tab en el instante de soltar, para el FLIP.
+  const flipFrom = useRef(new Map<string, number>())
+
+  const settle = (): void => {
+    for (const [id, from] of flipFrom.current) {
+      const element = tabs.current.get(id)
+      if (!element) continue
+      for (const animation of element.getAnimations()) {
+        if (animation.id === 'ntx-tab-flip') animation.cancel()
+      }
+      const dx = from - element.getBoundingClientRect().left
+      const lifted = element.dataset.lifted === 'true'
+      const land = (): void => {
+        if (lifted) delete element.dataset.lifted
+      }
+      if (Math.abs(dx) < 0.5 || reducedMotion()) {
+        land()
+        continue
+      }
+      const animation = element.animate(
+        [{ transform: `translateX(${dx}px)` }, { transform: 'translateX(0)' }],
+        { duration: 180, easing: 'cubic-bezier(0.32, 0.72, 0, 1)', id: 'ntx-tab-flip' }
+      )
+      // Con la ventana tapada la animación no avanza y el finished no llega.
+      const fallback = window.setTimeout(land, 300)
+      animation.finished.then(
+        () => {
+          window.clearTimeout(fallback)
+          land()
+        },
+        () => undefined
+      )
+    }
+    flipFrom.current.clear()
+  }
+
+  useLayoutEffect(() => {
+    if (flipFrom.current.size > 0) settle()
+  })
+
+  const onPointerDown = (event: PointerEvent<HTMLButtonElement>, pane: PaneState): void => {
+    swallowClick.current = false
+    if (!onReorder || event.button !== 0 || pane.closing) return
+    if ((event.target as HTMLElement).closest('.ntx-tab__close')) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    drag.current = {
+      id: pane.id,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      active: false,
+      slots: [],
+      from: 0,
+      to: 0
+    }
+  }
+
+  const onPointerMove = (event: PointerEvent<HTMLButtonElement>): void => {
+    const current = drag.current
+    if (!current || current.pointerId !== event.pointerId) return
+    const dx = event.clientX - current.startX
+    if (!current.active) {
+      if (Math.abs(dx) < DRAG_THRESHOLD) return
+      current.active = true
+      current.slots = panes.map((pane) => {
+        const element = tabs.current.get(pane.id)
+        return { id: pane.id, left: element?.offsetLeft ?? 0, width: element?.offsetWidth ?? 0 }
+      })
+      current.from = current.slots.findIndex((slot) => slot.id === current.id)
+      current.to = current.from
+      if (strip.current) strip.current.dataset.dragging = 'true'
+      const element = tabs.current.get(current.id)
+      if (element) element.dataset.lifted = 'true'
+    }
+
+    const { slots, from } = current
+    const self = slots[from]!
+    const first = slots[0]!
+    const last = slots[slots.length - 1]!
+    // No sale de la fila de tabs.
+    const x = Math.max(first.left - self.left, Math.min(dx, last.left + last.width - self.left - self.width))
+    tabs.current.get(current.id)!.style.transform = `translateX(${x}px)`
+
+    // El lugar nuevo: tantas tabs antes como centros quedan a su izquierda. En
+    // el tope de cada punta los dos centros coinciden justo (con anchos iguales),
+    // así que el empate cuenta a favor de la punta: las de la derecha se pasan
+    // con `<=` y las de la izquierda con `<`.
+    const center = self.left + self.width / 2 + x
+    let to = 0
+    slots.forEach((slot, index) => {
+      if (index === from) return
+      const middle = slot.left + slot.width / 2
+      if (index > from ? middle <= center : middle < center) to++
+    })
+    current.to = to
+
+    // Las del medio se corren lo que ocupa la que se mueve, con su gap.
+    const gap = parseFloat(getComputedStyle(strip.current!).columnGap) || 0
+    slots.forEach((slot, index) => {
+      if (slot.id === current.id) return
+      let shift = 0
+      if (from < to && index > from && index <= to) shift = -(self.width + gap)
+      if (to < from && index >= to && index < from) shift = self.width + gap
+      const element = tabs.current.get(slot.id)
+      if (element) element.style.transform = shift ? `translateX(${shift}px)` : ''
+    })
+  }
+
+  const onPointerUp = (event: PointerEvent<HTMLButtonElement>): void => {
+    const current = drag.current
+    if (!current || current.pointerId !== event.pointerId) return
+    drag.current = null
+    if (!current.active) return
+    swallowClick.current = event.type === 'pointerup'
+
+    // Primero la foto de dónde se ve cada una, después se sueltan los transforms:
+    // sin la transición del arrastre puesta, soltarlos no anima nada.
+    for (const slot of current.slots) {
+      const element = tabs.current.get(slot.id)
+      if (element) flipFrom.current.set(slot.id, element.getBoundingClientRect().left)
+    }
+    if (strip.current) delete strip.current.dataset.dragging
+    for (const slot of current.slots) {
+      const element = tabs.current.get(slot.id)
+      if (element) element.style.transform = ''
+    }
+    if (current.to !== current.from && event.type === 'pointerup') onReorder?.(current.id, current.to)
+    else settle()
+  }
 
   // --- El latido se apaga asentándose, no cortándose ---------------------------
   //
@@ -60,46 +224,62 @@ export function TabStrip({
   const live = panes.filter((pane) => !pane.closing).length
 
   return (
-    <nav className="ntx-tabs ntx-chrome">
-      {panes.map((pane, index) => (
-        <button
-          key={pane.id}
-          className="ntx-tab"
-          data-active={index === focusedIndex}
-          // La tab de un panel que se va se pliega con él, en vez de quedarse
-          // entera y desaparecer de golpe cuando el panel termina de irse.
-          data-closing={pane.closing}
-          tabIndex={pane.closing ? -1 : undefined}
-          onClick={() => {
-            if (!pane.closing) onFocus(index)
-          }}
-        >
-          <span
+    <nav ref={strip} className="ntx-tabs ntx-chrome">
+      {stable.map((pane) => {
+        const index = indexOf.get(pane.id)!
+        return (
+          <button
+            key={pane.id}
             ref={(element) => {
-              if (element) marks.current.set(pane.id, element)
-              else marks.current.delete(pane.id)
+              if (element) tabs.current.set(pane.id, element)
+              else tabs.current.delete(pane.id)
             }}
-            className="ntx-tab__mark"
-            data-notify={pane.notify}
-            data-busy={pane.busySince !== null}
-            style={{ ['--mark' as string]: accentOf(index) }}
-          />
-          <Swap className="ntx-tab__label" value={paneTabLabel(pane)} />
-          <span
-            className="ntx-tab__close"
-            role="button"
-            aria-label={`Close ${paneTabLabel(pane)}`}
-            data-tip="Close shell"
-            onClick={(event) => {
-              // Sin esto, cerrar también enfocaría la tab que estás cerrando.
-              event.stopPropagation()
-              onClose(pane.id)
+            className="ntx-tab"
+            style={{ order: index }}
+            data-active={index === focusedIndex}
+            // La tab de un panel que se va se pliega con él, en vez de quedarse
+            // entera y desaparecer de golpe cuando el panel termina de irse.
+            data-closing={pane.closing}
+            tabIndex={pane.closing ? -1 : undefined}
+            onPointerDown={(event) => onPointerDown(event, pane)}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onClick={() => {
+              if (swallowClick.current) {
+                swallowClick.current = false
+                return
+              }
+              if (!pane.closing) onFocus(index)
             }}
           >
-            <Icon name="close" size={10} strokeWidth={2} />
-          </span>
-        </button>
-      ))}
+            <span
+              ref={(element) => {
+                if (element) marks.current.set(pane.id, element)
+                else marks.current.delete(pane.id)
+              }}
+              className="ntx-tab__mark"
+              data-notify={pane.notify}
+              data-busy={pane.busySince !== null}
+              style={{ ['--mark' as string]: accentOf(index) }}
+            />
+            <Swap className="ntx-tab__label" value={paneTabLabel(pane)} />
+            <span
+              className="ntx-tab__close"
+              role="button"
+              aria-label={`Close ${paneTabLabel(pane)}`}
+              data-tip="Close shell"
+              onClick={(event) => {
+                // Sin esto, cerrar también enfocaría la tab que estás cerrando.
+                event.stopPropagation()
+                onClose(pane.id)
+              }}
+            >
+              <Icon name="close" size={10} strokeWidth={2} />
+            </span>
+          </button>
+        )
+      })}
 
       <button
         className="ntx-tabs__new"

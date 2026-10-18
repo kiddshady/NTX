@@ -387,6 +387,27 @@ button {
 .ntx-tab[data-active='true']:focus-visible {
   box-shadow: inset 0 0 0 1px var(--ntx-hairline), var(--ntx-ring);
 }
+/* Arrastrar para reordenar (TabStrip). Mientras dura, las que le hacen lugar se
+   corren con transición; la levantada no, porque sigue al mouse. */
+.ntx-tabs[data-dragging='true'] .ntx-tab:not([data-lifted='true']) {
+  transition:
+    color var(--ntx-fast) var(--ntx-ease-soft),
+    background var(--ntx-fast) var(--ntx-ease-soft),
+    box-shadow var(--ntx-fast) var(--ntx-ease-soft),
+    transform var(--ntx-normal) var(--ntx-ease);
+}
+/* Pasa POR ENCIMA de las otras, así que va opaca: un color sólido mezclado con
+   el chrome, no un realce translúcido, o se le verían las de abajo. Sigue
+   siendo color, así que entra y sale con la transición de siempre. */
+.ntx-tab[data-lifted='true'] {
+  position: relative;
+  z-index: 1;
+  color: var(--ntx-fg);
+  background: color-mix(in srgb, var(--ntx-fg) 7%, var(--ntx-chrome));
+  box-shadow:
+    inset 0 0 0 1px var(--ntx-hairline),
+    0 2px 8px rgb(0 0 0 / 0.34);
+}
 .ntx-tab__label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -497,6 +518,11 @@ button {
   color: var(--ntx-alt);
 }
 
+/* Las tabs llevan `order` en línea (su lugar, 0–2): esto queda siempre después. */
+.ntx-tabs__new,
+.ntx-tabs__hint {
+  order: 10;
+}
 .ntx-tabs__new {
   display: inline-flex;
   align-items: center;
