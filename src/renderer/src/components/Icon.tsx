@@ -14,6 +14,7 @@ import type { JSX } from 'react'
 
 export type IconName =
   | 'grid'
+  | 'tabs'
   | 'plus'
   | 'close'
   | 'minimize'
@@ -47,9 +48,17 @@ const PATHS: Record<IconName, JSX.Element> = {
       <rect x="14" y="14" width="7" height="7" rx="1.2" />
     </>
   ),
-  // Una ventana con su fila de pestañas arriba: el modo de a una shell. La
-  // pestaña de la izquierda es la abierta (sin línea debajo); la versión con
-  // una lengüeta sola se leía como una carpeta.
+  // Una ventana con su fila de pestañas arriba: era el botón del modo de a una
+  // shell y quedó de adorno junto a la ayuda de Ctrl 1–3. La pestaña de la
+  // izquierda es la abierta (sin línea debajo); la versión con una lengüeta
+  // sola se leía como una carpeta.
+  tabs: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M10 4v5h11M10 9H3" />
+      <path d="M15.5 4v5" />
+    </>
+  ),
   plus: <path d="M12 5v14M5 12h14" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
   // Los tres de la ventana, con los símbolos de siempre: la raya, el cuadrado y

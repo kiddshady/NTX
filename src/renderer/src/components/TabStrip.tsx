@@ -112,7 +112,10 @@ export function TabStrip({
         <Swap className="ntx-tabs__count" value={`${live}/${MAX_PANES}`} />
       </button>
 
-      <span className="ntx-tabs__hint">Ctrl 1–3 switches shell</span>
+      <span className="ntx-tabs__hint">
+        <Icon name="tabs" size={12} strokeWidth={1.7} />
+        Ctrl 1–3 switches shell
+      </span>
     </nav>
   )
 }
