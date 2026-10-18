@@ -591,7 +591,6 @@ export function TerminalPane({
     >
       <header className="ntx-pane__head ntx-chrome">
         <span className="ntx-pane__num">
-          <Icon name="caret" size={11} />
           <Swap value={String(index + 1).padStart(2, '0')} />
         </span>
         {/* La máquina, si no es ésta. Apagada mientras no se la alcanza: el panel
