@@ -1682,8 +1682,8 @@ button {
   user-select: text;
 }
 
-/* Sin gap: la barra de descarga y la fila del botón se pliegan (ntx-reveal), y
-   plegadas seguirían cobrando su gap. El aire va adentro de lo que se pliega. */
+/* Sin gap: la celda de la barra y el botón se pliega (ntx-reveal) donde no hay
+   updates, y plegada seguiría cobrando su gap. El aire va adentro del pliegue. */
 .ntx-about__updates > .ntx-reveal > .ntx-reveal__inner > * {
   margin-top: 10px;
 }
@@ -1713,6 +1713,29 @@ button {
 .ntx-about__row {
   display: flex;
   justify-content: flex-end;
+}
+
+/* La barra de descarga y el botón, uno encima del otro en la misma celda: la
+   caja mide siempre lo del botón y no cambia de alto entre fases. Lo que se
+   prende espera a que lo que se apaga vaya por la mitad, como el relevo de
+   textos (Swap), y la barra queda centrada en el alto del botón. */
+.ntx-about__slot {
+  display: grid;
+  align-items: center;
+}
+.ntx-about__slot > * {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--ntx-normal) var(--ntx-ease) 80ms,
+    visibility 0s;
+}
+.ntx-about__slot > [data-shown='false'] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--ntx-exit) var(--ntx-ease-both),
+    visibility 0s linear var(--ntx-exit);
 }
 .ntx-about__foot {
   display: flex;

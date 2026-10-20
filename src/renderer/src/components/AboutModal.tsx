@@ -53,6 +53,11 @@ export function AboutModal({ open, update, onClose }: AboutModalProps): JSX.Elem
   const [version, setVersion] = useState('')
   const panel = useRef<HTMLDivElement>(null)
   const lastAction = useRef<StatusAction>({ label: 'Check now', run: () => window.ntx.updates.check() })
+  const actionShown = useRef(true)
+  const actionKey = useRef(0)
+  const lastPercent = useRef(0)
+  const wasDownloading = useRef(false)
+  const fillKey = useRef(0)
 
   useEffect(() => {
     void window.ntx.meta.version().then(setVersion)
@@ -67,7 +72,18 @@ export function AboutModal({ open, update, onClose }: AboutModalProps): JSX.Elem
   if (!mounted) return null
 
   const status = describe(update)
-  // La acción se pliega con su último rótulo adentro.
+  const downloading = update.phase === 'downloading'
+  // La barra se apaga llena si la descarga terminó, y quieta donde quedó si
+  // no: la fase siguiente no trae porcentaje, y volver a 0 la vaciaba mientras
+  // se apagaba. Una descarga nueva la toma de cero sin viaje (fill nuevo).
+  if (downloading && !wasDownloading.current) fillKey.current += 1
+  wasDownloading.current = downloading
+  if (downloading) lastPercent.current = update.percent ?? 0
+  else if (update.phase === 'ready') lastPercent.current = 100
+  // Cada vez que el botón vuelve a prenderse, su rótulo nace de nuevo.
+  if (status.action && !actionShown.current) actionKey.current += 1
+  actionShown.current = status.action !== undefined
+  // La acción se apaga con su último rótulo adentro.
   if (status.action) lastAction.current = status.action
   const action = lastAction.current
 
@@ -111,35 +127,40 @@ export function AboutModal({ open, update, onClose }: AboutModalProps): JSX.Elem
             <Swap value={status.text} />
           </p>
 
-          {/* La barra y el botón viven siempre: se despliegan y se pliegan con
-              la fase, y el rótulo del botón se releva en su lugar. */}
-          <div className="ntx-reveal" data-open={update.phase === 'downloading'}>
+          {/* La barra y el botón viven siempre y en la MISMA celda: cuando
+              termina la descarga, la barra se apaga y el botón se prende en su
+              lugar, sin que la caja cambie de alto. Antes eran dos pliegues,
+              uno cerrándose y otro abriéndose a la vez, y el botón subía
+              destapándose de arriba para abajo, como una rebanada. */}
+          <div className="ntx-reveal" data-open={downloading || status.action !== undefined}>
             <div className="ntx-reveal__inner">
-              <div
-                className="ntx-progress"
-                role="progressbar"
-                aria-valuenow={update.percent ?? 0}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
+              <div className="ntx-about__slot">
                 <div
-                  className="ntx-progress__fill"
-                  style={{ transform: `scaleX(${(update.percent ?? 0) / 100})` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="ntx-reveal" data-open={status.action !== undefined}>
-            <div className="ntx-reveal__inner">
-              <div className="ntx-about__row">
-                <button
-                  className={action.accent ? 'ntx-btn ntx-btn--accent' : 'ntx-btn'}
-                  disabled={action.disabled || !status.action}
-                  onClick={action.run}
+                  className="ntx-progress"
+                  data-shown={downloading}
+                  role="progressbar"
+                  aria-hidden={!downloading}
+                  aria-valuenow={lastPercent.current}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
                 >
-                  <Swap value={action.label} />
-                </button>
+                  <div
+                    key={fillKey.current}
+                    className="ntx-progress__fill"
+                    style={{ transform: `scaleX(${lastPercent.current / 100})` }}
+                  />
+                </div>
+                <div className="ntx-about__row" data-shown={status.action !== undefined}>
+                  <button
+                    className={action.accent ? 'ntx-btn ntx-btn--accent' : 'ntx-btn'}
+                    disabled={action.disabled || !status.action}
+                    onClick={action.run}
+                  >
+                    {/* Con el botón apagado el rótulo cambia en seco: un relevo
+                        ahí seguiría corriendo mientras el botón se prende. */}
+                    <Swap key={actionKey.current} value={action.label} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
