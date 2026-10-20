@@ -175,6 +175,26 @@
   unicode-range: U+2500-2590, U+2594-259F;
 }
 
+/* El ● (las viñetas de Claude Code), del tamaño que tiene en Windows Terminal.
+   Roboto Mono no lo trae: el respaldo de la pila era JetBrains, que lo dibuja
+   de 620/1000 em, más ancho que la celda. Windows Terminal cae a Segoe UI, que
+   lo dibuja de 0,43 em. Mismo rango de peso que las de arriba por lo mismo que
+   ahí. Donde no hay Segoe (el celu) la regla se cae sola y vuelve JetBrains. */
+@font-face {
+  font-family: 'Roboto Mono';
+  src: local('Segoe UI'), local('SegoeUI');
+  font-weight: 100 700;
+  font-style: normal;
+  unicode-range: U+25CF;
+}
+@font-face {
+  font-family: 'Roboto Mono';
+  src: local('Segoe UI'), local('SegoeUI');
+  font-weight: 100 700;
+  font-style: italic;
+  unicode-range: U+25CF;
+}
+
 /* El fallback del mono: los spinners braille (⠋⠙⠹) que usa medio ecosistema de
    CLIs no están en JetBrains Mono, y sin esto salen como cuadraditos. */
 @font-face {
