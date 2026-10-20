@@ -1933,6 +1933,24 @@ button {
   overflow: hidden;
 }
 
+/* El contador del comando se funde por COLOR, no por opacidad. Con opacity
+   el chip anima en una capa propia, y ahí el texto pierde el ClearType: entra
+   en grises y al terminar vuelve a la franja de color de golpe, que se ve como
+   un brillo fugaz (Fran, 20 oct 2026; medido: 85 % de píxeles con franja
+   quieto, 0 % durante toda la entrada). Con el color la opacidad queda en 1 y
+   el texto no cambia de capa. Es lo mismo que el cambio de letra de la 1.3.1
+   (ver term/uiFont.ts). */
+.ntx-status__run {
+  opacity: 1;
+}
+.ntx-status__run b,
+.ntx-status__run .ntx-status__value {
+  transition: color var(--ntx-normal) var(--ntx-ease);
+}
+.ntx-status__run:not([data-show='true']) :is(b, .ntx-status__value) {
+  color: transparent;
+}
+
 /* El botón de Machines, con su punto de "esta máquina está compartida". */
 .ntx-status__machines {
   position: relative;
