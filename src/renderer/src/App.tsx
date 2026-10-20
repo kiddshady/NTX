@@ -149,8 +149,9 @@ const NOTIFY_MIN_MS = 6_000
  *  marca es para verla MIENTRAS corre, y a los 6s ya te la perdiste media. */
 const BUSY_MIN_MS = 2_000
 
-/** El tamaño de siempre; Ctrl 0 vuelve acá. */
-const FONT_SIZE_DEFAULT = 12.5
+/** El tamaño de siempre; Ctrl 0 vuelve acá. Era 12,5 y Fran lo usaba dos
+ *  pasos arriba: desde la 1.7.3 ese es el de fábrica (pedido suyo). */
+const FONT_SIZE_DEFAULT = 14.5
 /* Los topes del zoom: debajo de 8 no se lee y arriba de 24 entran 30 columnas. */
 const FONT_SIZE_MIN = 8
 const FONT_SIZE_MAX = 24
