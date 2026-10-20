@@ -81,6 +81,13 @@ export function StatusBar({
   if (active?.branch) lastBranch.current = active.branch
   const lastRun = useRef('')
   if (running !== null) lastRun.current = running
+  // Y el contador se va en el color de la shell que corría, no en el de la que
+  // queda: cambiando a una libre, el «run» se esfumaba en el acento nuevo, y se
+  // veía cambiar de color a mitad del pliegue (video de Fran, 20 oct 2026). Se
+  // toma solo con el panel activo ocupado: `running` se vacía un render tarde
+  // (desde el efecto de useElapsed), y en ese render el acento ya es el nuevo.
+  const lastTone = useRef(accent)
+  if (running !== null && active?.busySince != null) lastTone.current = accent
 
   return (
     <footer className="ntx-status ntx-chrome">
@@ -139,7 +146,7 @@ export function StatusBar({
       <span
         className="ntx-status__item ntx-status__fold ntx-status__run"
         data-show={running !== null}
-        style={{ ['--tone' as string]: accent }}
+        style={{ ['--tone' as string]: lastTone.current }}
       >
         <span className="ntx-status__fold-inner">
           <b>run</b>
