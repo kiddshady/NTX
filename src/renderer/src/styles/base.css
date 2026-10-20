@@ -872,6 +872,28 @@ button {
 .ntx-pane__term .xterm-screen {
   isolation: isolate;
 }
+
+/* La última letra de un renglón lleno salía cortada contra el borde derecho
+ * (Fran, 20 oct 2026, a 14,5 px).
+ *
+ * xterm 6 hace cada renglón un div del ancho exacto de las columnas con
+ * `overflow: hidden` (para que no se pise con el de abajo), y a cada letra le
+ * corrige el ancho con letter-spacing para que caiga en su celda. Pero Chromium
+ * ubica el texto en pasos de 1/64 px, y ese redondeo se acumula a lo largo del
+ * renglón: medido con texto como el de Claude Code, la última letra termina
+ * hasta 2 px después del borde del div, según el tamaño (12 px: 1,9; 14,5: 1,6;
+ * 13 y 14: entra). Así que no es el ,5: 12,5, 15 y 16 también se pasaban.
+ *
+ * El recorte de `overflow` es en el borde del RELLENO, así que un relleno a la
+ * derecha le da al renglón un margen donde terminar de dibujarse sin mover ni
+ * una letra: el ancho del contenido sigue siendo el de xterm (content-box, que
+ * el `border-box` de toda la app daría vuelta). Una letra de margen sobra: lo
+ * que asoma ahí es el pedacito de la última, que cae debajo de la barra de
+ * scroll o en el padding del panel, nunca texto nuevo. */
+.ntx-pane__term .xterm-rows > div {
+  box-sizing: content-box;
+  padding-right: 1ch;
+}
 .ntx-pane__term .xterm-rows .ntx-cell-bg {
   position: relative;
 }
