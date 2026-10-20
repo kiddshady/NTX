@@ -150,12 +150,27 @@ const NOTIFY_MIN_MS = 6_000
 const BUSY_MIN_MS = 2_000
 
 /** El tamaño de siempre; Ctrl 0 vuelve acá. Era 12,5 y Fran lo usaba dos
- *  pasos arriba: desde la 1.7.3 ese es el de fábrica (pedido suyo). */
-const FONT_SIZE_DEFAULT = 14.5
+ *  pasos arriba: en la 1.7.3 pasó a 14,5, y en la 1.7.4 un paso abajo
+ *  (pedidos suyos). */
+const FONT_SIZE_DEFAULT = 13.5
 /* Los topes del zoom: debajo de 8 no se lee y arriba de 24 entran 30 columnas. */
 const FONT_SIZE_MIN = 8
 const FONT_SIZE_MAX = 24
 const FONT_SIZE_KEY = 'ntx:font-size'
+/* El tamaño se guarda apenas arranca, así que el 14,5 de fábrica anterior
+   quedó escrito en todas las instalaciones aunque nadie lo eligiera. Una sola
+   vez, ese 14,5 guardado cuenta como el de fábrica y pasa al nuevo; si
+   después alguien vuelve a elegir 14,5, se respeta. */
+const FONT_SIZE_MIGRATED_KEY = 'ntx:font-size-13.5'
+
+/* Se migra al cargar el módulo y no en el inicializador del useState, que
+   StrictMode corre dos veces: la segunda ya vería la marca y leería el 14,5. */
+if (!window.localStorage.getItem(FONT_SIZE_MIGRATED_KEY)) {
+  if (Number(window.localStorage.getItem(FONT_SIZE_KEY)) === 14.5) {
+    window.localStorage.setItem(FONT_SIZE_KEY, String(FONT_SIZE_DEFAULT))
+  }
+  window.localStorage.setItem(FONT_SIZE_MIGRATED_KEY, '1')
+}
 
 function loadFontSize(): number {
   const stored = Number(window.localStorage.getItem(FONT_SIZE_KEY))
