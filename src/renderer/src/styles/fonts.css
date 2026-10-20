@@ -175,24 +175,45 @@
   unicode-range: U+2500-2590, U+2594-259F;
 }
 
-/* El ● (las viñetas de Claude Code), del tamaño que tiene en Windows Terminal.
-   Roboto Mono no lo trae: el respaldo de la pila era JetBrains, que lo dibuja
-   de 620/1000 em, más ancho que la celda. Windows Terminal cae a Segoe UI, que
-   lo dibuja de 0,43 em. Mismo rango de peso que las de arriba por lo mismo que
-   ahí. Donde no hay Segoe (el celu) la regla se cae sola y vuelve JetBrains. */
+/* El ● (las viñetas de Claude Code) y el ❯ (su prompt), como en Windows
+   Terminal. Roboto Mono no los trae: el respaldo de la pila era JetBrains, que
+   dibuja el ● de 620/1000 em, más ancho que la celda, y el ❯ angosto y grueso,
+   casi un paréntesis. Windows Terminal cae al respaldo de Windows: el ● sale
+   de Segoe UI (0,43 em) y el ❯ de Segoe UI Symbol (un chevron fino). Se piden
+   a esas mismas; donde no hay Segoe (el celu) va ntx-marks.ttf, con las mismas
+   medidas (scripts/make-marks.py). Mismo rango de peso que las de arriba por
+   lo mismo que ahí. */
 @font-face {
   font-family: 'Roboto Mono';
-  src: local('Segoe UI'), local('SegoeUI');
+  src: local('Segoe UI'), local('SegoeUI'), url('../assets/fonts/ntx-marks.ttf') format('truetype');
   font-weight: 100 700;
   font-style: normal;
+  font-display: block;
   unicode-range: U+25CF;
 }
 @font-face {
   font-family: 'Roboto Mono';
-  src: local('Segoe UI'), local('SegoeUI');
+  src: local('Segoe UI'), local('SegoeUI'), url('../assets/fonts/ntx-marks.ttf') format('truetype');
   font-weight: 100 700;
   font-style: italic;
+  font-display: block;
   unicode-range: U+25CF;
+}
+@font-face {
+  font-family: 'Roboto Mono';
+  src: local('Segoe UI Symbol'), local('SegoeUISymbol'), url('../assets/fonts/ntx-marks.ttf') format('truetype');
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: block;
+  unicode-range: U+276F;
+}
+@font-face {
+  font-family: 'Roboto Mono';
+  src: local('Segoe UI Symbol'), local('SegoeUISymbol'), url('../assets/fonts/ntx-marks.ttf') format('truetype');
+  font-weight: 100 700;
+  font-style: italic;
+  font-display: block;
+  unicode-range: U+276F;
 }
 
 /* El fallback del mono: los spinners braille (⠋⠙⠹) que usa medio ecosistema de
