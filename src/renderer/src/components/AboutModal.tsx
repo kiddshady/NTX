@@ -19,6 +19,14 @@ interface StatusAction {
   disabled?: boolean
 }
 
+/** Todos los rótulos que puede tener el botón: el botón mide lo del más ancho. */
+const LABEL = {
+  check: 'Check now',
+  again: 'Check again',
+  retry: 'Retry',
+  restart: 'Restart now'
+} as const
+
 /**
  * Una fase → una línea y a lo sumo un botón. El modal no re-cuenta la historia
  * del updater: dice dónde está parado ahora y qué se puede hacer al respecto.
@@ -30,21 +38,21 @@ function describe(update: UpdateState): { text: string; action?: StatusAction } 
     case 'unsupported':
       return { text: 'Updates only run in the installed app.' }
     case 'checking':
-      return { text: 'Checking for updates…', action: { label: 'Check now', run: check, disabled: true } }
+      return { text: 'Checking for updates…', action: { label: LABEL.check, run: check, disabled: true } }
     case 'uptodate':
-      return { text: 'You’re up to date.', action: { label: 'Check again', run: check } }
+      return { text: 'You’re up to date.', action: { label: LABEL.again, run: check } }
     case 'downloading':
       // Sin el porcentaje: lo dice la barra, y en el texto cada punto sería un relevo.
       return { text: `Downloading ${update.version ?? 'the update'}…` }
     case 'ready':
       return {
         text: `${update.version} is ready — it applies on restart.`,
-        action: { label: 'Restart now', run: () => window.ntx.updates.install(), accent: true }
+        action: { label: LABEL.restart, run: () => window.ntx.updates.install(), accent: true }
       }
     case 'error':
-      return { text: update.error ?? 'The update check failed.', action: { label: 'Retry', run: check } }
+      return { text: update.error ?? 'The update check failed.', action: { label: LABEL.retry, run: check } }
     default:
-      return { text: 'Updates are checked automatically.', action: { label: 'Check now', run: check } }
+      return { text: 'Updates are checked automatically.', action: { label: LABEL.check, run: check } }
   }
 }
 
@@ -52,7 +60,7 @@ export function AboutModal({ open, update, onClose }: AboutModalProps): JSX.Elem
   const { mounted, closing } = usePresence(open, EXIT_MS)
   const [version, setVersion] = useState('')
   const panel = useRef<HTMLDivElement>(null)
-  const lastAction = useRef<StatusAction>({ label: 'Check now', run: () => window.ntx.updates.check() })
+  const lastAction = useRef<StatusAction>({ label: LABEL.check, run: () => window.ntx.updates.check() })
   const actionShown = useRef(true)
   const actionKey = useRef(0)
   const lastPercent = useRef(0)
@@ -156,9 +164,19 @@ export function AboutModal({ open, update, onClose }: AboutModalProps): JSX.Elem
                     disabled={action.disabled || !status.action}
                     onClick={action.run}
                   >
-                    {/* Con el botón apagado el rótulo cambia en seco: un relevo
-                        ahí seguiría corriendo mientras el botón se prende. */}
-                    <Swap key={actionKey.current} value={action.label} />
+                    {/* El ancho lo ponen los rótulos invisibles, todos en la
+                        misma celda: el botón mide siempre lo del más ancho y no
+                        cambia de tamaño con el relevo, que va centrado. */}
+                    <span className="ntx-about__label">
+                      {Object.values(LABEL).map((label) => (
+                        <span key={label} className="ntx-about__sizer" aria-hidden>
+                          {label}
+                        </span>
+                      ))}
+                      {/* Con el botón apagado el rótulo cambia en seco: un relevo
+                          ahí seguiría corriendo mientras el botón se prende. */}
+                      <Swap key={actionKey.current} value={action.label} />
+                    </span>
                   </button>
                 </div>
               </div>
