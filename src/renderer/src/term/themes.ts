@@ -23,7 +23,13 @@ import type { ITheme } from '@xterm/xterm'
  * uno según su posición en el grid y lo enciende únicamente cuando tiene el
  * foco; los demás quedan apagados en gris.
  *
- * El magenta es el mismo `#ff2e88` del ícono de la app, a propósito.
+ * El magenta era el mismo `#ff2e88` del ícono de la app, a propósito.
+ *
+ * Desde la 1.8.3 (29 oct 2026) los tres valen el BLANCO de Opal (#f0f3f7, el
+ * --op-accent-rgb de los tokens): Fran quiso que lo único que brille en la app
+ * sea blanco, como el ícono desde la 1.8.1. Los roles y la terna quedan en el
+ * código —el prompt sigue recibiendo NTX_ACCENT, freeAccent sigue repartiendo—,
+ * así que volver al color es cambiar tres valores en PALETTE.
  *
  * ── Las superficies ─────────────────────────────────────────────────────────
  *
@@ -155,10 +161,10 @@ export interface Palette {
      fg = --op-text, muted y dim = --op-text-2, faint y ghost = --op-text-3
      (el gris más bajo que todavía se lee; --op-text-4 queda para placeholders,
      en opal-skin.css).
-   · Los tres acentos se quedan: son de cada SHELL (el prompt los recibe en
-     NTX_ACCENT) y son los mismos de las shells de UmbroSys (cian, magenta,
-     amarillo). El cromo, en cambio, no usa acento de color: eso lo resuelve
-     opal-skin.css con el acento luz de Opal.
+   · Los tres acentos se quedan como estructura: son de cada SHELL (el prompt
+     los recibe en NTX_ACCENT). En la 1.8.0 eran los de las shells de UmbroSys
+     (cian #00e5ff, magenta #ff2e88, amarillo #ffe14d); desde la 1.8.3 los tres
+     son el acento luz de Opal, el mismo que usa el cromo en opal-skin.css.
    · Los 16 ANSI son los de la terminal de UmbroSys (la paleta de Prism). */
 export const PALETTE: Palette = {
   base: '#0a0a0a',
@@ -177,9 +183,9 @@ export const PALETTE: Palette = {
   faint: '#898989',
   ghost: '#898989',
 
-  accent: '#00e5ff',
-  alt: '#ff2e88',
-  warn: '#ffe14d',
+  accent: '#f0f3f7',
+  alt: '#f0f3f7',
+  warn: '#f0f3f7',
 
   ansi: [
     '#3a3a3e', '#ef6567', '#66d37a', '#f0c551',
@@ -213,8 +219,8 @@ export function xtermTheme(palette: Palette, paneAccent: string): ITheme {
     cursor: paneAccent,
     // Es el color del texto TAPADO por el bloque del cursor, o sea que se dibuja
     // ENCIMA del acento. Va contra el acento, entonces, y no contra la superficie
-    // del panel: tiene que ser oscuro porque el cursor es un cian o un magenta
-    // prendido, no porque atrás haya tal o cual gris.
+    // del panel: tiene que ser oscuro porque el cursor es un acento prendido
+    // (hoy blanco), no porque atrás haya tal o cual gris.
     // El de UmbroSys, como el texto de arriba y la selección de abajo.
     cursorAccent: '#161618',
     // La selección y la barra de scroll de la terminal de UmbroSys. El blanco
