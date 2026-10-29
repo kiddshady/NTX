@@ -1,7 +1,7 @@
 {
   "name": "ntx",
   "productName": "NTX",
-  "version": "1.7.7",
+  "version": "1.8.0",
   "description": "Multi-shell terminal for Windows — Opal glass skin, CMY accents",
   "main": "./out/main/index.js",
   "author": "Kidd Shady · Umbrovex Systems",
