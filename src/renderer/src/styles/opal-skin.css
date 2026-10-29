@@ -1,0 +1,774 @@
+/* ===========================================================================
+   NTX · piel Opal (1.8.0, 29 oct 2026; la maqueta la armó Neo)
+
+   opal-tokens.css es el tokens.css de S:\tools\Opal copiado tal cual: si
+   Opal lo cambia, se vuelve a copiar. Esta hoja va DESPUÉS de base.css y no
+   cambia ni una pieza de NTX: mismas clases, mismos atributos de estado,
+   mismas transiciones que esperan los componentes. Lo único que hace es
+   repintar con la piel Opal
+   (S:\tools\Opal\renderer\css: tokens.css, shell.css, controls.css,
+   overlays.css, base.css), cuyos tokens se cargan antes como opal-tokens.css.
+
+   La física de Opal, aplicada a NTX:
+     · UNA sola superficie opaca (--op-bg). Encima, la niebla con grano y velo.
+     · La titlebar, las pestañas y la status bar son AIRE: sin relleno ni línea.
+     · Cada shell es una HOJA de vidrio que flota sobre la niebla (s1 + blur +
+       canto iluminado + sombra larga), con el radio y el aire del shell de
+       Opal: como la hoja de las shells de UmbroSys (.us-shells).
+     · Lo que vive adentro de una hoja (la búsqueda) es relleno sin blur; lo
+       que flota sobre todo (paleta, modales, tooltip) lleva el vidrio.
+     · La luz no rellena, talla: lo primario es obsidiana con el canto vivo.
+       El cromo no tiene color; el color que queda dice algo (el acento de cada
+       shell, la máquina que no está, lo que falló).
+
+   La terminal es la de Fran en UmbroSys (renderer/css/umbro.css, .us-term):
+   el padding, la barra de scroll y el cursor, copiados igual.
+   =========================================================================== */
+
+:root {
+  /* Los tokens estructurales de NTX, apuntados a los de Opal. */
+  --ntx-radius: var(--op-r-md);
+  --ntx-radius-sm: var(--op-r-sm);
+  --ntx-radius-lg: var(--op-r-lg);
+  --ntx-gap: var(--op-gutter);
+  --ntx-font-ui: var(--op-font);
+
+  /* Las curvas y tiempos de Opal (110 · 180 · 280 · 420 ya eran los mismos). */
+  --ntx-ease: var(--op-ease);
+  --ntx-ease-both: var(--op-ease-both);
+  --ntx-ease-soft: var(--op-ease-soft);
+  --ntx-exit: var(--op-t-out);
+
+  /* El anillo de foco de Opal es un outline (ver :focus-visible): el anillo
+     de sombra que NTX suma en algunos controles queda en nada. */
+  --ntx-ring: 0 0 0 0 transparent;
+
+  --ntx-shadow: var(--op-e3);
+  --ntx-shadow-lg: var(--op-e4);
+
+  /* La niebla de Opal (shell.css → --op-sustrato), tal cual. */
+  --op-sustrato:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.038'/%3E%3C/svg%3E"),
+    linear-gradient(rgb(8 8 9 / .3), rgb(8 8 9 / .3)),
+    radial-gradient(46vw 46vw at 10% 0%, rgb(255 255 255 / calc(.062 * var(--op-fog))), transparent 70%),
+    radial-gradient(42vw 42vw at 94% 16%, rgb(255 255 255 / calc(.05 * var(--op-fog))), transparent 70%),
+    radial-gradient(40vw 40vw at 42% 110%, rgb(255 255 255 / calc(.042 * var(--op-fog))), transparent 70%);
+}
+
+body {
+  background: var(--op-bg);
+  color: var(--op-text);
+  font-family: var(--op-font);
+  font-size: var(--op-fs-13);
+}
+
+/* --- Lo de Chromium, a la Opal (base.css de Opal) ------------------------- */
+::selection {
+  background: var(--op-select);
+  color: var(--op-text);
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-track:vertical { margin-block: var(--op-sb-aire); }
+::-webkit-scrollbar-track:horizontal { margin-inline: var(--op-sb-aire); }
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 3px solid transparent;
+  border-radius: var(--op-r-pill);
+  background-clip: padding-box;
+}
+*:hover::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, .10); background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, .20); background-clip: padding-box; }
+::-webkit-scrollbar-thumb:active { background-color: rgba(255, 255, 255, .28); background-clip: padding-box; }
+
+:focus { outline: none; }
+:focus-visible {
+  outline: 1.5px solid var(--op-ring);
+  outline-offset: 2px;
+  box-shadow: none;
+  border-radius: var(--op-r-sm);
+}
+
+/* --- El marco: una sola opaca y la niebla --------------------------------- */
+.ntx-app {
+  background: var(--op-bg);
+}
+.ntx-bg {
+  background: var(--op-sustrato);
+}
+
+/* --- Titlebar: aire --------------------------------------------------------- */
+.ntx-titlebar {
+  background: transparent;
+  box-shadow: none;
+  padding: 0 0 0 calc(var(--op-gutter) + 2px);
+}
+.ntx-titlebar__controls {
+  align-self: stretch;
+  gap: 0;
+}
+/* La paleta: un .op-iconbtn. */
+.ntx-titlebar > .ntx-winbtn,
+.ntx-winbtn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--op-r-sm);
+  color: var(--op-text-3);
+  transition: var(--tr-color);
+}
+.ntx-titlebar > .ntx-winbtn:hover {
+  color: var(--op-text);
+  background: var(--op-wash-1);
+}
+.ntx-titlebar > .ntx-winbtn:active {
+  background: var(--op-wash-2);
+}
+/* Los de ventana: los .op-wincontrol de Opal. El botón ocupa todo el alto y
+   lo que se ve es una pastilla adentro. */
+.ntx-titlebar__controls .ntx-winbtn {
+  position: relative;
+  z-index: 0;
+  width: 46px;
+  height: 100%;
+  border-radius: 0;
+  background: transparent;
+}
+.ntx-titlebar__controls .ntx-winbtn::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 5px;
+  right: 5px;
+  top: calc((100% - 28px) / 2);
+  height: 28px;
+  border-radius: var(--op-r-sm);
+  transition: background var(--op-t-2) var(--op-ease-soft), box-shadow var(--op-t-1) var(--op-ease-soft);
+}
+.ntx-titlebar__controls .ntx-winbtn:hover {
+  color: var(--op-text);
+  background: transparent;
+}
+.ntx-titlebar__controls .ntx-winbtn:hover::before { background: var(--op-wash-1); }
+.ntx-titlebar__controls .ntx-winbtn:active { background: transparent; }
+.ntx-titlebar__controls .ntx-winbtn:active::before { background: var(--op-wash-2); }
+.ntx-titlebar__controls .ntx-winbtn[data-danger='true']:hover { color: #fff; background: transparent; }
+.ntx-titlebar__controls .ntx-winbtn[data-danger='true']:hover::before { background: var(--op-danger-dim); }
+.ntx-titlebar__controls .ntx-winbtn[data-danger='true']:active { background: transparent; }
+.ntx-titlebar__controls .ntx-winbtn:focus-visible { outline: none; }
+.ntx-titlebar__controls .ntx-winbtn:focus-visible::before {
+  box-shadow: 0 0 0 2px var(--op-bg), 0 0 0 3.5px var(--op-ring);
+}
+.ntx-titlebar__controls .ntx-winbtn svg { width: 11px; height: 11px; stroke-width: 1.2; }
+
+/* --- Pestañas: aire, con el subrayado de la shell (UmbroSys / Prism) ------- */
+.ntx-tabs {
+  gap: 2px;
+  padding: 0 calc(var(--op-gutter) + 2px) 0 var(--op-gutter);
+  background: transparent;
+  box-shadow: none;
+}
+.ntx-tab {
+  position: relative;
+  padding: 0 10px;
+  max-width: 260px;
+  border-radius: 0;
+  font-size: var(--op-fs-12);
+  color: var(--op-text-3);
+  background: transparent;
+}
+.ntx-tab:hover {
+  color: var(--op-text-2);
+  background: transparent;
+}
+.ntx-tab[data-active='true'] {
+  color: var(--op-text);
+  background: transparent;
+  box-shadow: none;
+}
+.ntx-tab:focus-visible,
+.ntx-tab[data-active='true']:focus-visible {
+  box-shadow: none;
+  outline-offset: -2px;
+}
+/* El subrayado en el acento de la shell, con su resplandor (UmbroSys/Prism).
+   Lo cuelga la marca, que es la que lleva --mark: su ::after se posiciona
+   contra la pestaña (la marca no está posicionada). Se enciende por COLOR y no
+   por opacidad: en esta fila una opacidad que transiciona le apaga el
+   ClearType a las terminales (la regla de NTX, ver base.css). */
+.ntx-tab__mark::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--mark) 0%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--mark) 0%, transparent);
+  transition:
+    background var(--op-t-2) var(--op-ease-soft),
+    box-shadow var(--op-t-2) var(--op-ease-soft);
+}
+.ntx-tab[data-active='true'] .ntx-tab__mark::after {
+  background: color-mix(in srgb, var(--mark) 90%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--mark) 90%, transparent);
+}
+.ntx-tab[data-closing='true'] .ntx-tab__mark::after,
+.ntx-tab[data-lifted='true'] .ntx-tab__mark::after {
+  background: transparent;
+  box-shadow: none;
+}
+.ntx-tab[data-lifted='true'] {
+  color: var(--op-text);
+  border-radius: var(--op-r-sm);
+  background: color-mix(in srgb, #fff 8.5%, var(--op-bg));
+  box-shadow: var(--op-sheet), var(--op-e2);
+}
+.ntx-tab__mark {
+  width: 6px;
+  height: 6px;
+}
+.ntx-tab:hover .ntx-tab__close,
+.ntx-tab[data-active='true'] .ntx-tab__close {
+  color: var(--op-text-4);
+}
+.ntx-tab__close svg { width: 10px; height: 10px; }
+
+.ntx-tabs__new {
+  align-self: center;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--op-r-sm);
+  color: var(--op-text-3);
+  transition: var(--tr-color);
+}
+.ntx-tabs__new:hover:not(:disabled) {
+  color: var(--op-text);
+  background: var(--op-wash-1);
+}
+.ntx-tabs__new:disabled { color: var(--op-text-4); }
+.ntx-tabs__count {
+  font-family: var(--op-mono);
+  font-size: var(--op-fs-11);
+  color: inherit;
+}
+.ntx-tabs__hint {
+  padding-bottom: 0;
+  font-size: var(--op-fs-11);
+  color: var(--op-text-3);
+}
+
+/* --- El grid: las hojas flotan con el aire de Opal ------------------------ */
+.ntx-grid {
+  padding: 4px var(--op-gutter) 0;
+}
+
+/* --- La hoja de cada shell --------------------------------------------------
+   La receta de Opal para una hoja que flota directo sobre la niebla: luz s1,
+   vidrio, canto iluminado y sombra larga (como .us-shells en UmbroSys). Entra
+   y sale SOLO por opacidad: el blur no se anima y una hoja de vidrio no se
+   escala (su caja cambiando obliga a recalcular el desenfoque cada cuadro). */
+.ntx-pane {
+  border-radius: var(--op-sheet-r);
+  background: var(--op-s0);
+  backdrop-filter: var(--op-glass);
+  box-shadow: var(--op-e3);
+  animation-name: ntx-fade-in;
+}
+.ntx-pane[data-focused='true'] {
+  background: var(--op-s1);
+  box-shadow: var(--op-e3);
+}
+.ntx-pane::after {
+  box-shadow: var(--op-sheet);
+}
+.ntx-pane[data-focused='true']::after,
+.ntx-grid[data-layout='tabs'] > .ntx-pane[data-focused='true']::after {
+  box-shadow: var(--op-sheet);
+}
+.ntx-pane[data-closing='true'],
+.ntx-grid[data-layout='tabs'] > .ntx-pane[data-focused='false'] {
+  transform: none;
+}
+.ntx-pane[data-dropping='true'] {
+  background: var(--op-s1);
+}
+.ntx-pane[data-dropping='true']::after {
+  box-shadow:
+    inset 0 1px 0 var(--op-edge-lit),
+    inset 0 0 0 1px var(--accent),
+    inset 0 0 30px -18px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* La cabecera de la hoja: como el pie de las shells de UmbroSys (número en el
+   acento, la carpeta en mono, el PID), arriba como en NTX. */
+.ntx-pane__head {
+  gap: 10px;
+  height: 30px;
+  padding: 0 14px;
+  font-size: var(--op-fs-11);
+  letter-spacing: 0;
+  color: var(--op-text-3);
+  box-shadow: inset 0 -1px 0 var(--op-line);
+}
+.ntx-pane__num { font-family: var(--op-mono); }
+.ntx-pane__title {
+  font-family: var(--ntx-font-mono);
+  color: var(--op-text-2);
+}
+.ntx-pane__pid {
+  font-family: var(--ntx-font-mono);
+  color: var(--op-text-3);
+}
+.ntx-pane__host { color: var(--op-text-2); }
+
+/* --- La terminal: la de UmbroSys (.us-term) ------------------------------- */
+/* La letra no se pega al borde: el padding de .us-term, que va acá y no en la
+   pantalla porque el FitAddon mide la altura del padre de xterm. */
+.ntx-pane__term {
+  padding: 12px 10px 8px 18px;
+}
+/* La barra de scroll de xterm, como la de UmbroSys: fundido en color, con la
+   barra a opacidad plena, y el thumb redondeado y despegado del borde. */
+.ntx-pane .ntx-pane__term .xterm-scrollable-element > .scrollbar > .slider {
+  border-radius: var(--op-r-pill);
+  transition: background-color var(--op-t-1) linear;
+}
+.ntx-pane .ntx-pane__term .xterm-scrollable-element > .scrollbar.vertical > .slider {
+  left: 5px !important;
+  width: 4px !important;
+}
+.ntx-pane .ntx-pane__term .xterm-scrollable-element > .invisible.fade > .slider {
+  transition-duration: var(--op-t-4);
+}
+/* El cursor de UmbroSys: el mismo bloque con aureola de NTX, con la letra
+   tapada en #161618 y el texto por defecto en #e8e8ea. */
+@keyframes ntx-cursor-ink {
+  from {
+    color: #161618;
+  }
+}
+.ntx-pane .ntx-pane__term .xterm-rows.xterm-focus .xterm-cursor.xterm-cursor-blink.xterm-cursor-block {
+  color: var(--ntx-ink, #e8e8ea);
+}
+
+.ntx-pane__dead {
+  font-size: var(--op-fs-12);
+  color: var(--op-text-2);
+}
+.ntx-pane__dead b { color: var(--op-danger); }
+
+/* --- Búsqueda: flota ADENTRO de la hoja, así que es relleno sin blur ------ */
+.ntx-search {
+  /* La cabecera mide 30: cuelga de su línea con el mismo respiro. */
+  top: 37px;
+  border-radius: var(--op-r-lg);
+  background: var(--op-flota);
+  color: var(--op-text-3);
+  box-shadow: var(--op-sheet), var(--op-e3);
+}
+.ntx-search__input {
+  font-family: var(--op-mono);
+  font-size: 12px;
+  color: var(--op-text);
+}
+.ntx-search__input::placeholder {
+  font-family: var(--op-font);
+  color: var(--op-text-4);
+}
+.ntx-search__count {
+  font-family: var(--op-mono);
+  color: var(--op-text-3);
+}
+.ntx-search__count[data-none='true'] { color: var(--op-danger); }
+.ntx-search__sep { background: var(--op-line); }
+.ntx-search__btn {
+  border-radius: var(--op-r-sm);
+  color: var(--op-text-3);
+  transition: var(--tr-color);
+}
+.ntx-search__btn:hover {
+  color: var(--op-text);
+  background: var(--op-wash-1);
+}
+.ntx-search__btn:active { background: var(--op-wash-2); }
+/* Prendido = tallado: pozo con el canto en el acento de la shell. */
+.ntx-search__btn[data-on='true'] {
+  color: var(--op-text);
+  background: var(--op-deep);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .10), inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* --- Status bar: aire ------------------------------------------------------ */
+.ntx-status {
+  gap: var(--op-4);
+  padding: 0 calc(var(--op-gutter) + var(--op-3));
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--op-fs-11);
+  color: var(--op-text-3);
+}
+/* El cromo no tiene color: cpu, mem y la rama hablan en gris. El contador del
+   comando conserva el acento de su shell, porque ese color dice de cuál es. */
+.ntx-status__item b {
+  color: var(--op-text-3);
+}
+.ntx-status__run b {
+  color: var(--tone, var(--op-text-3));
+}
+.ntx-status__value {
+  font-family: var(--ntx-font-mono);
+  color: var(--op-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.ntx-status__machine { color: var(--op-text-2); }
+.ntx-status__btn {
+  width: 22px;
+  height: 20px;
+  border-radius: var(--op-r-sm);
+  color: var(--op-text-3);
+  transition: var(--tr-color);
+}
+.ntx-status__btn:hover {
+  color: var(--op-text);
+  background: var(--op-wash-1);
+}
+.ntx-status__live,
+.ntx-status__share,
+.ntx-update__pulse {
+  background: var(--op-accent);
+  box-shadow: 0 0 6px rgb(var(--op-accent-rgb) / .7);
+}
+
+/* --- Scrim: el velo de Opal, que esmerila la app detrás ------------------- */
+.ntx-scrim {
+  background: var(--op-scrim);
+  backdrop-filter: blur(10px) saturate(120%);
+  animation: ntx-fade-in var(--op-t-3) var(--op-ease);
+}
+
+/* --- Paleta de comandos: el menú de Opal ----------------------------------
+   Del tono de lo que tapa (--op-flota), vidrio pesado, canto y sombra larga.
+   Entra y sale SOLO por opacidad, como el menú de Opal: moviéndose, el canto
+   de arriba deja ver el desenfoque de atrás. */
+.ntx-palette {
+  border-radius: var(--op-r-lg);
+  background: var(--op-flota);
+  backdrop-filter: var(--op-glass-heavy);
+  box-shadow: var(--op-sheet), var(--op-e4);
+  animation: ntx-fade-in var(--op-t-2) var(--op-ease);
+}
+.ntx-scrim[data-closing='true'] .ntx-palette { transform: none; }
+.ntx-palette__field {
+  color: var(--op-text-3);
+  box-shadow: inset 0 -1px 0 var(--op-line);
+}
+.ntx-palette__input {
+  font-family: var(--op-font);
+  font-size: var(--op-fs-13);
+  color: var(--op-text);
+}
+.ntx-palette__input::placeholder { color: var(--op-text-4); }
+.ntx-palette__list { padding: var(--op-1); }
+.ntx-palette__empty {
+  font-size: var(--op-fs-12);
+  color: var(--op-text-3);
+}
+.ntx-palette__foot {
+  font-size: var(--op-fs-10);
+  color: var(--op-text-3);
+  background: var(--op-foot);
+  box-shadow: inset 0 1px 0 var(--op-line);
+}
+.ntx-palette__key b {
+  font-family: var(--op-mono);
+  color: var(--op-text-2);
+}
+
+/* Los comandos: los .op-menuitem. */
+.ntx-command {
+  gap: var(--op-3);
+  padding: 7px var(--op-2);
+  border-radius: var(--op-r-sm);
+  color: var(--op-text-2);
+}
+.ntx-command[data-selected='true'] {
+  background: var(--op-wash-2);
+}
+.ntx-command::before { background: var(--op-accent); }
+.ntx-command__icon { color: var(--op-text-3); }
+.ntx-command[data-selected='true'] .ntx-command__icon { color: var(--op-text-2); }
+.ntx-command__label {
+  font-size: var(--op-fs-12);
+  color: var(--op-text-2);
+}
+.ntx-command[data-selected='true'] .ntx-command__label { color: var(--op-text); }
+.ntx-command__desc {
+  font-size: var(--op-fs-11);
+  color: var(--op-text-3);
+}
+.ntx-command[data-selected='true'] .ntx-command__desc { color: var(--op-text-2); }
+/* El atajo, como un .op-kbd. */
+.ntx-command__hint,
+.ntx-help__key {
+  font-family: var(--op-font);
+  font-size: var(--op-fs-10);
+  font-weight: var(--op-w-medium);
+  letter-spacing: .02em;
+  padding: 2px 5px;
+  border-radius: var(--op-r-xs);
+  color: var(--op-text-3);
+  background: var(--op-s3);
+  box-shadow: var(--op-sheet), 0 1px 0 rgba(0, 0, 0, .35);
+}
+.ntx-command[data-selected='true'] .ntx-command__hint {
+  color: var(--op-text);
+  background: var(--op-s4);
+}
+
+/* --- Tooltip: el de Opal --------------------------------------------------- */
+.ntx-tooltip {
+  padding: 5px var(--op-2);
+  border-radius: var(--op-r-md);
+  background: var(--op-s3);
+  backdrop-filter: var(--op-glass);
+  color: var(--op-text);
+  font-size: var(--op-fs-11);
+  line-height: 1.45;
+  box-shadow: var(--op-sheet), var(--op-e3);
+}
+
+/* --- Modales: el de Opal, que aparece en su lugar ------------------------- */
+.ntx-modal {
+  padding: var(--op-5);
+  border-radius: var(--op-r-xl);
+  background: var(--op-s3);
+  backdrop-filter: var(--op-glass-heavy);
+  box-shadow: var(--op-sheet), var(--op-e4);
+  animation: ntx-fade-in var(--op-t-3) var(--op-ease);
+}
+.ntx-scrim[data-closing='true'] .ntx-modal { transform: none; }
+
+/* --- Botones: hoja chica, y el primario de obsidiana ---------------------- */
+.ntx-btn {
+  height: 30px;
+  padding: 0 var(--op-3);
+  border-radius: var(--op-r-sm);
+  font-size: var(--op-fs-12);
+  font-weight: var(--op-w-medium);
+  letter-spacing: -.005em;
+  color: var(--op-text);
+  background: var(--op-s2);
+  box-shadow: var(--op-sheet), var(--op-e1);
+  transition: var(--tr-color);
+}
+.ntx-btn:hover:not(:disabled) {
+  color: var(--op-text);
+  background: var(--op-s3);
+  box-shadow: inset 0 1px 0 var(--op-edge-lit), inset 0 0 0 1px var(--op-line-2), var(--op-e2);
+}
+.ntx-btn:active:not(:disabled) {
+  background: var(--op-s2);
+  box-shadow: inset 0 1px 0 var(--op-edge-lit), inset 0 0 0 1px var(--op-line-3), var(--op-e1);
+}
+.ntx-btn:disabled {
+  color: var(--op-text-4);
+  background: var(--op-s1);
+  box-shadow: var(--op-hairline);
+}
+.ntx-btn:focus-visible { box-shadow: var(--op-sheet), var(--op-e1); }
+.ntx-btn--accent {
+  color: var(--op-text);
+  font-weight: var(--op-w-semi);
+  background: var(--op-deep);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px var(--op-rim), var(--op-e2);
+}
+.ntx-btn--accent:hover:not(:disabled) {
+  color: var(--op-text);
+  background: var(--op-deep-2);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px var(--op-rim-2),
+              0 0 16px rgb(var(--op-accent-rgb) / .08), var(--op-e2);
+}
+.ntx-btn--accent:active:not(:disabled) {
+  background: var(--op-deep-2);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .10), inset 0 0 0 1px var(--op-rim-2), var(--op-e1);
+}
+.ntx-btn--accent:focus-visible {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px var(--op-rim), var(--op-e2);
+}
+.ntx-btn--accent:disabled {
+  color: var(--op-text-4);
+  background: var(--op-s3);
+  box-shadow: none;
+}
+.ntx-btn--danger[data-armed='true'],
+.ntx-btn--danger[data-armed='true']:hover:not(:disabled) {
+  color: var(--op-danger);
+  background: var(--op-danger-wash);
+  box-shadow: inset 0 0 0 1px var(--op-danger-ring);
+}
+
+/* --- Campos: pozos ---------------------------------------------------------- */
+.ntx-field {
+  height: 30px;
+  padding: 0 var(--op-3);
+  border-radius: var(--op-r-sm);
+  background: var(--op-sunken);
+  box-shadow: inset 0 0 0 1px var(--op-line);
+  font-family: var(--op-mono);
+  font-size: 12px;
+  color: var(--op-text);
+  transition:
+    box-shadow var(--op-t-2) var(--op-ease-soft),
+    background-color var(--op-t-2) var(--op-ease-soft);
+}
+.ntx-field::placeholder {
+  font-family: var(--op-font);
+  color: var(--op-text-4);
+}
+.ntx-field:hover {
+  background: var(--op-sunken);
+  box-shadow: inset 0 0 0 1px var(--op-line-2);
+}
+.ntx-field:focus {
+  background: var(--op-sunken-2);
+  box-shadow: inset 0 0 0 1px var(--op-line-3), 0 0 0 3px var(--op-wash-1);
+}
+.ntx-field:focus-visible { outline: none; }
+
+/* --- Switch: encendido = tallado ------------------------------------------ */
+.ntx-switch {
+  border-radius: var(--op-r-md);
+  transition: var(--tr-color);
+}
+.ntx-switch:hover:not(:disabled) { background: var(--op-wash-1); }
+.ntx-switch__track {
+  background: var(--op-s3);
+  box-shadow: var(--op-hairline);
+  transition: background-color var(--op-t-2) var(--op-ease-soft), box-shadow var(--op-t-2) var(--op-ease-soft);
+}
+.ntx-switch__thumb {
+  background: var(--op-text-3);
+  transition: transform var(--op-t-2) var(--op-ease), background-color var(--op-t-2) var(--op-ease-soft);
+}
+.ntx-switch:hover:not(:disabled) .ntx-switch__thumb { background: var(--op-text-2); }
+.ntx-switch[data-on='true'] .ntx-switch__track {
+  background: var(--op-deep);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .10), inset 0 0 0 1px var(--op-rim);
+}
+.ntx-switch[data-on='true'] .ntx-switch__thumb,
+.ntx-switch[data-on='true']:hover:not(:disabled) .ntx-switch__thumb {
+  background: var(--op-text);
+  box-shadow: none;
+}
+.ntx-switch__title { font-size: var(--op-fs-12); color: var(--op-text); }
+.ntx-switch__desc { font-size: var(--op-fs-11); color: var(--op-text-3); }
+
+/* --- About, ayuda y aviso de update --------------------------------------- */
+.ntx-about__brand {
+  font-size: var(--op-fs-15);
+  font-weight: var(--op-w-semi);
+  letter-spacing: var(--op-track-caps);
+  color: var(--op-text);
+}
+.ntx-about__version {
+  font-family: var(--op-mono);
+  color: var(--op-text-2);
+}
+.ntx-about__tag { font-size: var(--op-fs-12); color: var(--op-text-3); }
+.ntx-about__meta { font-family: var(--op-mono); color: var(--op-text-3); }
+.ntx-about__updates {
+  border-radius: var(--op-r-md);
+  background: var(--op-s2);
+  box-shadow: var(--op-sheet);
+}
+.ntx-about__status { color: var(--op-text-2); }
+.ntx-about__status[data-phase='ready'] { color: var(--op-text); }
+.ntx-about__status[data-phase='error'] { color: var(--op-danger); }
+.ntx-link { color: var(--op-text-3); }
+.ntx-link:hover { color: var(--op-text); }
+
+.ntx-help__head,
+.ntx-update__title,
+.ntx-machines__title {
+  font-size: var(--op-fs-15);
+  font-weight: var(--op-w-semi);
+  letter-spacing: var(--op-track-tight);
+  color: var(--op-text);
+}
+/* Las versalitas: el eyebrow de Opal. */
+.ntx-help__title,
+.ntx-machines__label {
+  font-size: var(--op-fs-10);
+  font-weight: var(--op-w-semi);
+  letter-spacing: var(--op-track-caps);
+  color: var(--op-text-3);
+}
+.ntx-help__row { border-bottom-color: var(--op-line); }
+.ntx-help__label { font-size: var(--op-fs-12); color: var(--op-text-2); }
+.ntx-help__or { color: var(--op-text-3); }
+.ntx-help__foot { color: var(--op-text-3); }
+.ntx-update__body { font-size: var(--op-fs-12); color: var(--op-text-2); }
+
+/* La barra de descarga: el .op-meter (3 px, el acento en la línea). */
+.ntx-progress {
+  border-radius: var(--op-r-pill);
+  background: var(--op-s3);
+}
+.ntx-progress__fill {
+  background: var(--op-accent);
+  box-shadow: none;
+}
+
+/* --- Machines ---------------------------------------------------------------- */
+.ntx-machines__head { color: var(--op-text-2); }
+.ntx-machines__name { font-family: var(--op-mono); color: var(--op-text-2); }
+.ntx-machines__facts {
+  border-radius: var(--op-r-md);
+  background: var(--op-sunken);
+  box-shadow: var(--op-hairline);
+}
+.ntx-machines__fact-key { color: var(--op-text-3); }
+.ntx-machines__fact-value { font-family: var(--op-mono); color: var(--op-text); }
+.ntx-machines__fact-value--ui { font-family: var(--op-font); color: var(--op-text-2); }
+.ntx-machines__empty { font-size: var(--op-fs-12); color: var(--op-text-2); }
+/* El PIN abierto es obsidiana con el canto vivo: lo único tallado del modal. */
+.ntx-pin[data-open='true'] .ntx-pin__inner {
+  border-radius: var(--op-r-md);
+  background: var(--op-deep);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .10), inset 0 0 0 1px var(--op-rim);
+}
+.ntx-pin__label { color: var(--op-text-2); }
+.ntx-pin__code { font-family: var(--op-mono); color: var(--op-text); }
+.ntx-pin__expiry { font-family: var(--op-mono); color: var(--op-text-3); }
+.ntx-peer {
+  border-radius: var(--op-r-md);
+  background: var(--op-s2);
+  box-shadow: var(--op-sheet);
+}
+.ntx-peer__dot { background: var(--op-text-4); }
+.ntx-peer[data-phase='online'] .ntx-peer__dot {
+  background: var(--op-accent);
+  box-shadow: 0 0 6px rgb(var(--op-accent-rgb) / .7);
+}
+.ntx-peer[data-phase='failed'] .ntx-peer__dot { background: var(--op-danger); }
+.ntx-peer__name { font-size: var(--op-fs-12); color: var(--op-text); }
+.ntx-peer__address { font-family: var(--op-mono); color: var(--op-text-3); }
+.ntx-peer__status { color: var(--op-text-2); }
+.ntx-peer[data-phase='failed'] .ntx-peer__status { color: var(--op-danger); }
+.ntx-pair__result { color: var(--op-text-2); }
+.ntx-pair__result[data-ok='false'] { color: var(--op-danger); }
+
+/* Los campos que ya son la superficie enfocada (la paleta entera, la barra de
+   búsqueda) no llevan el anillo: como en NTX, y como los pozos de Opal. */
+.ntx-palette__input:focus-visible,
+.ntx-search__input:focus-visible {
+  outline: none;
+}
+/* El modal recibe el foco para atender el Escape: es mecánica, no un control
+   (ni en NTX ni en el .op-modal de Opal lleva anillo). */
+.ntx-modal:focus-visible,
+.ntx-palette:focus-visible {
+  outline: none;
+}

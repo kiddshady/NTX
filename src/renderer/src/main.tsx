@@ -4,7 +4,11 @@ import { App } from './App'
 import { PALETTE, applyPalette } from './term/themes'
 import { TERMINAL_FAMILIES, loadTerminalFont } from './term/fonts'
 import { initUiFont } from './term/uiFont'
+// La piel Opal: sus tokens antes de base.css, y la piel después, que repinta
+// las clases ntx-* sin tocar los componentes.
+import './styles/opal-tokens.css'
 import './styles/base.css'
+import './styles/opal-skin.css'
 
 // La paleta se aplica ANTES del primer render, de forma síncrona. Si esperáramos
 // al efecto de App, habría un frame pintado con las variables CSS vacías — o sea

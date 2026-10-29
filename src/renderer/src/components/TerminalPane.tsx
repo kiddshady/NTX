@@ -10,7 +10,7 @@ import { Swap } from './Swap'
 import { attachPane } from '../lib/ptyBus'
 import { mixHex, xtermTheme, type Palette } from '../term/themes'
 import { lowerCellBackgrounds } from '../term/cellBackgrounds'
-import { TERMINAL_FONTS, type TerminalFont } from '../term/fonts'
+import { TERMINAL_FONTS, boldWeight, type TerminalFont } from '../term/fonts'
 import { reducedMotion } from '../lib/motion'
 import { withoutCtrlClick } from '../lib/mouseLink'
 import { paneTitle, pathForShell, type PaneState } from '../lib/panes'
@@ -140,6 +140,18 @@ export function TerminalPane({
       // —btop, lazygit, el recuadro de bienvenida de Claude Code— salía cortado.
       lineHeight: 1,
       letterSpacing: 0,
+      // El resto, como la terminal de UmbroSys (renderer/js/piso/terminal.js),
+      // desde la piel Opal: negrita a 500 en Roboto (la variable lo tiene de
+      // verdad; JetBrains va a 700), sin bold a bright, el contraste tal cual,
+      // transparencia y el scroll suave de 120 ms. Sin foco, el contorno de
+      // xterm, que el CSS dibuja como el bloque apagado.
+      fontWeight: 400,
+      fontWeightBold: boldWeight(fontRef.current),
+      drawBoldTextInBrightColors: false,
+      minimumContrastRatio: 1,
+      allowTransparency: true,
+      smoothScrollDuration: 120,
+      cursorInactiveStyle: 'outline',
       // Quieto si Windows pide movimiento reducido.
       cursorBlink: !reducedMotion(),
       // Bloque, como la maqueta. El glow y el parpadeo los termina de dar el CSS
@@ -453,6 +465,7 @@ export function TerminalPane({
       const target = term.current
       if (!target) return
       target.options.fontFamily = TERMINAL_FONTS[fontRef.current]
+      target.options.fontWeightBold = boldWeight(fontRef.current)
       try {
         fit.current?.fit()
       } catch {

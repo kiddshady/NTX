@@ -1,0 +1,310 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   OPAL — tokens
+   La única fuente de verdad del sistema. Ningún componente escribe un valor
+   crudo: todo sale de acá. Cambiar el carácter de una app = cambiar este archivo.
+
+   Opal es el hermano de vidrio de Onyx: donde Onyx apila superficies OPACAS
+   que suben de luminancia, Opal apila HOJAS TRANSLÚCIDAS sobre un sustrato de
+   niebla. La profundidad no la da el tinte: la da la luz que atraviesa.
+   Por eso el default es acromático ABSOLUTO (tint 0) y no se ve muerto: la
+   variación que en Onyx pone la croma, acá la pone la niebla del fondo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ══════════════════════════════════════════════════════════════════════════
+     LAS PERILLAS
+     Lo único que cambia entre una app y otra. El resto de este archivo se
+     deriva de acá y no hace falta tocarlo.
+
+     No las edites a mano: `node tools/retint.mjs --blur 24 --fog 1.4`.
+     El color base está duplicado en hex en main.cjs y en el splash del
+     index.html (Electron no entiende oklch), y desincronizarlos trae de vuelta
+     el destello blanco al restaurar la ventana. El script toca los tres.
+     ══════════════════════════════════════════════════════════════════════════ */
+
+  /* El matiz LATENTE de la escalera de grises, en grados OKLCH. Con la
+     temperatura en 0 no actúa: queda esperando a que alguna app lo despierte.
+       258 = azul frío   ·  30 = cálido   ·  145 = verde   ·  285 = violeta */
+  --op-hue: 258;
+
+  /* Cuánta temperatura. El default de Opal es 0: gris absoluto, neutro de
+     verdad. En Onyx el gris puro se lee muerto; acá no, porque la variación
+     de luminancia la pone la niebla. Subilo solo si la app pide carácter. */
+  --op-tint: 0;
+
+  /* El acento, como triplete RGB (sin coma: es la sintaxis moderna de rgb()).
+     Se declara así para poder derivar los washes con alfa sin repetir el color.
+     El default es luz — pero en Opal el acento NUNCA rellena un plano: vive en
+     cantos, líneas y puntos (ver "la luz no rellena, talla", más abajo).
+       cian    : 34 211 238    ·  violeta : 167 139 250
+       verde   : 74 222 128    ·  ámbar   : 251 191 36 */
+  --op-accent-rgb: 240 243 247;
+
+  /* La familia monoespaciada: la de los datos exactos, el código y los IDs.
+     Apunta a uno de los tokens `--op-mono-*` de abajo, nunca directo a un
+     nombre de familia — la indirección es lo que deja cambiarla desde el
+     script en vez de a mano. */
+  --op-mono: var(--op-mono-roboto);
+
+  /* Las familias disponibles. Las empaquetadas se declaran en fonts.css; la
+     opción `sistema` no empaqueta nada y usa lo que haya instalado, que es
+     rápido pero se ve distinto en cada máquina. */
+  --op-mono-roboto:  'Roboto Mono', ui-monospace, monospace;
+  --op-mono-sistema: 'Cascadia Mono', Consolas, 'SF Mono', ui-monospace, monospace;
+
+  /* Cuánto desenfoca el vidrio. Es EL carácter de Opal: bajalo y el vidrio se
+     vuelve casi transparente, subilo y se vuelve esmerilado profundo.
+     Rango útil: 10–28. */
+  --op-blur: 17px;
+
+  /* Cuánta niebla hay detrás del vidrio. Multiplica el alfa de las manchas de
+     luz del sustrato. 0 = fondo plano (no recomendado: el blur se queda sin
+     nada que repartir) · 1 = el default · 2 = notablemente luminoso. */
+  --op-fog: 1;
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     DERIVADO — de acá para abajo casi nunca hace falta tocar nada.
+     ══════════════════════════════════════════════════════════════════════════ */
+
+  /* ── El fondo y las hojas ──────────────────────────────────────────────────
+     Una sola superficie OPACA en todo el sistema: --op-bg, el fondo de la
+     ventana. Encima va la niebla (shell.css → .op-fog) y encima de la niebla,
+     HOJAS de vidrio: rellenos de pura luz con alfa, que dejan pasar el fondo.
+
+     La escalera s1–s4 conserva los nombres de Onyx (rail → panel → flotante →
+     lo más alto) pero acá son alfas de blanco, no colores opacos: cuanto más alto
+     flota algo, más luz junta. */
+  --op-bg: oklch(14.5% calc(.0046 * var(--op-tint)) var(--op-hue));
+
+  --op-s0: rgb(255 255 255 / .022);   /* la hoja de la vista: apenas un velo, ahí se lee */
+  --op-s1: rgb(255 255 255 / .035);   /* rail, panel derecho, compositor */
+  --op-s2: rgb(255 255 255 / .055);   /* card, panel, fila elevada */
+  --op-s3: rgb(255 255 255 / .085);   /* menú, modal, popover, tooltip */
+  --op-s4: rgb(255 255 255 / .11);    /* lo más alto: lo que flota sobre todo */
+
+  /* Hundido: campos, consola, lienzo. En Opal es un pozo de sombra —alfa de
+     negro— para que hunda sobre cualquier hoja, no solo sobre el fondo. */
+  --op-sunken:   rgb(0 0 0 / .28);
+  --op-sunken-2: rgb(0 0 0 / .44);    /* el mismo pozo, con foco o abierto */
+
+  /* El backgroundColor de la BrowserWindow tiene que coincidir con --op-bg.
+     Electron no entiende oklch, así que main.cjs lleva el hex equivalente y el
+     renderer se lo vuelve a mandar ya calculado al arrancar (ver app.js →
+     syncWindowColor). Si cambiás el matiz, no hace falta tocar main.cjs. */
+
+  /* ── El vidrio ─────────────────────────────────────────────────────────────
+     backdrop-filter listo para usar. `saturate` va alto a propósito: en clave
+     acromática lo poco que atraviesa es luz casi sin color, y sin saturar el
+     resultado se lava a gris parejo. Con contenido de color debajo (una
+     imagen, un chart), esa saturación es lo que lo hace brillar a través.
+
+     LA REGLA DE LAS HOJAS: el blur va SOLO en el shell y en los overlays —
+     hermanos directos sobre la niebla o sobre el contenido. Lo que vive
+     ADENTRO de una hoja (cards, chips, filas) es relleno translúcido sin
+     backdrop-filter: desenfocar lo ya desenfocado cuesta GPU y no se ve. */
+  --op-glass:       blur(var(--op-blur)) saturate(135%);
+  --op-glass-heavy: blur(calc(var(--op-blur) * 1.65)) saturate(135%);
+
+  /* ── Filos ─────────────────────────────────────────────────────────────────
+     El canto de una hoja de vidrio junta luz arriba: ese hairline superior
+     iluminado es lo que la hace leerse como vidrio y no como un gris más.
+     Siempre como box-shadow inset: un border real deja hilacha en las
+     esquinas redondeadas con overflow:hidden. */
+  --op-edge-lit: rgb(255 255 255 / .10);
+  --op-line:   rgb(255 255 255 / .055);
+  --op-line-2: rgb(255 255 255 / .09);
+  --op-line-3: rgb(255 255 255 / .15);
+
+  /* El contorno de hoja completo: canto iluminado + hairline perimetral.
+     Se combina con cualquier elevación: box-shadow: var(--op-sheet), var(--op-e3) */
+  --op-sheet: inset 0 1px 0 var(--op-edge-lit), inset 0 0 0 1px var(--op-line);
+  --op-hairline: inset 0 0 0 1px var(--op-line);
+
+  /* ── Texto: escalera de énfasis ────────────────────────────────────────── */
+  --op-text:   oklch(93.9% calc(.0046 * var(--op-tint)) var(--op-hue));  /* primario — nunca blanco puro */
+  --op-text-2: oklch(73.3% calc(.0116 * var(--op-tint)) var(--op-hue));  /* secundario */
+  /* text-3 es el gris más bajo que todavía se LEE: pasa 4,5:1 (WCAG, texto
+     chico) sobre el fondo y sobre las tres hojas. Con 55,4 % daba 3,8 sobre
+     una s2, y las ayudas de 11 px de un formulario no llegaban. text-4 no se
+     lee: es solo para lo deshabilitado, los placeholders y los íconos de
+     adorno, nunca para un dato (una hora, una clave, un atajo, un estado vacío). */
+  --op-text-3: oklch(63% calc(.0138 * var(--op-tint)) var(--op-hue));    /* muted: metadatos, labels, atajos */
+  --op-text-4: oklch(42.3% calc(.0142 * var(--op-tint)) var(--op-hue));  /* faint: deshabilitado, placeholder */
+
+  /* ── Acento ────────────────────────────────────────────────────────────────
+     Todo deriva del triplete de arriba: cambiarlo re-tinta hovers, focus,
+     selección y estados activos de una. */
+  --op-accent:     rgb(var(--op-accent-rgb));
+  --op-accent-ink: var(--op-bg);              /* tinta SOBRE el acento */
+  --op-wash-1:     rgb(var(--op-accent-rgb) / .05);   /* hover sutil */
+  --op-wash-2:     rgb(var(--op-accent-rgb) / .09);   /* hover fuerte / seleccionado */
+  --op-wash-3:     rgb(var(--op-accent-rgb) / .15);   /* activo / presionado */
+  --op-ring:       rgb(var(--op-accent-rgb) / .55);   /* focus del teclado */
+  --op-select:     rgb(var(--op-accent-rgb) / .16);   /* ::selection */
+
+  /* Con un acento oscuro o muy saturado, la tinta encima tiene que ser clara.
+     Descomentá esto si tu acento no es luz:
+       --op-accent-ink: oklch(97% .01 var(--op-hue)); */
+
+  /* ── El énfasis: la luz no rellena, talla ──────────────────────────────────
+     La ley que separa a Opal de Onyx. En Onyx lo primario se PINTA de acento —
+     un plano de luz. En Opal lo primario se TALLA: es el objeto más profundo
+     de la pantalla, con el canto más vivo. El acento vive en cantos, líneas y
+     puntos — nunca inunda una superficie. Por eso con un acento de color el
+     primario no se vuelve un botón de color: se vuelve obsidiana con el canto
+     encendido. */
+  --op-deep:   rgb(0 0 0 / .38);                  /* el pozo del énfasis */
+  --op-deep-2: rgb(0 0 0 / .50);                  /* más hondo: hover */
+  --op-rim:    rgb(var(--op-accent-rgb) / .40);   /* el canto vivo */
+  --op-rim-2:  rgb(var(--op-accent-rgb) / .62);   /* el canto, encendido */
+
+  /* ── Rojo: reservado para el fallo ─────────────────────────────────────────
+     No es "un color más de la paleta": es el único que dice que algo se rompió.
+     Si aparece decorando, deja de significar. */
+  --op-danger-rgb: 212 103 107;
+  --op-danger:      rgb(var(--op-danger-rgb));
+  --op-danger-dim:  oklch(47.5% .106 18);
+  --op-danger-hover: color-mix(in srgb, var(--op-danger-dim), var(--op-danger) 25%);   /* el sólido bajo el mouse */
+  --op-danger-wash: rgb(var(--op-danger-rgb) / .12);
+  --op-danger-ring: rgb(var(--op-danger-rgb) / .45);
+
+  /* ── Lo que hunde ──────────────────────────────────────────────────────────
+     El velo detrás de un modal y el pie del modal, que se hunde apenas. Antes
+     vivían escritos a mano en overlays.css. */
+  --op-scrim: rgb(3 3 4 / .48);
+  --op-foot:  rgb(0 0 0 / .16);
+
+  /* ── Lo que flota sobre el contenido: menús y toasts ─────────────────────
+     LA REGLA: lo que flota tiene que quedar del MISMO TONO que las tarjetas
+     que tapa, y eso se MIDE (el color de píxel de los dos en una captura),
+     no se ajusta a ojo. Con solo luz (--op-s3) y blur, sobre una tarjeta
+     quedaban como un vidrio lavado: el doble de claros (tarjeta 25, menú 50,
+     toast 34) y con lo de atrás leyéndose a través. Por eso llevan la luz de
+     una tarjeta (--op-s2) sobre una BASE OSCURA: --op-flota-base dice cuánto
+     tapa. El blur sigue dejando pasar algo del color de abajo.
+     El valor depende de la niebla y de dónde viven las tarjetas: si una app
+     mueve --op-fog o pone la vista en una hoja, vuelve a medir (Nexus, con
+     niebla 2,4 y la vista en una hoja, quedó en 60 %).
+     Desde que la vista va en su propia hoja (oct 2026), el menú y el toast
+     piden bases distintas, porque no tapan lo mismo: el menú cae sobre una
+     tarjeta, que ya junta luz encima de la hoja, y el toast sobre la hoja
+     desnuda, más oscura. Con una sola base no había valor que dejara a los
+     dos a ±4 de la tarjeta (medido: con 70 %, menú 34 y toast 26 contra 32). */
+  --op-flota-base: 75%;         /* menú sobre tarjeta: 33 contra 32 */
+  --op-flota-toast-base: 20%;   /* toast sobre la hoja: 30 contra 32 */
+  --op-flota:
+    linear-gradient(var(--op-s2), var(--op-s2)),
+    color-mix(in srgb, var(--op-bg) var(--op-flota-base), transparent);
+  --op-flota-toast:
+    linear-gradient(var(--op-s2), var(--op-s2)),
+    color-mix(in srgb, var(--op-bg) var(--op-flota-toast-base), transparent);
+
+  /* ── Tipografía ────────────────────────────────────────────────────────────
+     Sans para toda la interfaz, mono SOLO para dato exacto: IDs, números,
+     rutas, timestamps. El mono en texto corrido se lee técnico de más. */
+  --op-font: 'Inter', 'Inter Variable', 'Segoe UI Variable Text', 'Segoe UI',
+             system-ui, -apple-system, sans-serif;
+  /* --op-mono vive arriba, entre las perillas: es lo que más se cambia por app.
+     La sans todavía sale del sistema — si querés fijarla, empaquetala en
+     fonts.css igual que la mono y sumale su token acá. */
+
+  --op-fs-10:  10px;   /* eyebrow / versalitas */
+  --op-fs-11:  11px;   /* metadatos, statusbar */
+  --op-fs-12:  12px;   /* labels, secundario */
+  --op-fs-13:  13px;   /* base de la UI */
+  --op-fs-15:  15px;   /* título de panel */
+  --op-fs-19:  19px;   /* título de vista */
+  --op-fs-26:  26px;   /* display */
+
+  --op-lh-tight: 1.25;
+  --op-lh:       1.5;
+  --op-lh-loose: 1.65;
+
+  --op-w-regular: 400;
+  --op-w-medium:  500;
+  --op-w-semi:    600;
+
+  /* Tracking: negativo en lo grande, generoso en las versalitas.
+     Es el detalle silencioso que separa "editorial" de "bootstrap". */
+  --op-track-tight:  -.014em;
+  --op-track-normal:  0;
+  --op-track-caps:    .13em;
+
+  /* ── Espaciado (escala de 4) ───────────────────────────────────────────── */
+  --op-1:   4px;
+  --op-2:   8px;
+  --op-3:  12px;
+  --op-4:  16px;
+  --op-5:  20px;
+  --op-6:  24px;
+  --op-7:  32px;
+  --op-8:  40px;
+  --op-9:  56px;
+  --op-10: 72px;
+
+  /* ── Radios: apenas redondeado. Las hojas que flotan suben medio punto. ── */
+  --op-r-xs:   4px;
+  --op-r-sm:   6px;
+  --op-r-md:   8px;
+  --op-r-lg:  12px;
+  --op-r-xl:  16px;
+  --op-r-pill: 999px;
+
+  /* El respiro de la scrollbar: el riel se acorta en las puntas y el thumb
+     topa un poco antes del borde real (base.css). */
+  --op-sb-aire: 6px;
+
+  /* ── Elevación ─────────────────────────────────────────────────────────────
+     Sombras largas y suaves: la profundidad la da la elevación, nunca un
+     contorno duro. Una hoja de vidrio flota lejos de lo que tapa. */
+  --op-e1: 0 1px 2px rgb(0 0 0 / .30);
+  --op-e2: 0 2px 8px rgb(0 0 0 / .34), 0 12px 34px rgb(0 0 0 / .40);
+  --op-e3: 0 4px 12px rgb(0 0 0 / .38), 0 20px 48px rgb(0 0 0 / .46);
+  --op-e4: 0 8px 24px rgb(0 0 0 / .44), 0 32px 80px rgb(0 0 0 / .58);
+
+  /* ── Movimiento ────────────────────────────────────────────────────────────
+     Opal se mueve con seguridad: sale rápido, frena largo. Nada rebota. */
+  --op-ease:      cubic-bezier(.16, 1, .3, 1);     /* expo-out: el default */
+  --op-ease-soft: cubic-bezier(.33, 1, .68, 1);    /* cubic-out: micro-hovers */
+  --op-ease-both: cubic-bezier(.65, 0, .35, 1);    /* in-out: lo que va y vuelve */
+  --op-ease-in:   cubic-bezier(.55, 0, 1, .45);    /* salidas */
+
+  --op-t-1: 110ms;   /* hover, color */
+  --op-t-2: 180ms;   /* el default */
+  --op-t-3: 280ms;   /* entradas de overlay */
+  --op-t-4: 420ms;   /* transiciones de vista */
+  /* Lo que se va en su lugar: el valor viejo de un relevo, la fila que sale de
+     una lista. Más corto que cualquier entrada (lo que se va ya no importa) y
+     más largo que un hover: con alguien esperando detrás, tiene que bajar
+     parejo. Es una sola perilla para las salidas; antes eran 150 ms escritos a
+     mano en el CSS y en motion.js. Los overlays chicos salen con --op-t-1. */
+  --op-t-out: 150ms;
+
+  /* Transiciones nombradas: se componen, nunca se escribe `transition: all`
+     (que anima propiedades que no querías y cuesta caro en repaints).
+     El blur NO se anima nunca: es la propiedad más cara del sistema. */
+  --tr-color:   color var(--op-t-1) var(--op-ease-soft),
+                background-color var(--op-t-1) var(--op-ease-soft),
+                box-shadow var(--op-t-1) var(--op-ease-soft);
+  --tr-move:    transform var(--op-t-2) var(--op-ease);
+  --tr-fade:    opacity var(--op-t-2) var(--op-ease-soft);
+  --tr-surface: background-color var(--op-t-2) var(--op-ease-soft),
+                box-shadow var(--op-t-2) var(--op-ease),
+                transform var(--op-t-2) var(--op-ease);
+
+  /* ── Geometría del layout ──────────────────────────────────────────────── */
+  --op-titlebar:  38px;
+  --op-statusbar: 26px;
+  --op-rail:     224px;
+  --op-inspector: 320px;
+  --op-panel:    224px;   /* el panel derecho del shell: el espejo del rail */
+
+  /* Las hojas del shell flotan (oct 2026, docs/maqueta-rail-flotante.html):
+     el aire entre ellas y contra el borde de la ventana, y su radio. */
+  --op-gutter:    8px;
+  --op-sheet-r:  14px;
+
+  /* Tamaño del esfumado donde el scroll recorta. El contenedor lleva padding
+     ≥ este valor en el eje del scroll para que en reposo no coma ningún ítem. */
+  --op-fade: 28px;
+}

@@ -9,7 +9,8 @@ import { BrowserWindow, screen, shell } from 'electron'
  * pintaba blanco hardcodeado y NO había CSS que lo tapara: por eso la versión está
  * pineada en 40.10.2.
  */
-export const BASE_COLOR = '#050507'
+// El --op-bg de Opal (oklch 14.5% 0 258): la única superficie opaca de la piel.
+export const BASE_COLOR = '#0a0a0a'
 
 const WIN_W = 1200
 const WIN_H = 800

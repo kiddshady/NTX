@@ -15,11 +15,19 @@ export const TERMINAL_FONTS: Record<TerminalFont, string> = {
 /** Las familias que main.tsx carga enteras antes del primer render. */
 export const TERMINAL_FAMILIES = ['JetBrains Mono', 'Roboto Mono', 'Noto Sans Symbols 2']
 
+/** El peso de la negrita en xterm. Roboto a 500, como la terminal de UmbroSys
+ *  (su archivo es variable: el 500 es de verdad, no sintetizado). JetBrains
+ *  trae caras de 400 y 700. */
+export function boldWeight(font: TerminalFont): 500 | 700 {
+  return font === 'roboto' ? 500 : 700
+}
+
 const FONT_KEY = 'ntx:font'
 
-/** JetBrains es la de siempre: sólo un 'roboto' guardado la cambia. */
+/** Desde la piel Opal (1.8.0) Roboto es la de fábrica, como en UmbroSys: sólo
+ *  un 'jetbrains' guardado la cambia. */
 export function loadTerminalFont(): TerminalFont {
-  return window.localStorage.getItem(FONT_KEY) === 'roboto' ? 'roboto' : 'jetbrains'
+  return window.localStorage.getItem(FONT_KEY) === 'jetbrains' ? 'jetbrains' : 'roboto'
 }
 
 export function saveTerminalFont(font: TerminalFont): void {

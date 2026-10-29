@@ -27,7 +27,10 @@ import type { ITheme } from '@xterm/xterm'
  *
  * ── Las superficies ─────────────────────────────────────────────────────────
  *
- * TODAS las superficies de NTX son mate y opacas. No queda vidrio en la app.
+ * Desde la 1.8.0 (29 oct 2026) NTX lleva la piel de Opal: una sola superficie
+ * opaca (`base`) con la niebla, y encima hojas de vidrio en alfa. La nota de
+ * PALETTE dice cómo; opal-skin.css hace el resto. Lo que sigue es la historia
+ * de la etapa mate (ago–oct 2026): queda porque explica qué se probó.
  *
  * Llegó en dos pasos, los dos a pedido de Fran. El 20 ago 2026 el velo se fue de
  * la interfaz: `surface`, `sunk` y `chrome` pasaron de alfa a OPACOS porque la
@@ -138,111 +141,51 @@ export interface Palette {
   ]
 }
 
+/* ── La piel Opal (1.8.0, 29 oct 2026) ───────────────────────────────────────
+   La misma estructura de paleta de NTX, con los valores de la piel Opal
+   (S:\tools\Opal\renderer\css\tokens.css) y, para la terminal, los de la
+   terminal de Fran en UmbroSys (S:\tools\UmbroSys\renderer\js\piso\terminal.js).
+
+   · base = --op-bg (#0a0a0a). Es la ÚNICA superficie opaca, como en Opal.
+   · surface/sunk/chrome/elevated pasan a ALFAS de blanco (las hojas de Opal):
+     surface = --op-s1 (la hoja de la shell, como .us-shells en UmbroSys),
+     sunk = --op-s0, chrome = transparente (la titlebar, las pestañas y la status
+     bar son aire sobre la niebla), elevated = --op-s3 (menú, modal, tooltip).
+   · La escalera de texto de NTX tiene cinco peldaños y la de Opal cuatro:
+     fg = --op-text, muted y dim = --op-text-2, faint y ghost = --op-text-3
+     (el gris más bajo que todavía se lee; --op-text-4 queda para placeholders,
+     en opal-skin.css).
+   · Los tres acentos se quedan: son de cada SHELL (el prompt los recibe en
+     NTX_ACCENT) y son los mismos de las shells de UmbroSys (cian, magenta,
+     amarillo). El cromo, en cambio, no usa acento de color: eso lo resuelve
+     opal-skin.css con el acento luz de Opal.
+   · Los 16 ANSI son los de la terminal de UmbroSys (la paleta de Prism). */
 export const PALETTE: Palette = {
-  /* Bajó de #08080a el 19 ago 2026, a pedido: el conjunto un paso más hundido.
-     La niebla del sustrato bajó con él (ver .ntx-bg) — son las dos mitades del
-     mismo movimiento. */
-  base: '#050507',
+  base: '#0a0a0a',
+  surface: 'rgba(255,255,255,0.035)',
+  sunk: 'rgba(255,255,255,0.022)',
+  chrome: 'transparent',
+  elevated: 'rgba(255,255,255,0.085)',
+  hover: 'rgba(240,243,247,0.05)',
+  hairline: 'rgba(255,255,255,0.055)',
+  hairlineSoft: 'rgba(255,255,255,0.055)',
+  edgeLit: 'rgba(255,255,255,0.10)',
 
-  /* Opacos (20 ago 2026): blanco al 1.9% / 0.9% / 1.4% aplanado sobre #050507.
-     Si la base cambia, estos tres se recalculan con ella. */
-  surface: '#0a0a0c',
-  sunk: '#070709',
-  chrome: '#09090a',
-  /* Opaco desde el 21 ago 2026, y ese mismo día bajado hasta acá: es el MISMO
-     valor que `surface`, a propósito. Primero salió opaco en #0f0f11 (blanco al
-     4%, el alfa que tenía de vidrio, aplanado sobre la base), pero eso lo dejaba
-     como un escalón nuevo arriba de todo y la paleta seguía leyéndose como una
-     tarjeta clara flotando. El pedido fue lo contrario: que esté al nivel de la
-     terminal. Así que se apoya donde el panel enfocado y no inventa peldaño.
-
-     Que duplique a `surface` no es un descuido — es la definición. Sigue siendo
-     un token aparte porque el ROL es otro (la superficie de los overlays, no la
-     del panel) y porque es la perilla única para moverla sin tocar los paneles.
-     Si la base cambia, se recalcula igual que `surface`. */
-  elevated: '#0a0a0c',
-  hover: 'rgba(255,255,255,0.035)',
-  hairline: 'rgba(255,255,255,0.058)',
-  hairlineSoft: 'rgba(255,255,255,0.034)',
-  /* El filo es lo que más delata al vidrio, así que es lo primero que baja
-     cuando el efecto se quiere discreto: 0.22 → 0.14 → 0.105. Ese 0.105 era el
-     piso para que la superficie se leyera COMO VIDRIO — pero el 19 ago 2026 el
-     look pidió justamente menos vidrio (Fran: "bajale el efecto de luz"), así
-     que bajó a propósito por debajo de aquel piso, junto con la niebla y el
-     grano. La profundidad la siguen dando las sombras, que son la opción
-     primaria de la casa; el canto quedó como un aliento, no como reflejo. */
-  edgeLit: 'rgba(255,255,255,0.07)',
-
-  /**
-   * La escalera de énfasis.
-   *
-   * Los cuatro escalones de abajo se subieron el 18 ago 2026 porque no se leían:
-   * medidos contra `base`, `faint` daba 2,3:1 y `ghost` 1,4:1, cuando el mínimo
-   * de WCAG AA para texto chico es 4,5:1.
-   *
-   * Ahora, contra `base`: muted 9,7:1 · dim 6,6:1 · faint 5,1:1 · ghost 4,8:1.
-   * `ghost` estuvo a propósito por debajo de AA (#6e6e7a, 4,0:1) hasta el 14
-   * oct 2026: «sólo lo usan cosas de las que uno no necesita enterarse». Pero
-   * son los PIDs, el contador de tabs, los atajos de la paleta y los
-   * placeholders, y la regla de la casa es 4,5:1 para todo texto. Subió a
-   * #7a7a86: 4,7:1 sobre `surface`, y sigue un escalón por debajo de faint.
-   *
-   * Esos números son los REALES desde el 21 ago 2026. Antes acá había un caveat
-   * —"el número real es peor todavía, porque este texto no se apoya sobre `base`
-   * pelado sino sobre el vidrio, que aclara el fondo"— que murió con el vidrio.
-   * Hoy el peor fondo posible para este texto es `surface`/`elevated` (#0a0a0c),
-   * apenas por encima de `base`, y ahí la escalera baja una décima: faint 5,0:1
-   * y ghost 4,7:1. Ese peor caso es además el caso NORMAL desde la tarde del 21
-   * ago: con la búsqueda y el tooltip mudados a `elevated`, ya no queda texto de
-   * chrome apoyado sobre `base` pelado. Tomá la línea de arriba como el techo y
-   * estas dos cifras como lo que se mide en pantalla.
-   *
-   * Subir estos NO es lo mismo que aclarar la app: el fondo sigue casi negro y
-   * el blanco pleno sigue reservado para `fg`.
-   */
-  fg: '#ececef',
-  muted: '#b4b4be',
-  dim: '#93939e',
-  faint: '#7f7f8a',
-  ghost: '#7a7a86',
+  fg: '#ebebeb',
+  muted: '#a8a8a8',
+  dim: '#a8a8a8',
+  faint: '#898989',
+  ghost: '#898989',
 
   accent: '#00e5ff',
   alt: '#ff2e88',
   warn: '#ffe14d',
 
-  /**
-   * Los 16 ANSI.
-   *
-   * Acá la disciplina de "sólo tres colores" NO aplica: estos los pide el
-   * programa que corre adentro de la shell, no los elegimos nosotros. `ls`
-   * quiere su verde y `git` su rojo, y negárselos rompe la salida.
-   *
-   * Lo que sí hacemos es traerlos a la misma temperatura fría que el resto y
-   * anclar en su valor exacto los tres que son de la terna:
-   *
-   *   3 yellow = warn      5 magenta = alt      6 cyan = accent
-   *
-   * El rojo (1) se separa a propósito del magenta hacia el coral: si fueran
-   * vecinos, en un `git status` no se distinguiría un archivo borrado de uno
-   * modificado. El azul (4) tira a violeta por lo mismo, para no pisarse con el
-   * cian.
-   *
-   * El par azul (4 y 12) es el único bright que NO es pastel, desde el 19 ago
-   * 2026: el 12 es el color de los directorios en `ls` (bold+azul, y xterm manda
-   * bold a bright), y en lavanda claro se veía lavado. Se fueron los dos a
-   * índigo profundo — el piso lo pone AA contra `base` (4,6:1 y 5,7:1), así que
-   * más oscuros que esto no pueden ir.
-   */
   ansi: [
-    // El 0 y el 8 también subieron por legibilidad. El 8 (brightBlack) es el que
-    // más se nota: es con el que casi toda CLI pinta comentarios, hashes cortos
-    // y archivos ocultos, así que a 2,3:1 media salida quedaba ilegible. El 14
-    // oct 2026 subió otra vez, de #70707c (4,1:1) a #7a7a86 (4,7:1 sobre el
-    // panel): todavía quedaba por debajo del 4,5 de la casa.
-    '#3d3d46', '#ff4d6a', '#2ff2a6', '#ffe14d',
-    '#5569ff', '#ff2e88', '#00e5ff', '#c8c8cf',
-    '#7a7a86', '#ff7d90', '#6ff7c2', '#ffec8f',
-    '#6d7dff', '#ff6cad', '#7ff2ff', '#ececef'
+    '#3a3a3e', '#ef6567', '#66d37a', '#f0c551',
+    '#67a6fb', '#ce81e5', '#40d0df', '#cdcdd1',
+    '#84848c', '#fe9b98', '#93e9a0', '#fcda86',
+    '#9ec7fe', '#e5abf7', '#7de8f3', '#f4f4f6'
   ]
 }
 
@@ -263,7 +206,8 @@ export function xtermTheme(palette: Palette, paneAccent: string): ITheme {
      * conclusión no cambió, así que esto se queda.
      */
     background: '#00000000',
-    foreground: palette.fg,
+    // El texto de la terminal de UmbroSys (THEME.foreground).
+    foreground: '#e8e8ea',
     // El cursor toma el acento del panel: es la señal más directa de cuál está
     // enfocado, sin tener que buscar el borde.
     cursor: paneAccent,
@@ -271,11 +215,16 @@ export function xtermTheme(palette: Palette, paneAccent: string): ITheme {
     // ENCIMA del acento. Va contra el acento, entonces, y no contra la superficie
     // del panel: tiene que ser oscuro porque el cursor es un cian o un magenta
     // prendido, no porque atrás haya tal o cual gris.
-    cursorAccent: palette.base,
-    // El resaltado de selección es el mismo tinte que el `::selection` del resto
-    // de la app, para que marcar texto se sienta igual adentro y afuera.
-    selectionBackground: `${palette.accent}44`,
-    selectionForeground: palette.fg,
+    // El de UmbroSys, como el texto de arriba y la selección de abajo.
+    cursorAccent: '#161618',
+    // La selección y la barra de scroll de la terminal de UmbroSys. El blanco
+    // de la selección es el --op-select de Opal, el mismo `::selection` del
+    // resto de la app: marcar texto se siente igual adentro y afuera.
+    selectionBackground: 'rgba(240, 243, 247, 0.22)',
+    selectionInactiveBackground: 'rgba(240, 243, 247, 0.12)',
+    scrollbarSliderBackground: 'rgba(255, 255, 255, 0.10)',
+    scrollbarSliderHoverBackground: 'rgba(255, 255, 255, 0.20)',
+    scrollbarSliderActiveBackground: 'rgba(255, 255, 255, 0.28)',
     black: palette.ansi[0],
     red: palette.ansi[1],
     green: palette.ansi[2],
