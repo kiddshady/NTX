@@ -12,9 +12,9 @@
  * única cara de NTX sin baldosa: se prefiere la pieza completa y se asume el
  * glifo chico.
  *
- * Del master no se rasterizan las scanlines ni el glow: a 16 y 32px son
- * sub-píxel (período 26/962·16 ≈ 0.4px; blur 30/962·16 ≈ 0.5px) y sólo
- * ensuciarían el trazo.
+ * El glow del master también va (desde la 1.8.2): sin él, el `>_` blanco de
+ * trazo de un píxel se leía flaco al lado del ícono de la app. Como a escala
+ * sería sub-píxel, cada pasada tiene un piso en píxeles (ver GLOW).
  *
  * La geometría es la misma de build/icon.svg, en el mismo espacio de 1024, así
  * que el tray y el ícono de la app no se pueden desincronizar por accidente.
@@ -40,6 +40,17 @@ const GRAD = { x1: 245, y1: 274, x2: 807, y2: 711, from: [0xff, 0xff, 0xff], to:
 // master. Allá un transform la lleva a sangre; acá sale igual porque el lienzo
 // destino se encuadra contra la baldosa y no contra el viewBox.
 const TILE = { x0: 31, y0: 31, x1: 993, y1: 993, r: 205, from: [0x1a, 0x1a, 0x1a], to: [0x0a, 0x0a, 0x0a] };
+
+// El glow, las dos pasadas del master: la ancha (stdDeviation 58, opacidad .42)
+// debajo y la ceñida (30, .72) encima, las dos con la tinta del trazo. Con el
+// desvío a escala, a 16px serían medio píxel y el `>_` se leería como dos
+// rayitas sueltas: por eso cada pasada tiene un piso en píxeles de destino, el
+// mínimo para que el halo se vea como el del ícono grande (Fran, 29 oct 2026:
+// «se ven las líneas muy finitas»).
+const GLOW = [
+  { sigma: 58, floor: 1.6, opacity: 0.42 },
+  { sigma: 30, floor: 0.8, opacity: 0.72 }
+];
 
 const SS = 4; // supersampling por eje: 16 muestras por píxel
 
@@ -99,10 +110,72 @@ function tileAt(y) {
  * sangre: su borde ES el borde del ícono, como en el ícono de la app. El glifo
  * cae donde el master lo pone —apenas arriba del centro— y no se re-encuadra.
  */
+/** Desenfoque gaussiano separable de un campo n×n, en el lugar. */
+function blur(field, n, sigma) {
+  const radius = Math.ceil(sigma * 3);
+  const kernel = new Float32Array(radius * 2 + 1);
+  let sum = 0;
+  for (let i = -radius; i <= radius; i++) sum += kernel[i + radius] = Math.exp(-(i * i) / (2 * sigma * sigma));
+  for (let i = 0; i < kernel.length; i++) kernel[i] /= sum;
+
+  const tmp = new Float32Array(n * n);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      let acc = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const xx = x + k;
+        if (xx >= 0 && xx < n) acc += field[y * n + xx] * kernel[k + radius];
+      }
+      tmp[y * n + x] = acc;
+    }
+  }
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      let acc = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const yy = y + k;
+        if (yy >= 0 && yy < n) acc += tmp[yy * n + x] * kernel[k + radius];
+      }
+      field[y * n + x] = acc;
+    }
+  }
+}
+
 function render(size) {
   const scale = (TILE.x1 - TILE.x0) / size;
   const center = (TILE.x0 + TILE.x1) / 2;        // 512, en ambos ejes
   const straight = (TILE.x1 - TILE.x0) / 2 - TILE.r; // tramo recto hasta la esquina
+
+  // Primero el lienzo supersampleado entero, porque el glow necesita a los
+  // vecinos: qué submuestras caen en la baldosa y cuáles en el trazo.
+  const n = size * SS;
+  const inTile = new Uint8Array(n * n);
+  const ink = new Float32Array(n * n);
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      // Centro de la submuestra, llevado al espacio del master.
+      const gx = TILE.x0 + ((i + 0.5) / SS) * scale;
+      const gy = TILE.y0 + ((j + 0.5) / SS) * scale;
+
+      // Fuera del rect redondeado no hay nada: distancia con signo clásica.
+      const qx = Math.abs(gx - center) - straight;
+      const qy = Math.abs(gy - center) - straight;
+      if (Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) > TILE.r) continue;
+      inTile[j * n + i] = 1;
+
+      const inChevron = distToPolyline(gx, gy, CHEVRON.pts) <= CHEVRON.w / 2;
+      const inDash = distToPolyline(gx, gy, DASH.pts) <= DASH.w / 2;
+      if (inChevron || inDash) ink[j * n + i] = 1;
+    }
+  }
+
+  // Cada pasada del glow es el trazo desenfocado, con el desvío del master
+  // llevado a píxeles de destino (y su piso) y de ahí a submuestras.
+  const halos = GLOW.map(({ sigma, floor, opacity }) => {
+    const field = Float32Array.from(ink);
+    blur(field, n, Math.max(sigma / scale, floor) * SS);
+    return { field, opacity };
+  });
 
   const px = Buffer.alloc(size * size * 4, 0);
 
@@ -113,18 +186,22 @@ function render(size) {
 
       for (let sy = 0; sy < SS; sy++) {
         for (let sx = 0; sx < SS; sx++) {
-          // Centro de la submuestra, llevado al espacio del master.
+          const k = (y * SS + sy) * n + (x * SS + sx);
+          if (!inTile[k]) continue;
           const gx = TILE.x0 + (x + (sx + 0.5) / SS) * scale;
           const gy = TILE.y0 + (y + (sy + 0.5) / SS) * scale;
 
-          // Fuera del rect redondeado no hay nada: distancia con signo clásica.
-          const qx = Math.abs(gx - center) - straight;
-          const qy = Math.abs(gy - center) - straight;
-          if (Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) > TILE.r) continue;
-
-          const inChevron = distToPolyline(gx, gy, CHEVRON.pts) <= CHEVRON.w / 2;
-          const inDash = distToPolyline(gx, gy, DASH.pts) <= DASH.w / 2;
-          const [r, g, b] = inChevron || inDash ? gradientAt(gx, gy) : tileAt(gy);
+          // Como en el SVG: la baldosa, encima los halos con su opacidad (el
+          // glow es la tinta misma, desenfocada) y encima el trazo nítido.
+          let [r, g, b] = tileAt(gy);
+          const tint = gradientAt(gx, gy);
+          for (const { field, opacity } of halos) {
+            const a = Math.min(1, field[k]) * opacity;
+            r += (tint[0] - r) * a;
+            g += (tint[1] - g) * a;
+            b += (tint[2] - b) * a;
+          }
+          if (ink[k]) [r, g, b] = tint;
           rr += r; gg += g; bb += b;
           hits++;
         }
