@@ -32,14 +32,14 @@ import zlib from 'node:zlib';
 const CHEVRON = { pts: [[278, 307], [498, 483], [278, 659]], w: 66 };
 const DASH = { pts: [[566, 665], [761, 665]], w: 92 };
 
-// El degradé del glifo, también el del master: cian arriba-izquierda, magenta
-// abajo-derecha.
-const GRAD = { x1: 245, y1: 274, x2: 807, y2: 711, from: [0x00, 0xe5, 0xff], to: [0xff, 0x2e, 0x88] };
+// El degradé del glifo, también el del master: blanco arriba-izquierda y un
+// aliento de gris abajo-derecha (desde la 1.8.1; antes, cian → magenta).
+const GRAD = { x1: 245, y1: 274, x2: 807, y2: 711, from: [0xff, 0xff, 0xff], to: [0xdc, 0xdc, 0xe0] };
 
 // La baldosa: rect 31–993 de esquinas 205 con degradé vertical, los números del
 // master. Allá un transform la lleva a sangre; acá sale igual porque el lienzo
 // destino se encuadra contra la baldosa y no contra el viewBox.
-const TILE = { x0: 31, y0: 31, x1: 993, y1: 993, r: 205, from: [0x14, 0x14, 0x1f], to: [0x08, 0x08, 0x0e] };
+const TILE = { x0: 31, y0: 31, x1: 993, y1: 993, r: 205, from: [0x1a, 0x1a, 0x1a], to: [0x0a, 0x0a, 0x0a] };
 
 const SS = 4; // supersampling por eje: 16 muestras por píxel
 

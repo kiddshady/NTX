@@ -12,6 +12,11 @@
     degradé    #00e5ff → #ff2e88 en diagonal, compartido por las dos formas
     fondo      vertical #13131e → #08080e (uniforme en horizontal: no es radial)
 
+  Desde la 1.8.1 (29 oct 2026, con la piel Opal) el `>_` es BLANCO con su glow
+  sobre una baldosa negra sin tinte (#1a1a1a → #0a0a0a, la base de Opal abajo),
+  como Prism y el resto de la familia Opal: una app acromática con un ícono de
+  neón no tenía lógica. La geometría y las dos pasadas de glow no cambiaron.
+
   Hasta el 15 oct 2026 la baldosa llevaba scanlines (bandas de 9px cada 26 que
   restaban luz), haciendo juego con el vidrio CRT de la app. Fran lo quiso liso,
   como un ícono estándar: mismo glow, colores y baldosa, sin las bandas.
@@ -23,16 +28,15 @@
   <!-- El fondo de la baldosa. Medido a siete x distintas a la misma altura:
        da el mismo valor en todas, o sea que el degradé es vertical puro. -->
   <linearGradient id="ntx-tile" gradientUnits="userSpaceOnUse" x1="512" y1="31" x2="512" y2="992">
-    <stop offset="0" stop-color="#14141f"/>
-    <stop offset="1" stop-color="#08080e"/>
+    <stop offset="0" stop-color="#1a1a1a"/>
+    <stop offset="1" stop-color="#0a0a0a"/>
   </linearGradient>
 
-  <!-- UN solo degradé para las dos formas: el chevron se queda con el tramo
-       cian y el guión con el magenta. Por eso el logo se lee como una sola
-       pieza y no como dos elementos pegados. -->
+  <!-- La tinta: blanca, con un aliento de gris hacia abajo a la derecha para
+       que el trazo tenga volumen y no se lea como un recorte plano. -->
   <linearGradient id="ntx-ink" gradientUnits="userSpaceOnUse" x1="245" y1="274" x2="807" y2="711">
-    <stop offset="0" stop-color="#00e5ff"/>
-    <stop offset="1" stop-color="#ff2e88"/>
+    <stop offset="0" stop-color="#ffffff"/>
+    <stop offset="1" stop-color="#dcdce0"/>
   </linearGradient>
 
   <filter id="ntx-glow" x="-35%" y="-35%" width="170%" height="170%">
