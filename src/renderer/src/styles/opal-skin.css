@@ -777,42 +777,41 @@ body {
   outline: none;
 }
 
-/* --- Las pestañas, adentro de la hoja (1.9.0) -----------------------------
-   La fila de pestañas no tiene renglón propio: flota sobre la cabecera de la
-   shell de adelante, entre el número y el PID, como la hoja de las shells de
-   UmbroSys (Fran, 30/10/2026). App.tsx mide el hueco y lo deja en las
-   variables --ntx-inset-*. La cabecera crece a su alto (38) y pierde el título:
-   la carpeta ya la dice la pestaña. El subrayado de la activa cae sobre la
-   línea que separa la cabecera de la terminal.
+/* --- Las pestañas, en la titlebar (1.10.0) --------------------------------
+   La fila de pestañas no tiene renglón propio: sube al de la ventana, entre la
+   paleta y los botones de ventana, como aire (Fran la eligió en la maqueta de
+   S:\mockups\neo\ntx-opal, 30/10/2026). En la 1.9 flotaba en la cabecera de la
+   hoja de adelante; la cabecera vuelve a su alto y a su título entero.
 
-   Cuelga de data-tabs="inset", que pone sólo el App de escritorio: NTX Mobile
-   comparte TabStrip y StatusBar pero tiene su fila arriba, y su punto de la
-   barra dice el estado de la conexión. */
-.ntx-app[data-tabs='inset'] {
+   La fila es hermana de la titlebar y se posiciona encima. Sigue siendo zona
+   de arrastre: el hueco que dejan las pestañas tiene que mover la ventana como
+   el resto de la barra. Sólo las pestañas y el «+» son no-drag.
+
+   Cuelga de data-tabs="titlebar", que pone sólo el App de escritorio: NTX
+   Mobile comparte TabStrip y StatusBar pero tiene su fila arriba, y su punto
+   de la barra dice el estado de la conexión. */
+.ntx-app[data-tabs='titlebar'] {
   grid-template-rows: var(--ntx-titlebar-h) 1fr var(--ntx-status-h);
 }
-.ntx-app[data-tabs='inset'] .ntx-pane__head {
-  height: 38px;
-}
-.ntx-app[data-tabs='inset'] .ntx-pane__title,
-.ntx-app[data-tabs='inset'] .ntx-pane__host {
-  display: none;
-}
-.ntx-app[data-tabs='inset'] .ntx-grid > .ntx-tabs {
+.ntx-app[data-tabs='titlebar'] > .ntx-tabs {
   position: absolute;
   z-index: 2;
-  top: var(--ntx-inset-top, 4px);
-  left: var(--ntx-inset-l, 60px);
-  right: var(--ntx-inset-r, 100px);
-  height: var(--ntx-inset-h, 38px);
+  top: 0;
+  /* Después de la paleta: el aire de la barra (gutter + 2) y su botón de 28. */
+  left: calc(var(--op-gutter) + 2px + 28px + 8px);
+  /* Antes de los tres botones de ventana (46 cada uno), con un respiro. */
+  right: calc(3 * 46px + 12px);
+  height: var(--ntx-titlebar-h);
   padding: 0;
+  -webkit-app-region: drag;
+}
+.ntx-app[data-tabs='titlebar'] .ntx-tab,
+.ntx-app[data-tabs='titlebar'] .ntx-tabs__new {
+  -webkit-app-region: no-drag;
 }
 /* Sin la ayuda de Ctrl 1–3 (está en la de la barra de abajo) ni el punto que
-   latía al lado de la hora: los dos se fueron con este renglón (Fran). */
-.ntx-app[data-tabs='inset'] .ntx-tabs__hint,
-.ntx-app[data-tabs='inset'] .ntx-status__live {
+   latía al lado de la hora: los dos se fueron en la 1.9.0 (Fran). */
+.ntx-app[data-tabs='titlebar'] .ntx-tabs__hint,
+.ntx-app[data-tabs='titlebar'] .ntx-status__live {
   display: none;
-}
-.ntx-app[data-tabs='inset'] .ntx-search {
-  top: 45px;
 }
