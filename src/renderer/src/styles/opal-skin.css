@@ -449,12 +449,16 @@ body {
 }
 
 /* --- Paleta de comandos: el menú de Opal ----------------------------------
-   Del tono de lo que tapa (--op-flota), vidrio pesado, canto y sombra larga.
+   La hoja de los modales (--op-s3), vidrio pesado, canto y sombra larga.
+   Llevó --op-flota, el fondo de los menús, hasta el 30 oct 2026: con el velo
+   detrás, esa base que tapa la dejaba casi del color del fondo (25 contra 34
+   de los modales, medido en capturas de Fran). Se posa sobre el scrim como
+   ellos, así que va con su luz.
    Entra y sale SOLO por opacidad, como el menú de Opal: moviéndose, el canto
    de arriba deja ver el desenfoque de atrás. */
 .ntx-palette {
   border-radius: var(--op-r-lg);
-  background: var(--op-flota);
+  background: var(--op-s3);
   backdrop-filter: var(--op-glass-heavy);
   box-shadow: var(--op-sheet), var(--op-e4);
   animation: ntx-fade-in var(--op-t-2) var(--op-ease);
