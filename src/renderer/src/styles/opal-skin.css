@@ -772,3 +772,43 @@ body {
 .ntx-palette:focus-visible {
   outline: none;
 }
+
+/* --- Las pestañas, adentro de la hoja (1.9.0) -----------------------------
+   La fila de pestañas no tiene renglón propio: flota sobre la cabecera de la
+   shell de adelante, entre el número y el PID, como la hoja de las shells de
+   UmbroSys (Fran, 30/10/2026). App.tsx mide el hueco y lo deja en las
+   variables --ntx-inset-*. La cabecera crece a su alto (38) y pierde el título:
+   la carpeta ya la dice la pestaña. El subrayado de la activa cae sobre la
+   línea que separa la cabecera de la terminal.
+
+   Cuelga de data-tabs="inset", que pone sólo el App de escritorio: NTX Mobile
+   comparte TabStrip y StatusBar pero tiene su fila arriba, y su punto de la
+   barra dice el estado de la conexión. */
+.ntx-app[data-tabs='inset'] {
+  grid-template-rows: var(--ntx-titlebar-h) 1fr var(--ntx-status-h);
+}
+.ntx-app[data-tabs='inset'] .ntx-pane__head {
+  height: 38px;
+}
+.ntx-app[data-tabs='inset'] .ntx-pane__title,
+.ntx-app[data-tabs='inset'] .ntx-pane__host {
+  display: none;
+}
+.ntx-app[data-tabs='inset'] .ntx-grid > .ntx-tabs {
+  position: absolute;
+  z-index: 2;
+  top: var(--ntx-inset-top, 4px);
+  left: var(--ntx-inset-l, 60px);
+  right: var(--ntx-inset-r, 100px);
+  height: var(--ntx-inset-h, 38px);
+  padding: 0;
+}
+/* Sin la ayuda de Ctrl 1–3 (está en la de la barra de abajo) ni el punto que
+   latía al lado de la hora: los dos se fueron con este renglón (Fran). */
+.ntx-app[data-tabs='inset'] .ntx-tabs__hint,
+.ntx-app[data-tabs='inset'] .ntx-status__live {
+  display: none;
+}
+.ntx-app[data-tabs='inset'] .ntx-search {
+  top: 45px;
+}

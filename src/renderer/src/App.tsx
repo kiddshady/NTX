@@ -914,10 +914,42 @@ export function App(): JSX.Element {
     return list
   }, [profiles, panes, spawn])
 
+  // --- Las pestañas, adentro de la hoja ---------------------------------------
+  //
+  // Desde la 1.9.0 la fila de pestañas no tiene renglón propio: flota sobre la
+  // cabecera de la shell de adelante, entre su número y su PID, como la hoja de
+  // las shells de UmbroSys (pedido de Fran, 30/10/2026). Las cabeceras siguen
+  // siendo de cada panel: acá se mide dónde termina el número y empieza el PID
+  // de la que está a la vista, y la fila se acomoda a ese hueco.
+  useLayoutEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return
+    const pane = grid.querySelector<HTMLElement>(':scope > .ntx-pane[data-focused="true"]')
+    const head = pane?.querySelector<HTMLElement>('.ntx-pane__head')
+    const num = pane?.querySelector<HTMLElement>('.ntx-pane__num')
+    const pid = pane?.querySelector<HTMLElement>('.ntx-pane__pid')
+    if (!head || !num || !pid) return
+    const place = (): void => {
+      const box = grid.getBoundingClientRect()
+      const row = head.getBoundingClientRect()
+      grid.style.setProperty('--ntx-inset-top', `${row.top - box.top}px`)
+      grid.style.setProperty('--ntx-inset-h', `${row.height}px`)
+      grid.style.setProperty('--ntx-inset-l', `${num.getBoundingClientRect().right - box.left + 4}px`)
+      grid.style.setProperty('--ntx-inset-r', `${box.right - pid.getBoundingClientRect().left + 4}px`)
+    }
+    place()
+    const observer = new ResizeObserver(place)
+    for (const element of [grid, head, num, pid]) observer.observe(element)
+    return () => observer.disconnect()
+  }, [focused, panes])
+
   // --- Render ----------------------------------------------------------------
 
   return (
-    <div className="ntx-app">
+    // data-tabs="inset" marca el layout de escritorio (pestañas en la hoja): las
+    // reglas de opal-skin.css cuelgan de él para no tocar a NTX Mobile, que
+    // comparte los componentes pero tiene su fila de pestañas arriba.
+    <div className="ntx-app" data-tabs="inset">
       {/* El sustrato: grano y cuadrícula. Va primero y no recibe eventos — es el
           fondo mismo, no una capa de efecto. Desde que las superficies son
           opacas sólo asoma por los gaps del grid. */}
@@ -925,21 +957,20 @@ export function App(): JSX.Element {
 
       <Titlebar onOpenPalette={() => setPaletteOpen(true)} />
 
-      <TabStrip
-        panes={panes}
-        focusedIndex={focused}
-        accentOf={accentOf}
-        onFocus={setFocused}
-        onClose={closePane}
-        onNew={() => void spawn(thisMachineShell(profilesRef.current, panesRef.current[focusedRef.current]?.profileId))}
-        onReorder={movePane}
-      />
-
       {/* Siempre en pestañas: una celda, con todas las shells apiladas adentro y
           la activa a la vista. El grid de todas a la vista se fue en la 1.6.0
           (pedido de Fran: «es muy incómodo»); sus reglas de data-count quedan
           en base.css porque las usa NTX Mobile en pantalla ancha. */}
       <main ref={gridRef} className="ntx-grid" data-layout="tabs">
+        <TabStrip
+          panes={panes}
+          focusedIndex={focused}
+          accentOf={accentOf}
+          onFocus={setFocused}
+          onClose={closePane}
+          onNew={() => void spawn(thisMachineShell(profilesRef.current, panesRef.current[focusedRef.current]?.profileId))}
+          onReorder={movePane}
+        />
         {stablePanes.map((pane) => {
           const index = panes.indexOf(pane)
           return (
