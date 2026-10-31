@@ -11,7 +11,7 @@ import { MachinesModal } from './components/MachinesModal'
 import { HelpModal } from './components/HelpModal'
 import { MAX_PANES, formatDuration, otherMachinePwsh, paneHome, setHomeDir, shortPath, thisMachineShell, type PaneState } from './lib/panes'
 import { forgetPane } from './lib/ptyBus'
-import { reducedMotion } from './lib/motion'
+import { reducedMotion, ease } from './lib/motion'
 import { useStableOrder } from './hooks/useStableOrder'
 import { PALETTE, freeAccent, paneAccent } from './term/themes'
 import { loadTerminalFont, saveTerminalFont } from './term/fonts'
@@ -25,7 +25,6 @@ const PANE_EXIT_MS = 180
 
 /** El reacomodo del grid cuando entra o sale una shell (--ntx-slow). */
 const GRID_MS = 280
-const GRID_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 
 type Box = { left: number; top: number; width: number; height: number }
 
@@ -111,7 +110,7 @@ function useGridFlip(grid: React.RefObject<HTMLElement | null>, panes: PaneState
           },
           { transformOrigin: '0 0', transform: 'none' }
         ],
-        { duration: GRID_MS, easing: GRID_EASE }
+        { duration: GRID_MS, easing: ease() }
       )
       for (const child of element.children) {
         if (!(child instanceof HTMLElement) || child.classList.contains('ntx-search')) continue

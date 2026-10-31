@@ -1124,6 +1124,16 @@ button {
   left: auto;
   right: 0;
 }
+/* El PID también vive contra la derecha (margin-left: auto): con el que sale
+   clavado a la izquierda, al pasar a «exit N» o al llegar el PID remoto los dos
+   textos se deslizaban con el borde que se movía. */
+.ntx-pane__pid.ntx-swap {
+  justify-items: end;
+}
+.ntx-pane__pid > .ntx-swap__item[data-state='out'] {
+  left: auto;
+  right: 0;
+}
 /* Cero resultados habla en magenta: es el "acá no está" de la búsqueda. */
 .ntx-search__count[data-none='true'] {
   color: var(--ntx-alt);
@@ -1370,6 +1380,27 @@ button {
   text-align: center;
   font-size: 12px;
   color: var(--ntx-ghost);
+}
+/* El vacío de la paleta no pliega su caja: el alto lo lleva la lista (el FLIP
+   de CommandPalette), que lo mide en el mismo commit. Plegándose, la medida
+   tomaba el alto viejo del pliegue y al terminar la lista saltaba ~60 px.
+   Entra con la caja ya puesta y se enciende; sale fuera del flujo, en su lugar
+   (el static position: arriba de todo), apagándose como los calcos. */
+.ntx-palette__list > .ntx-reveal,
+.ntx-palette__list > .ntx-reveal[data-open='true'] {
+  grid-template-rows: 1fr;
+}
+.ntx-palette__list > .ntx-reveal {
+  transition: opacity var(--ntx-exit) var(--ntx-ease-both);
+}
+.ntx-palette__list > .ntx-reveal[data-open='false'] {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+.ntx-palette__list > .ntx-reveal[data-open='true'] {
+  transition: opacity var(--ntx-normal) var(--ntx-ease) 70ms;
 }
 
 /* El pie con los atajos. */
@@ -2159,14 +2190,21 @@ button {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
+  /* Al plegarse, primero se va lo de adentro y después la caja: a la par, la
+     caja cortaba el contenido cuando todavía se veía casi entero. */
   transition:
-    grid-template-rows var(--ntx-normal) var(--ntx-ease),
-    opacity var(--ntx-normal) var(--ntx-ease);
+    grid-template-rows var(--ntx-normal) var(--ntx-ease-both) 100ms,
+    opacity var(--ntx-exit) var(--ntx-ease-both);
 }
+/* Al abrir, al revés: la caja se abre sin esperar y lo de adentro se enciende
+   cuando ya hay lugar, así no asoma recortado. */
 .ntx-reveal[data-open='true'],
 .ntx-pin[data-open='true'] {
   grid-template-rows: 1fr;
   opacity: 1;
+  transition:
+    grid-template-rows var(--ntx-normal) var(--ntx-ease),
+    opacity var(--ntx-normal) var(--ntx-ease) 60ms;
 }
 .ntx-reveal__inner,
 .ntx-pin__inner {
@@ -2193,6 +2231,14 @@ button {
 }
 .ntx-machines__block {
   margin-top: 18px;
+}
+/* «None yet» y la lista de equipos, en una sola celda (ver MachinesModal). */
+.ntx-machines__swap {
+  display: grid;
+}
+.ntx-machines__swap > .ntx-reveal {
+  grid-area: 1 / 1;
+  min-width: 0;
 }
 .ntx-machines__label {
   display: flex;
@@ -2257,11 +2303,12 @@ button {
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  /* Siempre puesto: ver opal-skin (la caja se volvía cuadrada al cerrar). */
+  border-radius: var(--ntx-radius-sm);
 }
 .ntx-pin[data-open='true'] .ntx-pin__inner {
   margin: 12px 12px 0;
   padding: 14px 0 12px;
-  border-radius: var(--ntx-radius-sm);
   background: color-mix(in srgb, var(--ntx-accent) 6%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ntx-accent) 30%, transparent);
 }

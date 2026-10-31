@@ -66,10 +66,18 @@ export function TooltipLayer(): JSX.Element | null {
       pointer.current = { x: event.clientX, y: event.clientY }
     }
 
+    // mouseover y mouseout burbujean: pasar del botón al svg de adentro dispara
+    // un out del botón y un over del ícono. Sin filtrarlos, el tooltip se apagaba
+    // y volvía 380 ms después con sólo mover un poco el mouse sobre el botón.
+    const tipOf = (node: EventTarget | null): HTMLElement | null =>
+      node instanceof Element ? node.closest<HTMLElement>('[data-tip]') : null
+
     const onOver = (event: MouseEvent): void => {
-      const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-tip]')
+      const target = tipOf(event.target)
       const label = target?.dataset.tip
       if (!label) return
+      // Viene de adentro del mismo elemento: no es una entrada nueva.
+      if (tipOf(event.relatedTarget) === target) return
 
       cancelTimers()
       openTimer.current = window.setTimeout(() => {
@@ -85,7 +93,9 @@ export function TooltipLayer(): JSX.Element | null {
     }
 
     const onOut = (event: MouseEvent): void => {
-      if ((event.target as HTMLElement | null)?.closest('[data-tip]')) hide()
+      const from = tipOf(event.target)
+      // Va a un hijo del mismo elemento: el puntero sigue encima.
+      if (from && tipOf(event.relatedTarget) !== from) hide()
     }
 
     document.addEventListener('mousemove', onMove)

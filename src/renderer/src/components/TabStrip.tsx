@@ -3,7 +3,7 @@ import { Icon } from './Icon'
 import { Swap } from './Swap'
 import { MAX_PANES, paneTabLabel, type PaneState } from '../lib/panes'
 import { useStableOrder } from '../hooks/useStableOrder'
-import { reducedMotion } from '../lib/motion'
+import { reducedMotion, ease, easeBoth } from '../lib/motion'
 
 interface TabStripProps {
   panes: PaneState[]
@@ -78,7 +78,7 @@ export function TabStrip({
       }
       const animation = element.animate(
         [{ transform: `translateX(${dx}px)` }, { transform: 'translateX(0)' }],
-        { duration: 180, easing: 'cubic-bezier(0.32, 0.72, 0, 1)', id: 'ntx-tab-flip' }
+        { duration: 180, easing: ease(), id: 'ntx-tab-flip' }
       )
       // Con la ventana tapada la animación no avanza y el finished no llega.
       const fallback = window.setTimeout(land, 300)
@@ -215,11 +215,75 @@ export function TabStrip({
       const to = getComputedStyle(element)
       element.animate(
         [from, { backgroundColor: to.backgroundColor, boxShadow: to.boxShadow }],
-        { duration: 280, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' }
+        { duration: 280, easing: ease() }
       )
     }
     settleFrom.current.clear()
   })
+  // --- Abrir y cerrar: el ancho de verdad, no el tope --------------------------
+  //
+  // El pliegue va por max-width, y el tope es 260 px (220 en base.css), pero
+  // una pastilla «pwsh» mide ~70. Animando hasta el tope, al abrir con expo-out
+  // el max-width cruzaba los 70 a los ~15 ms: la pestaña y el + saltaban. Al
+  // cerrar, de 260 a 70 no se movía nada y después se plegaba en ~60 ms. Acá se
+  // mide el ancho real y se anima ése. La entrada de CSS (ntx-tab-in) y la
+  // transición de max-width se cancelan para no pelear: una animación de CSS
+  // cancelada no vuelve hasta que cambie su nombre, y una transición cancelada
+  // no se rearma hasta que el valor cambie otra vez.
+  const seen = useRef(new Set<string>())
+  const closingFrom = useRef(new Map<string, number>())
+  for (const pane of panes) {
+    const element = tabs.current.get(pane.id)
+    // Leído en el render, antes de que el commit le ponga data-closing.
+    if (pane.closing && element && element.dataset.closing !== 'true' && !closingFrom.current.has(pane.id)) {
+      closingFrom.current.set(pane.id, element.getBoundingClientRect().width)
+    }
+  }
+  useLayoutEffect(() => {
+    const motion = !reducedMotion()
+    for (const pane of stable) {
+      const element = tabs.current.get(pane.id)
+      if (!element || seen.current.has(pane.id)) continue
+      seen.current.add(pane.id)
+      if (!motion) continue
+      const entrance = element
+        .getAnimations()
+        .find((animation) => (animation as CSSAnimation).animationName === 'ntx-tab-in')
+      if (!entrance) continue
+      const duration = Number(entrance.effect?.getTiming().duration) || 280
+      entrance.cancel()
+      const width = element.getBoundingClientRect().width
+      const gap = strip.current ? parseFloat(getComputedStyle(strip.current).columnGap) || 0 : 0
+      element.animate(
+        [
+          {
+            maxWidth: '0px',
+            minWidth: '0px',
+            paddingLeft: '0px',
+            paddingRight: '0px',
+            // Plegada no deja el hueco del gap de la fila.
+            marginRight: `${-gap}px`,
+            color: 'transparent'
+          },
+          { maxWidth: `${width}px` }
+        ],
+        { duration, easing: ease() }
+      )
+    }
+    for (const [id, from] of closingFrom.current) {
+      const element = tabs.current.get(id)
+      if (!element || !motion) continue
+      const fold = element
+        .getAnimations()
+        .find((animation) => (animation as CSSTransition).transitionProperty === 'max-width')
+      if (!fold) continue
+      const duration = Number(fold.effect?.getTiming().duration) || 160
+      fold.cancel()
+      element.animate([{ maxWidth: `${from}px` }, { maxWidth: '0px' }], { duration, easing: easeBoth() })
+    }
+    closingFrom.current.clear()
+  })
+
   // Las que se están yendo ya no cuentan: el contador baja cuando la cerrás.
   const live = panes.filter((pane) => !pane.closing).length
 
@@ -232,7 +296,10 @@ export function TabStrip({
             key={pane.id}
             ref={(element) => {
               if (element) tabs.current.set(pane.id, element)
-              else tabs.current.delete(pane.id)
+              else {
+                tabs.current.delete(pane.id)
+                seen.current.delete(pane.id)
+              }
             }}
             className="ntx-tab"
             style={{ order: index }}

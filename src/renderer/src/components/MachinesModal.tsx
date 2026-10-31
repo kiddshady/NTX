@@ -61,27 +61,54 @@ const PEER_EXIT_MS = 180
  * marcadas `leaving`: el CSS las pliega y las apaga antes de que salgan del DOM.
  */
 function usePeersWithExit(peers: PeerState[]): { peer: PeerState; leaving: boolean }[] {
-  const [gone, setGone] = useState<PeerState[]>([])
+  // Con el lugar que tenía: se pliega donde estaba, no saltando al fondo (los
+  // de abajo subían de golpe).
+  const [gone, setGone] = useState<{ peer: PeerState; index: number }[]>([])
   const previous = useRef(peers)
+  // Un timer por máquina, que NO se limpia cuando cambia la lista. Antes era el
+  // cleanup del efecto: si cpu/mem o la fase llegaban antes de 180 ms, el
+  // cleanup lo cancelaba y la corrida siguiente ya no veía al que se fue, así
+  // que quedaba montado para siempre (invisible, con la lista abierta y el
+  // «None yet» que no volvía).
+  const timers = useRef(new Map<string, number>())
 
   useEffect(() => {
     const ids = new Set(peers.map((peer) => peer.id))
-    const left = previous.current.filter((peer) => !ids.has(peer.id))
+    const left = previous.current
+      .map((peer, index) => ({ peer, index }))
+      .filter(({ peer }) => !ids.has(peer.id))
     previous.current = peers
     if (left.length === 0) return
-    setGone((current) => [...current.filter((peer) => !ids.has(peer.id)), ...left])
-    const timer = window.setTimeout(
-      () => setGone((current) => current.filter((peer) => !left.includes(peer))),
-      PEER_EXIT_MS
-    )
-    return () => window.clearTimeout(timer)
+    const leftIds = new Set(left.map(({ peer }) => peer.id))
+    setGone((current) => [
+      ...current.filter(({ peer }) => !ids.has(peer.id) && !leftIds.has(peer.id)),
+      ...left
+    ])
+    for (const { peer } of left) {
+      window.clearTimeout(timers.current.get(peer.id))
+      timers.current.set(
+        peer.id,
+        window.setTimeout(() => {
+          timers.current.delete(peer.id)
+          setGone((current) => current.filter((entry) => entry.peer.id !== peer.id))
+        }, PEER_EXIT_MS)
+      )
+    }
   }, [peers])
 
-  const live = peers.map((peer) => ({ peer, leaving: false }))
-  const leaving = gone
-    .filter((peer) => !peers.some((p) => p.id === peer.id))
-    .map((peer) => ({ peer, leaving: true }))
-  return [...live, ...leaving]
+  useEffect(() => {
+    const pending = timers.current
+    return () => {
+      for (const timer of pending.values()) window.clearTimeout(timer)
+    }
+  }, [])
+
+  const rows = peers.map((peer) => ({ peer, leaving: false }))
+  for (const { peer, index } of [...gone].sort((a, b) => a.index - b.index)) {
+    if (peers.some((p) => p.id === peer.id)) continue
+    rows.splice(Math.min(index, rows.length), 0, { peer, leaving: true })
+  }
+  return rows
 }
 
 /** "1:42" hasta que venza el PIN. */
@@ -143,12 +170,13 @@ export function MachinesModal({
   }, [open, mounted])
 
   // Lo que se tipeó en el formulario no sobrevive a cerrar: la próxima vez es
-  // otro emparejamiento.
+  // otro emparejamiento. Se vacía cuando el modal terminó de irse: con `open`,
+  // el PIN se borraba y el resultado se plegaba mientras el modal se esfumaba.
   useEffect(() => {
-    if (open) return
+    if (mounted) return
     setPin('')
     setResult(null)
-  }, [open])
+  }, [mounted])
 
   if (!mounted) return null
 
@@ -235,7 +263,9 @@ export function MachinesModal({
             </span>
           </button>
 
-          <div className="ntx-reveal" data-open={sharing}>
+          {/* inert plegado: si no, Tab enfocaba «Pair a machine» y «Unpair all»
+              sin que se vieran. */}
+          <div className="ntx-reveal" data-open={sharing} inert={!sharing}>
             <div className="ntx-reveal__inner">
               <div className="ntx-machines__facts">
                 <span className="ntx-machines__fact-key">Address</span>
@@ -287,12 +317,18 @@ export function MachinesModal({
         <section className="ntx-machines__block">
           <div className="ntx-machines__label">Paired machines</div>
 
-          <div className="ntx-reveal" data-open={shownPeers.length === 0}>
+          {/* El vacío y la lista se alternan en la MISMA celda: eran dos pliegues
+              uno debajo del otro, uno cerrándose y otro abriéndose a la vez, y
+              se veía la «rebanada» del About 1.7.6. En una celda la caja mide
+              lo del más alto y, como el pliegue apaga primero y pliega después,
+              desliza su alto en vez de crecer y achicarse a la vez. */}
+          <div className="ntx-machines__swap">
+          <div className="ntx-reveal" data-open={shownPeers.length === 0} inert={shownPeers.length > 0}>
             <div className="ntx-reveal__inner">
               <p className="ntx-machines__empty">None yet. Turn sharing on in the other machine and pair it here.</p>
             </div>
           </div>
-          <div className="ntx-reveal" data-open={shownPeers.length > 0}>
+          <div className="ntx-reveal" data-open={shownPeers.length > 0} inert={shownPeers.length === 0}>
             <div className="ntx-reveal__inner">
             <ul className="ntx-peers">
               {shownPeers.map(({ peer, leaving }) => {
@@ -334,6 +370,7 @@ export function MachinesModal({
               })}
             </ul>
             </div>
+          </div>
           </div>
 
           <form

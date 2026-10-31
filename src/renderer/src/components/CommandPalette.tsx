@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react'
 import { Icon, type IconName } from './Icon'
 import { usePresence } from '../hooks/usePresence'
-import { reducedMotion } from '../lib/motion'
+import { reducedMotion, ease, easeBoth } from '../lib/motion'
 
 export interface Command {
   id: string
@@ -26,8 +26,6 @@ const EXIT_MS = 130
 /** El reacomodo de la lista al filtrar: lo que queda viaja, lo que se va se
  *  apaga en su lugar y el alto de la lista acompaña. */
 const LIST_MS = 180
-const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
-const EASE_BOTH = 'cubic-bezier(0.65, 0, 0.35, 1)'
 
 /**
  * Filtro por subsecuencia: "nps" encuentra "Nueva shell · PowerShell". Es lo que
@@ -69,10 +67,17 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
   // sobre una ref vacía y las teclas terminaban en la terminal de atrás.
   useEffect(() => {
     if (!open || !mounted) return
-    setQuery('')
-    setSelected(0)
     input.current?.focus()
   }, [open, mounted])
+
+  // Se limpia cuando terminó de irse, no al volver: limpiando al abrir, la
+  // paleta nacía un cuadro con el filtro de la vez anterior y después crecía
+  // de alto (el FLIP de la lista) mientras entraba.
+  useEffect(() => {
+    if (mounted) return
+    setQuery('')
+    setSelected(0)
+  }, [mounted])
 
   // Si el filtro achicó la lista, la selección puede haber quedado afuera.
   useEffect(() => {
@@ -90,7 +95,10 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
   // que se puede animar de dónde estaba a dónde quedó (FLIP). El que el filtro
   // saca ya no existe en el DOM: se deja en su lugar un calco, fuera del flujo,
   // que se apaga encima. Y el alto de la lista viaja en vez de saltar.
-  const layout = useRef<{ height: number; items: Map<string, { top: number; node: HTMLElement }> } | null>(null)
+  const layout = useRef<{
+    height: number
+    items: Map<string, { top: number; left: number; width: number; node: HTMLElement }>
+  } | null>(null)
   const visibleKey = visible.map((command) => command.id).join('\n')
   useLayoutEffect(() => {
     const element = list.current
@@ -99,20 +107,37 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
       return
     }
     const buttons = [...element.querySelectorAll<HTMLElement>('.ntx-command:not([data-ghost])')]
-    const now = new Map(buttons.map((button) => [button.dataset.id!, { top: button.offsetTop, node: button }]))
+    // La caja entera, no sólo el top: el calco va donde estaba el botón. Con el
+    // ancho con decimales (offsetWidth redondea) y el left medido, no el padding
+    // de base.css escrito a mano: en Opal la lista tiene 4 px y el calco se
+    // corría 3 px y se angostaba 6 apenas se clonaba.
+    const now = new Map(
+      buttons.map((button) => [
+        button.dataset.id!,
+        { top: button.offsetTop, left: button.offsetLeft, width: button.getBoundingClientRect().width, node: button }
+      ])
+    )
     const before = layout.current
     const height = element.offsetHeight
     layout.current = { height, items: now }
     if (!before || reducedMotion()) return
 
+    // Si alguno se va, los que llegan esperan su turno: entrando a la par, el
+    // nuevo asomaba encima del calco que todavía se veía entero.
+    const leaving = [...before.items.keys()].some((id) => !now.has(id))
     for (const [id, item] of now) {
       const was = before.items.get(id)
       if (!was) {
-        item.node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: LIST_MS, easing: EASE })
+        item.node.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: LIST_MS,
+          easing: ease(),
+          delay: leaving ? 70 : 0,
+          fill: 'backwards'
+        })
       } else if (was.top !== item.top) {
         item.node.animate(
           [{ transform: `translateY(${was.top - item.top}px)` }, { transform: 'none' }],
-          { duration: LIST_MS, easing: EASE }
+          { duration: LIST_MS, easing: ease() }
         )
       }
     }
@@ -122,11 +147,11 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
       ghost.dataset.ghost = 'true'
       ghost.style.position = 'absolute'
       ghost.style.top = `${was.top}px`
-      ghost.style.left = '7px'
-      ghost.style.width = 'calc(100% - 14px)'
+      ghost.style.left = `${was.left}px`
+      ghost.style.width = `${was.width}px`
       ghost.style.pointerEvents = 'none'
       element.appendChild(ghost)
-      const out = ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: EASE_BOTH, fill: 'forwards' })
+      const out = ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: easeBoth(), fill: 'forwards' })
       const drop = (): void => ghost.remove()
       out.finished.then(drop, drop)
       // Plazo de red: una ventana tapada no avanza la línea de tiempo.
@@ -137,7 +162,7 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
       // encima a los calcos que todavía se están apagando.
       element.animate([{ height: `${before.height}px` }, { height: `${height}px` }], {
         duration: LIST_MS,
-        easing: height < before.height ? EASE_BOTH : EASE
+        easing: height < before.height ? easeBoth() : ease()
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -43,6 +43,14 @@
      de sombra que NTX suma en algunos controles queda en nada. */
   --ntx-ring: 0 0 0 0 transparent;
 
+  /* El --tr-color de Opal más el color del anillo, para que el outline de
+     :focus-visible se encienda y se apague en vez de aparecer de golpe. Va acá
+     y no en opal-tokens.css, que es copia textual de Opal. */
+  --tr-color: color var(--op-t-1) var(--op-ease-soft),
+              background-color var(--op-t-1) var(--op-ease-soft),
+              box-shadow var(--op-t-1) var(--op-ease-soft),
+              outline-color var(--op-t-1) var(--op-ease-soft);
+
   --ntx-shadow: var(--op-e3);
   --ntx-shadow-lg: var(--op-e4);
 
@@ -82,6 +90,12 @@ body {
 ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, .20); background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:active { background-color: rgba(255, 255, 255, .28); background-clip: padding-box; }
 
+/* El anillo está puesto siempre, en transparente: de `outline: none` a un
+   outline no hay nada que transicionar, así que sólo cambia el color. */
+:where(button, a[href], [role='switch'], [tabindex]:not([tabindex='-1'])) {
+  outline: 1.5px solid transparent;
+  outline-offset: 2px;
+}
 :focus { outline: none; }
 :focus-visible {
   outline: 1.5px solid var(--op-ring);
@@ -291,10 +305,54 @@ body {
 .ntx-grid[data-layout='tabs'] > .ntx-pane[data-focused='false'] {
   transform: none;
 }
+/* Cambiar de pestaña: la hoja se queda, lo que se releva es lo de adentro.
+   El fundido de base.css (la que se va se esfuma ENCIMA de la nueva) supone
+   hojas opacas, de la etapa mate. En vidrio la de encima no tapa: se SUMA.
+   Dos velos de luz y dos sombras apilados, y el blur de la de arriba
+   esmerilando el texto de la de abajo como un halo. Medido (oct 2026): el
+   interior de la hoja saltaba de 23 a 28 de brillo en el cuadro del click y
+   volvía en ~150 ms. Ese era el flash.
+   Ahora la hoja (velo, vidrio, sombra, canto) pasa de una shell a la otra en
+   el MISMO cuadro, sin transición: la suma no cambia nunca. Sólo se mueve el
+   contenido: lo viejo se va en in-out y lo nuevo asoma 80 ms después, cuando
+   lo viejo ya va por debajo de la mitad, así los dos textos no se enciman. */
+.ntx-grid[data-layout='tabs'] > .ntx-pane[data-focused='false'] {
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  transition:
+    opacity var(--ntx-exit) var(--ntx-ease-both),
+    visibility 0s linear var(--ntx-exit);
+}
+/* El canto se apaga por opacidad y no sacándole la sombra: así la que llega
+   lo prende en el acto (::after no transiciona opacity) y el anillo de soltar
+   un archivo sigue fundiéndose por box-shadow como siempre. */
+.ntx-grid[data-layout='tabs'] > .ntx-pane[data-focused='false']::after {
+  opacity: 0;
+}
+.ntx-grid[data-layout='tabs'] > .ntx-pane[data-focused='true']:not([data-closing='true']) {
+  transition: none;
+}
+.ntx-grid[data-layout='tabs'] > .ntx-pane[data-focused='true'] > :is(.ntx-pane__head, .ntx-reveal, .ntx-pane__term) {
+  animation: ntx-fade-in var(--ntx-normal) var(--ntx-ease) 80ms backwards;
+}
+/* Una shell nueva al lado de otra es lo mismo que cambiar de pestaña: la hoja
+   ya está y sólo entra el contenido (si no, la hoja se apagaba de golpe a 14
+   de brillo y volvía). Sola —el arranque— la hoja sí entra entera.
+   Va con duración 0 y NO con `animation: none`: cambiar el nombre reinicia la
+   animación, y la que queda sola al cerrar las otras volvería a entrar. Con la
+   duración, una animación que ya terminó sigue terminada. */
+.ntx-grid[data-layout='tabs'] > .ntx-pane:not(:only-child) {
+  animation-duration: 0s;
+}
 .ntx-pane[data-dropping='true'] {
   background: var(--op-s1);
 }
-.ntx-pane[data-dropping='true']::after {
+/* Con el prefijo de pestañas: si no, la regla del canto de la enfocada
+   (.ntx-grid[data-layout='tabs'] > .ntx-pane[data-focused='true']::after) le
+   ganaba por especificidad y el anillo no se veía nunca. */
+.ntx-pane[data-dropping='true']::after,
+.ntx-grid[data-layout='tabs'] > .ntx-pane[data-dropping='true']::after {
   box-shadow:
     inset 0 1px 0 var(--op-edge-lit),
     inset 0 0 0 1px var(--accent),
@@ -542,6 +600,14 @@ body {
   line-height: 1.45;
   box-shadow: var(--op-sheet), var(--op-e3);
 }
+/* Vidrio que se mueve deja el canto blanco (motion-timing §4): en Opal el
+   tooltip aparece en su lugar, solo por opacidad, como la paleta y los modales.
+   El de base.css bajaba 3 px. */
+.ntx-tooltip,
+.ntx-tooltip[data-above='true'],
+.ntx-tooltip[data-open='true'] {
+  transform: none;
+}
 
 /* --- Modales: el de Opal, que aparece en su lugar ------------------------- */
 .ntx-modal {
@@ -738,8 +804,13 @@ body {
 .ntx-machines__fact-value--ui { font-family: var(--op-font); color: var(--op-text-2); }
 .ntx-machines__empty { font-size: var(--op-fs-12); color: var(--op-text-2); }
 /* El PIN abierto es obsidiana con el canto vivo: lo único tallado del modal. */
-.ntx-pin[data-open='true'] .ntx-pin__inner {
+/* El radio va siempre puesto y no sólo abierto: el fondo se apaga con
+   transición, y sin radio en reposo la caja obsidiana se volvía cuadrada en el
+   primer cuadro del cierre (y nacía cuadrada al abrir). */
+.ntx-pin__inner {
   border-radius: var(--op-r-md);
+}
+.ntx-pin[data-open='true'] .ntx-pin__inner {
   background: var(--op-deep);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .10), inset 0 0 0 1px var(--op-rim);
 }
@@ -822,6 +893,7 @@ body {
     color var(--op-t-2) var(--op-ease-soft),
     background var(--op-t-2) var(--op-ease-soft),
     box-shadow var(--op-t-2) var(--op-ease-soft),
+    outline-color var(--op-t-1) var(--op-ease-soft),
     max-width var(--ntx-exit) var(--ntx-ease-both),
     min-width var(--ntx-exit) var(--ntx-ease-both),
     padding var(--ntx-exit) var(--ntx-ease-both),
@@ -829,6 +901,13 @@ body {
 }
 .ntx-app[data-tabs='titlebar'] .ntx-tab:hover {
   background: var(--op-wash-1);
+}
+/* El pliegue de base.css lleva el padding a 0, pero el de la pastilla de
+   arriba le ganaba por especificidad: la pestaña se plegaba hasta 20 px y en
+   el último cuadro desaparecía, y el + saltaba esos 20 px (medido). */
+.ntx-app[data-tabs='titlebar'] .ntx-tab[data-closing='true'] {
+  padding-left: 0;
+  padding-right: 0;
 }
 .ntx-app[data-tabs='titlebar'] .ntx-tab[data-active='true'] {
   background: color-mix(in srgb, #fff 7%, transparent);
@@ -847,12 +926,15 @@ body {
 /* La lucecita tampoco está en reposo: aparece sólo si la shell está corriendo
    algo o te llama al terminar. Entra abriendo su lugar y prendiendo el color;
    nada de opacity (ClearType, ver la marca en base.css). */
+/* El color NO va en la transición: al apagarse el latido lo lleva el `settle`
+   de TabStrip (por la API, desde el color que tenía). Una transición de CSS
+   está por encima de una animación de la API en la cascada, así que la de
+   background le ganaba: arrancaba desde el color pleno del estado encendido
+   (un destello) e ignoraba de dónde venía el latido. */
 .ntx-app[data-tabs='titlebar'] .ntx-tab__mark {
   transition:
     width 260ms var(--op-ease-soft),
-    margin-right 260ms var(--op-ease-soft),
-    background var(--op-t-2) var(--op-ease-soft),
-    box-shadow var(--op-t-2) var(--op-ease-soft);
+    margin-right 260ms var(--op-ease-soft);
 }
 .ntx-app[data-tabs='titlebar'] .ntx-tab__mark:not([data-busy='true'], [data-notify='true']) {
   width: 0;

@@ -14,10 +14,8 @@
  * texto de la barra pasaba del 75 % de píxeles con franja de color al 39 %.
  */
 import { TERMINAL_FONTS, type TerminalFont } from './fonts'
-import { reducedMotion } from '../lib/motion'
+import { reducedMotion, ease, easeBoth } from '../lib/motion'
 
-const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
-const EASE_BOTH = 'cubic-bezier(0.65, 0, 0.35, 1)'
 
 function setVariable(font: TerminalFont): void {
   document.documentElement.style.setProperty('--ntx-font-mono', TERMINAL_FONTS[font])
@@ -62,7 +60,7 @@ export function switchUiFont(font: TerminalFont): void {
     // Si venía de otro cambio a medio fundido, sigue desde donde estaba.
     const from = getComputedStyle(element).color
     element.getAnimations().filter((a) => a.id === 'ntx-ui-font').forEach((a) => a.cancel())
-    const out = element.animate([{ color: from }, { color: 'transparent' }], { duration: 110, easing: EASE_BOTH, fill: 'forwards' })
+    const out = element.animate([{ color: from }, { color: 'transparent' }], { duration: 110, easing: easeBoth(), fill: 'forwards' })
     out.id = 'ntx-ui-font'
     return out
   })
@@ -80,7 +78,7 @@ export function switchUiFont(font: TerminalFont): void {
     for (const element of elements) {
       // Sin la salida puesta, vuelve al color que manda el CSS (el número del panel va en su acento).
       const to = getComputedStyle(element).color
-      const back = element.animate([{ color: 'transparent' }, { color: to }], { duration: 180, easing: EASE })
+      const back = element.animate([{ color: 'transparent' }, { color: to }], { duration: 180, easing: ease() })
       back.id = 'ntx-ui-font'
     }
   }

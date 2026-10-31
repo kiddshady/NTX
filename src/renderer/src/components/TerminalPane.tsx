@@ -11,7 +11,7 @@ import { attachPane } from '../lib/ptyBus'
 import { mixHex, xtermTheme, type Palette } from '../term/themes'
 import { lowerCellBackgrounds } from '../term/cellBackgrounds'
 import { TERMINAL_FONTS, boldWeight, type TerminalFont } from '../term/fonts'
-import { reducedMotion } from '../lib/motion'
+import { reducedMotion, ease, easeBoth } from '../lib/motion'
 import { withoutCtrlClick } from '../lib/mouseLink'
 import { paneTitle, pathForShell, type PaneState } from '../lib/panes'
 
@@ -34,8 +34,6 @@ const PASTES_ITSELF = new Set(['pwsh', 'powershell'])
 
 /** Las curvas de base.css (--ntx-ease, --ntx-ease-both), para el fundido del
  *  cambio de letra, que va por WAAPI. */
-const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
-const EASE_BOTH = 'cubic-bezier(0.65, 0, 0.35, 1)'
 
 interface TerminalPaneProps {
   pane: PaneState
@@ -107,6 +105,8 @@ export function TerminalPane({
   const fontSizeRef = useRef(fontSize)
   fontSizeRef.current = fontSize
   const fontRef = useRef(font)
+  /** La salida del fundido de letra en curso: la que vuelve es sólo la última. */
+  const fontFade = useRef<Animation | null>(null)
   fontRef.current = font
 
   const paneId = pane.id
@@ -383,7 +383,9 @@ export function TerminalPane({
       paneId,
       (data) => terminal.write(data),
       (code) => {
-        if (!closingRef.current) setDead(code)
+        // Con 0 la cierra App (onPaneExit): el cartel de «exit 0» se desplegaba
+        // mientras la hoja se iba fundiendo. Mismo criterio que allá.
+        if (!closingRef.current && code !== 0) setDead(code)
         callbacks.current.onExit(code)
       }
     )
@@ -481,20 +483,28 @@ export function TerminalPane({
     element.getAnimations().forEach((animation) => animation.cancel())
     const out = element.animate([{ opacity: from }, { opacity: 0 }], {
       duration: 110,
-      easing: EASE_BOTH,
+      easing: easeBoth(),
       fill: 'forwards'
     })
-    out.finished
-      .then(() => {
-        apply()
-        // Sin la salida puesta, lo que queda es el tono que manda el CSS.
-        out.cancel()
-        const to = getComputedStyle(element).opacity
-        return element.animate([{ opacity: 0 }, { opacity: to }], { duration: 180, easing: EASE }).finished
-      })
-      .catch(() => {
-        // Cancelada por un cambio más nuevo: ése se encarga.
-      })
+    fontFade.current = out
+    const back = (): void => {
+      // Ya volvió, o la reemplazó un cambio más nuevo: ése se encarga.
+      if (fontFade.current !== out) return
+      fontFade.current = null
+      window.clearTimeout(fallback)
+      apply()
+      // Sin la salida puesta, lo que queda es el tono que manda el CSS.
+      out.cancel()
+      const to = getComputedStyle(element).opacity
+      element.animate([{ opacity: 0 }, { opacity: to }], { duration: 180, easing: ease() })
+    }
+    // Plazo de red: con la ventana tapada o minimizada la línea de tiempo no
+    // avanza y `finished` no llega nunca; la pantalla quedaba en 0 con la letra
+    // vieja hasta volver a mostrarla.
+    const fallback = window.setTimeout(back, 110 + 120)
+    out.finished.then(back, () => {
+      // Cancelada por un cambio más nuevo: ése se encarga.
+    })
   }, [font])
 
   // Enfocar el panel enfoca su terminal, para que tipear vaya al shell correcto.

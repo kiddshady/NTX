@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type JSX } from 'react'
-import { reducedMotion } from '../lib/motion'
+import { reducedMotion, ease, easeBoth } from '../lib/motion'
 
 /** Lo que tarda en irse el texto viejo (la salida, en ease-both). */
 const OUT_MS = 160
@@ -64,17 +64,33 @@ export function Swap({ value, className, tip }: SwapProps): JSX.Element {
   useLayoutEffect(() => {
     const element = box.current
     if (!element) return
+    // Desde lo que se ve AHORA: si el texto cambia dos veces seguidas, el viaje
+    // retoma desde donde iba y no desde el destino del anterior (saltaba).
+    const travelling = element.getAnimations()
+    const shown = travelling.length > 0 ? element.getBoundingClientRect().width : width.current
     // Un viaje a medio camino se suelta antes de medir: si no, se mediría el
     // ancho animado y no el del texto.
-    for (const running of element.getAnimations()) running.cancel()
+    for (const running of travelling) running.cancel()
     const next = element.getBoundingClientRect().width
-    const previous = width.current
+    const previous = shown
     width.current = next
-    if (previous === null || Math.abs(previous - next) < 0.5 || reducedMotion()) return
-    element.animate([{ width: `${previous}px` }, { width: `${next}px` }], {
-      duration: 180,
-      easing: 'cubic-bezier(0.32, 0.72, 0, 1)'
-    })
+    if (previous === null) return
+    // El que se va queda clavado en el ancho que tenía. Suelto (va absoluto),
+    // se acomodaba a la caja que se achica y se cortaba con «…» cuando todavía
+    // se veía casi entero. Con decimales: clientWidth redondea.
+    for (const out of element.querySelectorAll<HTMLElement>(':scope > [data-state="out"]')) {
+      if (!out.style.width) out.style.width = `${previous}px`
+    }
+    if (Math.abs(previous - next) < 0.5 || reducedMotion()) return
+    // Al achicarse con alguien yéndose, la caja espera a que el viejo casi no
+    // se vea (motion-timing §10): primero se va lo de adentro, después se pliega.
+    const shrinkingOverExit = next < previous && items.some((item) => item.leaving)
+    element.animate(
+      [{ width: `${previous}px` }, { width: `${next}px` }],
+      shrinkingOverExit
+        ? { duration: 180, easing: easeBoth(), delay: 100, fill: 'backwards' }
+        : { duration: 180, easing: ease() }
+    )
   }, [items])
 
   return (
