@@ -54,6 +54,14 @@
   --ntx-shadow: var(--op-e3);
   --ntx-shadow-lg: var(--op-e4);
 
+  /* Lo que flota por encima de la terminal (la paleta, los modales, el
+     tooltip, la búsqueda) es la hoja de Prism: OPACA, la luz de un modal sobre
+     un gris casi negro, y sin backdrop-filter. Es la misma en todos lados.
+     Fran (31/10/2026): Prism y NTX son la variante oscura de Opal, y el vidrio
+     de antes (--op-s3 con blur) era demasiado transparente para esa variante.
+     Desde ese día la receta vive en Opal (--op-flota-opaca, opal-tokens.css). */
+  --ntx-float: var(--op-flota-opaca);
+
   /* La niebla de Opal (shell.css → --op-sustrato), tal cual. */
   --op-sustrato:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.038'/%3E%3C/svg%3E"),
@@ -422,7 +430,7 @@ body {
   /* La cabecera mide 30: cuelga de su línea con el mismo respiro. */
   top: 37px;
   border-radius: var(--op-r-lg);
-  background: var(--op-flota);
+  background: var(--ntx-float);
   color: var(--op-text-3);
   box-shadow: var(--op-sheet), var(--op-e3);
 }
@@ -500,24 +508,23 @@ body {
 }
 
 /* --- Scrim: el velo de Opal, que esmerila la app detrás ------------------- */
+/* --op-scrim es el de Prism (.58) desde el 31/10/2026: con la hoja de arriba
+   opaca, el velo es lo único de vidrio que queda, y es lo que no se mueve. */
 .ntx-scrim {
   background: var(--op-scrim);
   backdrop-filter: blur(10px) saturate(120%);
   animation: ntx-fade-in var(--op-t-3) var(--op-ease);
 }
 
-/* --- Paleta de comandos: el menú de Opal ----------------------------------
-   La hoja de los modales (--op-s3), vidrio pesado, canto y sombra larga.
-   Llevó --op-flota, el fondo de los menús, hasta el 30 oct 2026: con el velo
-   detrás, esa base que tapa la dejaba casi del color del fondo (25 contra 34
-   de los modales, medido en capturas de Fran). Se posa sobre el scrim como
-   ellos, así que va con su luz.
-   Entra y sale SOLO por opacidad, como el menú de Opal: moviéndose, el canto
-   de arriba deja ver el desenfoque de atrás. */
+/* --- Paleta de comandos: la hoja de Prism ---------------------------------
+   La hoja opaca de todo lo que flota (--ntx-float), con el canto y la sombra
+   larga. Hasta el 31 oct 2026 fue vidrio (--op-s3 con blur pesado) y antes,
+   hasta el 30, --op-flota; las dos quedaban demasiado transparentes para la
+   variante oscura. Entra y sale SOLO por opacidad, como el menú de Opal. */
 .ntx-palette {
   border-radius: var(--op-r-lg);
-  background: var(--op-s3);
-  backdrop-filter: var(--op-glass-heavy);
+  background: var(--ntx-float);
+  backdrop-filter: none;
   box-shadow: var(--op-sheet), var(--op-e4);
   animation: ntx-fade-in var(--op-t-2) var(--op-ease);
 }
@@ -589,12 +596,12 @@ body {
   background: var(--op-s4);
 }
 
-/* --- Tooltip: el de Opal --------------------------------------------------- */
+/* --- Tooltip: la hoja de Prism ---------------------------------------------- */
 .ntx-tooltip {
   padding: 5px var(--op-2);
   border-radius: var(--op-r-md);
-  background: var(--op-s3);
-  backdrop-filter: var(--op-glass);
+  background: var(--ntx-float);
+  backdrop-filter: none;
   color: var(--op-text);
   font-size: var(--op-fs-11);
   line-height: 1.45;
@@ -609,12 +616,12 @@ body {
   transform: none;
 }
 
-/* --- Modales: el de Opal, que aparece en su lugar ------------------------- */
+/* --- Modales: la hoja de Prism, que aparece en su lugar ------------------- */
 .ntx-modal {
   padding: var(--op-5);
   border-radius: var(--op-r-xl);
-  background: var(--op-s3);
-  backdrop-filter: var(--op-glass-heavy);
+  background: var(--ntx-float);
+  backdrop-filter: none;
   box-shadow: var(--op-sheet), var(--op-e4);
   animation: ntx-fade-in var(--op-t-3) var(--op-ease);
 }

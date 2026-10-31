@@ -171,8 +171,16 @@
   /* ── Lo que hunde ──────────────────────────────────────────────────────────
      El velo detrás de un modal y el pie del modal, que se hunde apenas. Antes
      vivían escritos a mano en overlays.css. */
-  --op-scrim: rgb(3 3 4 / .48);
+  --op-scrim: rgb(3 3 4 / .58);   /* el de Prism (era .48 hasta el 31/10/2026) */
   --op-foot:  rgb(0 0 0 / .16);
+
+  /* ── Lo que flota por encima de todo: modales y tooltips ─────────────────
+     La hoja de Prism (--pr-float): OPACA, la luz de un modal sobre un gris casi
+     negro, y SIN backdrop-filter. Prism y NTX son la referencia de la variante
+     oscura (Fran, 31/10/2026). Con --op-s3 y blur, el modal y el tooltip
+     quedaban demasiado transparentes para esa variante (pasó en NTX). Al ser
+     opaca, tampoco hay canto claro mientras entra. */
+  --op-flota-opaca: linear-gradient(var(--op-s3), var(--op-s3)), rgb(19 19 21);
 
   /* ── Lo que flota sobre el contenido: menús y toasts ─────────────────────
      LA REGLA: lo que flota tiene que quedar del MISMO TONO que las tarjetas
@@ -307,4 +315,30 @@
   /* Tamaño del esfumado donde el scroll recorta. El contenedor lleva padding
      ≥ este valor en el eje del scroll para que en reposo no coma ningún ítem. */
   --op-fade: 28px;
+}
+
+/* ── Lo que flota, más transparente (variante, 30/10/2026) ──────────────────
+   De fábrica, el menú y el toast llevan el tono de la tarjeta que tapan (la
+   regla de arriba). Estas dos variantes les bajan la base y dejan que el
+   blur ponga casi todo: es el vidrio de las ventanas de UmbroSys, que Fran
+   eligió al 20 %. Las prende Shell.set({ vidrio }) en el <html>, no en
+   .op-app, porque los overlays viven en #op-layer, afuera de la app; y
+   --op-flota se resuelve en :root, así que la base se pisa ahí mismo. */
+:root.vidrio-translucido  { --op-flota-base: 45%; --op-flota-toast-base: 10%; }
+:root.vidrio-transparente { --op-flota-base: 20%; --op-flota-toast-base: 0%; }
+
+/* ── Acrílico: la ventana también es vidrio (variante, 30/10/2026) ──────────
+   El cuarto nivel. La ventana deja ver el escritorio desenfocado (el material
+   acrílico de Windows 11, que prende main.cjs).
+   Desde el 31/10/2026 la receta es la que Fran fijó como referencia: las
+   ventanas del escritorio de UmbroSys (la Terminal y el Mail, umbro.css,
+   `.us-os-ventana`). La ventana de la app es una de esas ventanas, así que lo
+   que flota lleva su misma base, --op-bg al 20 %, debajo de la luz de una
+   tarjeta (en UmbroSys, `.us-os-menu`). Las hojas y el velo del modal quedan
+   como en la variante oscura. El fondo de la ventana está en shell.css y el
+   calco del cambio de vista, en motion.css. Va para apps de pocas capas: en
+   NTX le rompía las transiciones. */
+:root.vidrio-acrilico {
+  --op-flota-base: 20%;
+  --op-flota-toast-base: 20%;
 }
