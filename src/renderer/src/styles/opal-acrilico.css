@@ -1,0 +1,74 @@
+/* ===========================================================================
+   NTX · variante acrílico de Opal (1.12.0, 1 nov 2026)
+
+   La receta de Opal (shell.css, «Acrílico») y de las ventanas del escritorio
+   de UmbroSys, sobre el escritorio que desenfoca Windows 11
+   (backgroundMaterial: 'acrylic' en main/window.ts). De abajo hacia arriba:
+     · un velo de --op-bg al 55 % (UmbroSys usa 42: ver más abajo);
+     · la niebla de Opal tal cual;
+     · la luz s1 de la pantalla;
+     · la ventana: la luz s2 sobre --op-bg al 20 % (el 20 lo eligió Fran
+       en UmbroSys, entre 62, 35 y 20).
+   El vidrio es la ventana: las hojas de las shells conservan su luz, su canto
+   y su sombra, pero sin backdrop-filter. Lo que flota (paleta, modales,
+   tooltip, búsqueda) lleva la base de la ventana, translúcida, sobre un velo
+   más liviano: Fran quiere ver a través.
+   Para volver a la oscura alcanza con sacar el import de main.tsx y el
+   material de la ventana.
+   =========================================================================== */
+
+html,
+body,
+.ntx-app {
+  background: transparent;
+}
+
+/* El velo de abajo NO es el 42 % de UmbroSys. Allá el vidrio esmerila el
+   piso, que ya es oscuro; acá esmerila el escritorio que pasa Windows, mucho
+   más claro y con color. Con el 42 % la hoja de las shells daba brillo 63 y
+   saturación .26, contra 51 y .11 de la Terminal de UmbroSys (medido en una
+   foto de cada una). Con .75 quedaba como UmbroSys, pero Fran lo quiso más
+   transparente: lo eligió en .55 probándolo. */
+:root {
+  --ntx-acrilico-velo: 55%;
+
+  /* Lo que flota lleva la base de la ventana, no la hoja opaca de la oscura:
+     la luz de una tarjeta sobre --op-bg al 20 %, como el menú de inicio de
+     UmbroSys (.us-os-menu). Fran (1/11/2026): ver a través de la paleta y
+     del velo es parte del efecto que busca. */
+  --ntx-float: linear-gradient(var(--op-s2), var(--op-s2)), color-mix(in srgb, var(--op-bg) 20%, transparent);
+  --op-scrim: rgb(3 3 4 / .3);
+}
+
+/* La paleta y los modales viven DENTRO del velo, que ya esmerila: un blur
+   propio ahí no tendría qué muestrear. El tooltip flota suelto sobre la
+   terminal, así que él sí lleva el vidrio. */
+.ntx-tooltip {
+  backdrop-filter: var(--op-glass);
+}
+/* La búsqueda es igual que la paleta (Fran, 1/11/2026). Como flota encima
+   del texto de la terminal, lleva su propio vidrio: sin él, las letras de
+   atrás se leerían nítidas debajo de las suyas. Un vidrio entra y sale solo
+   por opacidad: moviéndose, el canto deja ver el desenfoque de atrás. */
+.ntx-search {
+  backdrop-filter: var(--op-glass);
+  animation-name: ntx-fade-in;
+}
+.ntx-search[data-closing='true'] {
+  transform: none;
+}
+
+.ntx-bg {
+  background:
+    linear-gradient(var(--op-s2), var(--op-s2)),
+    linear-gradient(color-mix(in srgb, var(--op-bg) 20%, transparent), color-mix(in srgb, var(--op-bg) 20%, transparent)),
+    linear-gradient(var(--op-s1), var(--op-s1)),
+    var(--op-sustrato),
+    color-mix(in srgb, var(--op-bg) var(--ntx-acrilico-velo), transparent);
+}
+
+/* La ventana ya es el vidrio: las hojas adentro no esmerilan por su cuenta. */
+.ntx-pane,
+.ntx-pane[data-focused='true'] {
+  backdrop-filter: none;
+}

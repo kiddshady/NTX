@@ -16,3 +16,5 @@ export const app = {
 export const BrowserWindow = class {}
 export const screen = {}
 export const shell = {}
+// window.ts fuerza el tema oscuro al cargar (el acrílico sigue al de Windows).
+export const nativeTheme = { themeSource: 'system' }
