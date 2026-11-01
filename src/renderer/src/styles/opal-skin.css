@@ -943,7 +943,12 @@ body {
     width 260ms var(--op-ease-soft),
     margin-right 260ms var(--op-ease-soft);
 }
-.ntx-app[data-tabs='titlebar'] .ntx-tab__mark:not([data-busy='true'], [data-notify='true']) {
+/* Mientras corre un comando la pestaña ya no lleva luz (Fran, 1/11/2026: «el
+   botoncito blanco que titila»). Queda sólo el aviso de un comando que
+   terminó sin que lo miraras. Va por CSS y colgado del layout de escritorio:
+   TabStrip lo comparte NTX Mobile, y ahí el punto ocupado sigue. */
+.ntx-app[data-tabs='titlebar'] .ntx-tab__mark:not([data-notify='true']) {
+  animation: none;
   width: 0;
   /* Se come el gap de 8 entre la marca y el nombre. */
   margin-right: -8px;
