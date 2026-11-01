@@ -4,7 +4,7 @@
    La receta de Opal (shell.css, «Acrílico») y de las ventanas del escritorio
    de UmbroSys, sobre el escritorio que desenfoca Windows 11
    (backgroundMaterial: 'acrylic' en main/window.ts). De abajo hacia arriba:
-     · un velo de --op-bg al 55 % (UmbroSys usa 42: ver más abajo);
+     · un velo de --op-bg al 70 % (UmbroSys usa 42: ver más abajo);
      · la niebla de Opal tal cual;
      · la luz s1 de la pantalla;
      · la ventana: la luz s2 sobre --op-bg al 20 % (el 20 lo eligió Fran
@@ -27,17 +27,51 @@ body,
    piso, que ya es oscuro; acá esmerila el escritorio que pasa Windows, mucho
    más claro y con color. Con el 42 % la hoja de las shells daba brillo 63 y
    saturación .26, contra 51 y .11 de la Terminal de UmbroSys (medido en una
-   foto de cada una). Con .75 quedaba como UmbroSys, pero Fran lo quiso más
-   transparente: lo eligió en .55 probándolo. */
+   foto de cada una). Con .75 quedaba como UmbroSys. Fran lo eligió primero
+   en .55 y después (1/11/2026, probando 42, 60, 65 y 70) en .70, ya con lo
+   que flota atado a la perilla: «sigo viendo a través pero no se me mezcla
+   visualmente con lo de atrás». */
 :root {
-  --ntx-acrilico-velo: 55%;
+  /* LA perilla: mover solo ésta. Es un número (.55 = 55 %). */
+  --ntx-acrilico-velo: .70;
+  --ntx-velo: calc(var(--ntx-acrilico-velo) * 100%);
 
   /* Lo que flota lleva la base de la ventana, no la hoja opaca de la oscura:
      la luz de una tarjeta sobre --op-bg al 20 %, como el menú de inicio de
      UmbroSys (.us-os-menu). Fran (1/11/2026): ver a través de la paleta y
-     del velo es parte del efecto que busca. */
-  --ntx-float: linear-gradient(var(--op-s2), var(--op-s2)), color-mix(in srgb, var(--op-bg) 20%, transparent);
-  --op-scrim: rgb(3 3 4 / .3);
+     del velo es parte del efecto que busca.
+
+     Esos valores (velo .3, base 20 %) se eligieron con el velo de abajo en
+     .55, y van ATADOS a él: Fran quiere que al mover la perilla cambie todo
+     junto, no solo el fondo (1/11/2026). Sin atarlos, un modal deja pasar la
+     mitad de lo de atrás y se oscurece la mitad que la ventana: queda cada
+     vez más claro que ella. La cuenta: el velo de abajo deja pasar
+     (1 − velo) del escritorio, y cada cosa que flota deja pasar una fracción
+     T de lo que tapa. Para que todo baje lo mismo que el fondo, lo que cada
+     una NO deja pasar (1 − T) crece en la misma razón k que achica el paso
+     del escritorio: k = (1 − .55) / (1 − velo). Así vale para cualquier
+     escritorio, y en .55 da exactamente los valores de la 1.12.0.
+       · el velo de los modales: alfa .3 · k;
+       · un modal o la paleta, sobre ese velo: 1 − T0 = 1 − .7 · .8 · .945
+         = .4708 (velo, base 20 %, luz s2 de .055);
+       · el tooltip y la búsqueda, sueltos: 1 − T0 = 1 − .8 · .945 = .244. */
+  --ntx-velo-k: calc((1 - .55) / (1 - var(--ntx-acrilico-velo)));
+  --ntx-scrim-a: calc(.3 * var(--ntx-velo-k));
+  --ntx-float-base: calc(1 - (1 - .4708 * var(--ntx-velo-k)) / ((1 - var(--ntx-scrim-a)) * .945));
+  --ntx-float-suelta-base: calc(1 - (1 - .244 * var(--ntx-velo-k)) / .945);
+
+  --ntx-float: linear-gradient(var(--op-s2), var(--op-s2)),
+    color-mix(in srgb, var(--op-bg) calc(var(--ntx-float-base) * 100%), transparent);
+  --ntx-float-suelta: linear-gradient(var(--op-s2), var(--op-s2)),
+    color-mix(in srgb, var(--op-bg) calc(var(--ntx-float-suelta-base) * 100%), transparent);
+  --op-scrim: rgb(3 3 4 / var(--ntx-scrim-a));
+}
+
+/* El tooltip y la búsqueda no tienen el velo de los modales debajo: su base
+   se ata por su cuenta (ver arriba). */
+.ntx-tooltip,
+.ntx-search {
+  background: var(--ntx-float-suelta);
 }
 
 /* La paleta y los modales viven DENTRO del velo, que ya esmerila: un blur
@@ -64,7 +98,7 @@ body,
     linear-gradient(color-mix(in srgb, var(--op-bg) 20%, transparent), color-mix(in srgb, var(--op-bg) 20%, transparent)),
     linear-gradient(var(--op-s1), var(--op-s1)),
     var(--op-sustrato),
-    color-mix(in srgb, var(--op-bg) var(--ntx-acrilico-velo), transparent);
+    color-mix(in srgb, var(--op-bg) var(--ntx-velo), transparent);
 }
 
 /* La ventana ya es el vidrio: las hojas adentro no esmerilan por su cuenta. */
