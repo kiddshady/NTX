@@ -9,9 +9,6 @@ import { initUiFont } from './term/uiFont'
 import './styles/opal-tokens.css'
 import './styles/base.css'
 import './styles/opal-skin.css'
-// La variante acrílico de Opal (1.12.0): va con el material de la ventana en
-// main/window.ts.
-import './styles/opal-acrilico.css'
 
 // La paleta se aplica ANTES del primer render, de forma síncrona. Si esperáramos
 // al efecto de App, habría un frame pintado con las variables CSS vacías — o sea

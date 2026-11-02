@@ -1,36 +1,5 @@
 import { join } from 'node:path'
-import { createRequire } from 'node:module'
-import { BrowserWindow, nativeTheme, screen, shell } from 'electron'
-
-// La variante acrílico de Opal (1.12.0, 1/11/2026): Windows pinta detrás el
-// escritorio desenfocado; un backgroundColor opaco lo taparía. El tema va
-// forzado a oscuro porque el acrílico sigue al de Windows. Con false vuelve la
-// ventana opaca de la variante oscura (y hay que sacar opal-acrilico.css).
-const ACRILICO = true
-if (ACRILICO) nativeTheme.themeSource = 'dark'
-
-/* Sin foco, Windows cambia el acrílico por un gris liso: lo hace cuando la
-   ventana recibe WM_NCACTIVATE(FALSE). Devolverle WM_NCACTIVATE(TRUE) le
-   devuelve el vidrio sin tocar el foco de verdad: las teclas siguen yendo a
-   la app de adelante. Es el truco de Moji (src/native.cjs). */
-const WM_NCACTIVATE = 0x86
-let mandarMensaje: ((hwnd: bigint, msg: number, w: number, l: number) => number) | null = null
-function vidrioSiempre(win: BrowserWindow): void {
-  if (!mandarMensaje) {
-    const koffi = createRequire(import.meta.url)('koffi')
-    mandarMensaje = koffi
-      .load('user32.dll')
-      .func('intptr_t __stdcall SendMessageW(uintptr_t hwnd, uint32_t msg, uintptr_t wParam, intptr_t lParam)')
-  }
-  const hwnd = win.getNativeWindowHandle().readBigUInt64LE(0)
-  win.hookWindowMessage(WM_NCACTIVATE, (wParam) => {
-    if (wParam.readUInt32LE(0) !== 0) return
-    setImmediate(() => {
-      if (win.isDestroyed() || !win.isVisible() || win.isMinimized()) return
-      mandarMensaje?.(hwnd, WM_NCACTIVATE, 1, 0)
-    })
-  })
-}
+import { BrowserWindow, screen, shell } from 'electron'
 
 /**
  * El color base de la app. Va acá Y en el CSS, y tienen que ser el mismo.
@@ -96,8 +65,7 @@ export function createMainWindow({ hidden = false }: { hidden?: boolean } = {}):
     // hagamos show() off-screen ya hay contenido, y garantiza que ready-to-show
     // dispare.
     paintWhenInitiallyHidden: true,
-    backgroundColor: ACRILICO ? '#00000000' : BASE_COLOR,
-    ...(ACRILICO && { backgroundMaterial: 'acrylic' as const }),
+    backgroundColor: BASE_COLOR,
     webPreferences: {
       // .mjs, no .js: el proyecto es ESM y electron-vite emite el preload con esa
       // extensión. Electron sólo carga un preload ESM si además `sandbox` es
@@ -141,8 +109,6 @@ export function createMainWindow({ hidden = false }: { hidden?: boolean } = {}):
   // Un link del terminal abre en el navegador del sistema, nunca adentro de la
   // app: una ventana de Electron navegando a un sitio arbitrario es una vía de
   // escape del sandbox.
-  if (ACRILICO) vidrioSiempre(win)
-
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url)
     return { action: 'deny' }

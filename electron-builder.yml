@@ -22,9 +22,6 @@ extraResources:
     to: shell-init
 asarUnpack:
   - '**/node_modules/node-pty/**'
-  # koffi (el vidrio sin foco, main/window.ts) carga su .node desde una ruta
-  # de archivo: adentro del asar Windows no lo puede abrir. Como en Moji.
-  - '**/node_modules/koffi/**'
 # De acá electron-builder deriva el app-update.yml que viaja adentro del
 # instalador: es el papelito donde la app instalada lee A DÓNDE mirar por
 # versiones nuevas. El repo es público, así que el updater consulta y descarga
